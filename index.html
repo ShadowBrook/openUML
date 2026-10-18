@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenUML</title>
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+  <!-- Title Bar -->
+  <div id="titlebar" class="titlebar">
+    <div class="titlebar-icon">◈</div>
+    <div class="titlebar-title">OpenUML</div>
+    <div class="titlebar-modified" id="modified-indicator" title="未保存的更改"></div>
+  </div>
+
+  <!-- Main View -->
+  <div class="main-view">
+
+    <!-- Left Sidebar: Working Diagrams + Toolbox -->
+    <div id="sidebar" class="sidebar panel">
+      <div id="working-diagrams" class="working-diagrams">
+        <div class="pane-header"><span class="pane-title">图表</span></div>
+        <div id="diagram-tabs" class="diagram-tabs"></div>
+      </div>
+      <div id="toolbox-holder" class="toolbox-holder">
+        <div class="pane-header"><span class="pane-title">工具箱</span></div>
+        <div id="toolbox" class="toolbox"></div>
+      </div>
+    </div>
+
+    <div class="v-resizer" id="sidebar-resizer"></div>
+
+    <!-- Center Content -->
+    <div class="content">
+      <div class="content-holder">
+        <!-- Editor Tabs -->
+        <div id="editor-tabs" class="editor-tabs"></div>
+        <!-- Diagram Area -->
+        <div id="diagram-area-wrapper">
+          <div id="diagram-area">
+            <svg id="diagram-canvas" tabindex="0"></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right floating toolbar -->
+      <div id="toolbar" class="toolbar">
+        <div class="toolbar-group">
+          <button id="tb-zoom-in" title="放大 (Ctrl++)">＋</button>
+          <button id="tb-zoom-out" title="缩小 (Ctrl+-)">－</button>
+          <button id="tb-zoom-fit" title="适应窗口 (Ctrl+Shift+F)">⊞</button>
+          <span id="tb-zoom-label" class="zoom-label">100%</span>
+        </div>
+        <div class="toolbar-group">
+          <button id="tb-grid" class="active" title="网格">⋮⋮</button>
+          <button id="tb-snap" class="active" title="吸附网格">⌗</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="v-resizer" id="navigator-resizer"></div>
+
+    <!-- Right Navigator: Model Explorer + Editors -->
+    <div id="navigator" class="navigator panel">
+      <div id="model-explorer-holder" class="model-explorer-holder">
+        <div class="pane-header"><span class="pane-title">模型资源管理器</span>
+          <span class="pane-tools">
+            <button id="me-collapse" title="全部折叠">−</button>
+          </span>
+        </div>
+        <div id="model-explorer" class="model-explorer"></div>
+      </div>
+      <div id="editors-holder" class="editors-holder">
+        <div class="pane-header with-tabs">
+          <div id="editor-panel-tabs" class="mini-tabs">
+            <div class="mini-tab active" data-panel="properties">属性</div>
+            <div class="mini-tab" data-panel="styles">样式</div>
+          </div>
+        </div>
+        <div id="property-editor" class="editor-panel"></div>
+        <div id="style-editor" class="editor-panel hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Menu Bar -->
+  <div id="menubar" class="menubar"></div>
+  <div id="menu-overlay" class="menu-overlay hidden"></div>
+
+  <!-- Status Bar -->
+  <div id="statusbar" class="statusbar">
+    <div class="status-item" id="status-app">OpenUML</div>
+    <div class="status-item status-flex" id="status-message">就绪</div>
+    <div class="status-item" id="status-selection">0 个选中</div>
+    <div class="status-item" id="status-cursor">0, 0</div>
+    <div class="status-item" id="status-zoom">100%</div>
+  </div>
+
+  <!-- Context Menu -->
+  <div id="context-menu" class="context-menu hidden"></div>
+
+  <!-- Modal dialogs -->
+  <div id="dialog-overlay" class="dialog-overlay hidden">
+    <div id="dialog-box" class="dialog-box">
+      <div class="dialog-title" id="dialog-title">对话框</div>
+      <div class="dialog-body" id="dialog-body"></div>
+      <div class="dialog-buttons" id="dialog-buttons"></div>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,160 @@
+// toolbox.js — left palette with UML element icons (original SVG icon set)
+
+import { ToolboxGroups, diagramIcon } from '../core/metamodel.js';
+
+// Per-group header glyphs; the three diagram groups reuse their type icons
+const groupIcons = {
+  common: `<svg viewBox="0 0 14 14"><path d="M3.5 1.8 L11.2 7.6 L7.6 8.2 L9.4 12.2 L7.8 12.9 L6.1 8.9 L3.5 11.6 Z" fill="#fff" stroke="#4a4f4f" stroke-width="0.9"/></svg>`,
+  class: diagramIcon('UMLClassDiagram'),
+  usecase: diagramIcon('UMLUseCaseDiagram'),
+  sequence: diagramIcon('UMLSequenceDiagram'),
+};
+
+function groupIcon(id) {
+  return groupIcons[id] || '';
+}
+
+// Small inline SVG icons drawn to resemble UML notation
+const Icons = {
+  select: `<svg viewBox="0 0 30 26"><path d="M10 4 L22 13 L15.5 14.2 L18.5 21 L15.8 22 L13 15.4 L10 19 Z" fill="#fff" stroke="#4a4f4f"/></svg>`,
+  class: `<svg viewBox="0 0 30 26"><rect x="4" y="3" width="22" height="20" fill="#eef4fb" stroke="#4a4f4f"/><line x1="4" y1="10" x2="26" y2="10" stroke="#4a4f4f"/><line x1="4" y1="16" x2="26" y2="16" stroke="#4a4f4f"/></svg>`,
+  interface: `<svg viewBox="0 0 30 26"><circle cx="15" cy="13" r="9" fill="#fdf3e7" stroke="#4a4f4f"/><text x="15" y="16.5" text-anchor="middle" font-size="8" font-style="italic" fill="#4a4f4f">I</text></svg>`,
+  enum: `<svg viewBox="0 0 30 26"><rect x="4" y="3" width="22" height="20" fill="#fdf8e7" stroke="#4a4f4f"/><line x1="4" y1="10" x2="26" y2="10" stroke="#4a4f4f"/><text x="8" y="19" font-size="7" fill="#4a4f4f">≡</text></svg>`,
+  dataType: `<svg viewBox="0 0 30 26"><rect x="4" y="3" width="22" height="20" fill="#eef4fb" stroke="#4a4f4f" stroke-dasharray="3 2"/><line x1="4" y1="10" x2="26" y2="10" stroke="#4a4f4f"/></svg>`,
+  package: `<svg viewBox="0 0 30 26"><rect x="4" y="7" width="22" height="16" fill="#f7ead7" stroke="#4a4f4f"/><rect x="4" y="3" width="12" height="5" fill="#f7ead7" stroke="#4a4f4f"/></svg>`,
+  actor: `<svg viewBox="0 0 30 26"><circle cx="15" cy="6" r="3.4" fill="none" stroke="#4a4f4f" stroke-width="1.3"/><line x1="15" y1="9.4" x2="15" y2="16" stroke="#4a4f4f" stroke-width="1.3"/><line x1="9.5" y1="12" x2="20.5" y2="12" stroke="#4a4f4f" stroke-width="1.3"/><line x1="15" y1="16" x2="11" y2="22" stroke="#4a4f4f" stroke-width="1.3"/><line x1="15" y1="16" x2="19" y2="22" stroke="#4a4f4f" stroke-width="1.3"/></svg>`,
+  usecase: `<svg viewBox="0 0 30 26"><ellipse cx="15" cy="13" rx="10" ry="7" fill="#eaf5ea" stroke="#4a4f4f"/></svg>`,
+  subject: `<svg viewBox="0 0 30 26"><rect x="3" y="4" width="24" height="18" fill="none" stroke="#4a4f4f"/><line x1="3" y1="9" x2="14" y2="9" stroke="#4a4f4f"/><text x="4.5" y="8" font-size="4.5" fill="#4a4f4f">system</text></svg>`,
+  note: `<svg viewBox="0 0 30 26"><path d="M5 4 h15 l5 5 v13 h-20 Z" fill="#ffffe8" stroke="#4a4f4f"/><path d="M20 4 v5 h5" fill="none" stroke="#4a4f4f"/></svg>`,
+  text: `<svg viewBox="0 0 30 26"><text x="4" y="18" font-size="14" fill="#353535" font-family="serif">T</text><line x1="14" y1="8" x2="26" y2="8" stroke="#4a4f4f"/><line x1="14" y1="13" x2="22" y2="13" stroke="#9aa4a4"/></svg>`,
+  rect: `<svg viewBox="0 0 30 26"><rect x="5" y="5" width="20" height="16" fill="#eef4fb" stroke="#4a4f4f"/></svg>`,
+  ellipse: `<svg viewBox="0 0 30 26"><ellipse cx="15" cy="13" rx="10" ry="8" fill="#eef4fb" stroke="#4a4f4f"/></svg>`,
+  noteLink: `<svg viewBox="0 0 30 26"><line x1="4" y1="20" x2="26" y2="6" stroke="#4a4f4f" stroke-dasharray="4 3"/><rect x="20" y="14" width="7" height="7" fill="#ffffe8" stroke="#4a4f4f"/></svg>`,
+  assoc: `<svg viewBox="0 0 30 26"><line x1="3" y1="13" x2="27" y2="13" stroke="#4a4f4f" stroke-width="1.4"/></svg>`,
+  lifeline: `<svg viewBox="0 0 30 26"><rect x="8" y="2" width="14" height="7" fill="#eef4fb" stroke="#4a4f4f"/><line x1="15" y1="9" x2="15" y2="23" stroke="#4a4f4f" stroke-dasharray="3 2"/></svg>`,
+  msgSync: `<svg viewBox="0 0 30 26"><line x1="3" y1="13" x2="23" y2="13" stroke="#4a4f4f" stroke-width="1.4"/><path d="M24 13 l-7 -4.2 v8.4 Z" fill="#4a4f4f"/></svg>`,
+  msgAsync: `<svg viewBox="0 0 30 26"><line x1="3" y1="13" x2="23" y2="13" stroke="#4a4f4f" stroke-width="1.4"/><path d="M24 13 l-7 -4.2 M24 13 l-7 4.2" stroke="#4a4f4f" fill="none"/></svg>`,
+  msgReply: `<svg viewBox="0 0 30 26"><line x1="3" y1="13" x2="23" y2="13" stroke="#4a4f4f" stroke-dasharray="4 3"/><path d="M24 13 l-7 -4.2 M24 13 l-7 4.2" stroke="#4a4f4f" fill="none"/></svg>`,
+  assocDir: `<svg viewBox="0 0 30 26"><line x1="3" y1="13" x2="24" y2="13" stroke="#4a4f4f" stroke-width="1.4"/><path d="M24 13 l-6 -3.4 v6.8 Z" fill="none" stroke="#4a4f4f"/></svg>`,
+  aggr: `<svg viewBox="0 0 30 26"><line x1="12" y1="13" x2="27" y2="13" stroke="#4a4f4f" stroke-width="1.4"/><path d="M12 13 l4.5 -3 v6 Z" fill="#fff" stroke="#4a4f4f" transform="rotate(180 12 13)"/><path d="M12 13 l-4.5 -3 v6 Z" fill="#fff" stroke="#4a4f4f"/></svg>`,
+  comp: `<svg viewBox="0 0 30 26"><line x1="12" y1="13" x2="27" y2="13" stroke="#4a4f4f" stroke-width="1.4"/><path d="M12 13 l-4.5 -3 v6 Z" fill="#4a4f4f" stroke="#4a4f4f"/></svg>`,
+  dep: `<svg viewBox="0 0 30 26"><line x1="3" y1="13" x2="24" y2="13" stroke="#4a4f4f" stroke-dasharray="4 3"/><path d="M24 13 l-5 -3.2 M24 13 l-5 3.2" stroke="#4a4f4f" fill="none"/></svg>`,
+  gen: `<svg viewBox="0 0 30 26"><line x1="3" y1="13" x2="21" y2="13" stroke="#4a4f4f" stroke-width="1.4"/><path d="M27 13 l-6.5 -4 v8 Z" fill="#fff" stroke="#4a4f4f"/></svg>`,
+  real: `<svg viewBox="0 0 30 26"><line x1="3" y1="13" x2="21" y2="13" stroke="#4a4f4f" stroke-dasharray="4 3"/><path d="M27 13 l-6.5 -4 v8 Z" fill="#fff" stroke="#4a4f4f"/></svg>`,
+  state: `<svg viewBox="0 0 30 26"><rect x="3" y="6" width="24" height="14" rx="6" fill="#f4edfa" stroke="#4a4f4f"/><text x="15" y="16" text-anchor="middle" font-size="7" font-style="italic" fill="#4a4f4f">state</text></svg>`,
+  initial: `<svg viewBox="0 0 30 26"><circle cx="15" cy="13" r="5.5" fill="#353535"/></svg>`,
+  final: `<svg viewBox="0 0 30 26"><circle cx="15" cy="13" r="6" fill="#fff" stroke="#353535" stroke-width="1.2"/><circle cx="15" cy="13" r="3.2" fill="#353535"/></svg>`,
+  decision: `<svg viewBox="0 0 30 26"><path d="M15 3 L26 13 L15 23 L4 13 Z" fill="#fff" stroke="#4a4f4f"/></svg>`,
+  junction: `<svg viewBox="0 0 30 26"><path d="M15 4 L24 13 L15 22 L6 13 Z" fill="#353535"/></svg>`,
+  history: `<svg viewBox="0 0 30 26"><circle cx="15" cy="13" r="6.5" fill="#fff" stroke="#353535" stroke-width="1.2"/><text x="15" y="16.5" text-anchor="middle" font-size="8" fill="#353535">H</text></svg>`,
+  historyDeep: `<svg viewBox="0 0 30 26"><circle cx="15" cy="13" r="6.5" fill="#fff" stroke="#353535" stroke-width="1.2"/><text x="15" y="16.5" text-anchor="middle" font-size="7" fill="#353535">H*</text></svg>`,
+  action: `<svg viewBox="0 0 30 26"><rect x="3" y="6" width="24" height="14" rx="7" fill="#e8f6f6" stroke="#4a4f4f"/><text x="15" y="16" text-anchor="middle" font-size="7" font-style="italic" fill="#4a4f4f">act</text></svg>`,
+  flowFinal: `<svg viewBox="0 0 30 26"><circle cx="15" cy="13" r="6" fill="#fff" stroke="#353535" stroke-width="1.2"/><line x1="10.8" y1="8.8" x2="19.2" y2="17.2" stroke="#353535" stroke-width="1.2"/><line x1="10.8" y1="17.2" x2="19.2" y2="8.8" stroke="#353535" stroke-width="1.2"/></svg>`,
+  fork: `<svg viewBox="0 0 30 26"><rect x="3" y="11" width="24" height="4" fill="#353535"/></svg>`,
+};
+
+// tool id -> canvas tool descriptor
+export const ToolMap = {
+  'tool-select': null,
+  'tool-class': { kind: 'node', nodeType: 'UMLClass' },
+  'tool-interface': { kind: 'node', nodeType: 'UMLInterface' },
+  'tool-enum': { kind: 'node', nodeType: 'UMLEnumeration' },
+  'tool-dataType': { kind: 'node', nodeType: 'UMLDataType' },
+  'tool-package': { kind: 'node', nodeType: 'UMLPackage' },
+  'tool-actor': { kind: 'node', nodeType: 'UMLActor' },
+  'tool-usecase': { kind: 'node', nodeType: 'UMLUseCase' },
+  'tool-subject': { kind: 'node', nodeType: 'Subject' },
+  'tool-note': { kind: 'node', nodeType: 'UMLNote' },
+  'tool-lifeline': { kind: 'node', nodeType: 'UMLLifeLine' },
+  'tool-text': { kind: 'node', nodeType: 'UMLTextView' },
+  'tool-rect': { kind: 'node', nodeType: 'UMLRectView' },
+  'tool-ellipse': { kind: 'node', nodeType: 'UMLEllipseView' },
+  'tool-association': { kind: 'edge', edgeType: 'UMLAssociation' },
+  'tool-directed': { kind: 'edge', edgeType: 'UMLAssociation+directed' },
+  'tool-aggregation': { kind: 'edge', edgeType: 'UMLAssociation+aggregation' },
+  'tool-composition': { kind: 'edge', edgeType: 'UMLAssociation+composition' },
+  'tool-dependency': { kind: 'edge', edgeType: 'UMLDependency' },
+  'tool-generalization': { kind: 'edge', edgeType: 'UMLGeneralization' },
+  'tool-gen': { kind: 'edge', edgeType: 'UMLGeneralization' },
+  'tool-ifaceReal': { kind: 'edge', edgeType: 'UMLInterfaceRealization' },
+  'tool-include': { kind: 'edge', edgeType: 'UMLInclude' },
+  'tool-extend': { kind: 'edge', edgeType: 'UMLExtend' },
+  'tool-noteLink': { kind: 'edge', edgeType: 'UMLNoteLink' },
+  'tool-syncMessage': { kind: 'edge', edgeType: 'UMLMessage+sync' },
+  'tool-asyncMessage': { kind: 'edge', edgeType: 'UMLMessage+async' },
+  'tool-replyMessage': { kind: 'edge', edgeType: 'UMLMessage+reply' },
+  'tool-state': { kind: 'node', nodeType: 'UMLState' },
+  'tool-initialState': { kind: 'node', nodeType: 'UMLInitialState' },
+  'tool-finalState': { kind: 'node', nodeType: 'UMLFinalState' },
+  'tool-choice': { kind: 'node', nodeType: 'UMLChoice' },
+  'tool-shallowHistory': { kind: 'node', nodeType: 'UMLShallowHistory' },
+  'tool-deepHistory': { kind: 'node', nodeType: 'UMLDeepHistory' },
+  'tool-junction': { kind: 'node', nodeType: 'UMLJunction' },
+  'tool-transition': { kind: 'edge', edgeType: 'UMLTransition' },
+  'tool-selfTransition': { kind: 'edge', edgeType: 'UMLSelfTransition' },
+  'tool-action': { kind: 'node', nodeType: 'UMLAction' },
+  'tool-initialNode': { kind: 'node', nodeType: 'UMLInitialNode' },
+  'tool-activityFinal': { kind: 'node', nodeType: 'UMLActivityFinalNode' },
+  'tool-flowFinal': { kind: 'node', nodeType: 'UMLFlowFinalNode' },
+  'tool-decisionNode': { kind: 'node', nodeType: 'UMLDecisionNode' },
+  'tool-mergeNode': { kind: 'node', nodeType: 'UMLMergeNode' },
+  'tool-forkNode': { kind: 'node', nodeType: 'UMLForkNode' },
+  'tool-joinNode': { kind: 'node', nodeType: 'UMLJoinNode' },
+  'tool-controlFlow': { kind: 'edge', edgeType: 'UMLControlFlow' },
+};
+
+export function initToolbox(canvas, getActiveToolboxGroup) {
+  const toolbox = document.getElementById('toolbox');
+
+  function render() {
+    toolbox.innerHTML = '';
+    for (const group of ToolboxGroups) {
+      const header = document.createElement('div');
+      header.className = 'toolbox-group-header';
+      header.innerHTML = `<span class="arrow">▾</span><span class="gh-icon">${groupIcon(group.id)}</span><span>${group.name}</span>`;
+      header.onclick = () => {
+        const body = header.nextElementSibling;
+        if (body) {
+          body.classList.toggle('hidden');
+          header.querySelector('.arrow').textContent = body.classList.contains('hidden') ? '▸' : '▾';
+        }
+      };
+      toolbox.appendChild(header);
+      const body = document.createElement('div');
+      body.className = 'toolbox-group-body';
+      for (const item of group.items) {
+        body.appendChild(makeItem(item));
+      }
+      toolbox.appendChild(body);
+    }
+  }
+
+  function makeItem(item) {
+    const el = document.createElement('div');
+    el.className = 'toolbox-item';
+    el.innerHTML = (Icons[item.icon] || '') + `<span>${item.name}</span>`;
+    el.title = item.name;
+    el.onclick = () => {
+      document.getElementById('toolbox').querySelectorAll('.toolbox-item').forEach((n) => n.classList.remove('active'));
+      if (item.id === 'tool-select') {
+        canvas.setTool(null);
+        el.classList.add('active');
+      } else {
+        const tool = ToolMap[item.id];
+        if (tool) {
+          canvas.setTool({ ...tool, id: item.id });
+          el.classList.add('active');
+        }
+      }
+    };
+    return el;
+  }
+  document.addEventListener('tool-changed', () => {
+    toolbox.querySelectorAll('.toolbox-item').forEach((n) => n.classList.remove('active'));
+    if (!canvas.tool) {
+      const first = toolbox.querySelector('.toolbox-item');
+      if (first) first.classList.add('active');
+    }
+  });
+  render();
+}

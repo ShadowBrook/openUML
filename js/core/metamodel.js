@@ -1,0 +1,203 @@
+// metamodel.js — element type registry: model kinds, view kinds, default sizes.
+// Defines what the app can create, and how model elements map to diagram views.
+
+export const VISIBILITY = {
+  public: { symbol: '+', label: 'public' },
+  protected: { symbol: '#', label: 'protected' },
+  private: { symbol: '-', label: 'private' },
+  package: { symbol: '~', label: 'package' },
+};
+
+export const ModelKinds = {
+  Project: { name: 'Project', icon: '◆', iconColor: '#1390d6' },
+  Model: { name: 'Model', icon: '▦', iconColor: '#1390d6' },
+  Package: { name: 'Package', icon: '🗃', iconColor: '#c77d2e' },
+  UMLClass: { name: 'Class', icon: '▣', iconColor: '#5c8ac7', compartments: ['attributes', 'operations'] },
+  UMLInterface: { name: 'Interface', icon: '⬡', iconColor: '#c77d2e', compartments: ['attributes', 'operations'] },
+  UMLEnumeration: { name: 'Enumeration', icon: '☰', iconColor: '#cc9900', compartments: ['literals'] },
+  UMLDataType: { name: 'DataType', icon: '▤', iconColor: '#5c8ac7', compartments: ['attributes', 'operations'] },
+  UMLPrimitiveType: { name: 'PrimitiveType', icon: '▤', iconColor: '#5c8ac7', compartments: [] },
+  UMLActor: { name: 'Actor', icon: '♟', iconColor: '#7d5ba6' },
+  UMLUseCase: { name: 'UseCase', icon: '⬭', iconColor: '#4d9e4d' },
+  UMLAssociation: { name: 'Association', icon: '─', iconColor: '#8a8f8f' },
+  UMLGeneralization: { name: 'Generalization', icon: '△', iconColor: '#8a8f8f' },
+  UMLDependency: { name: 'Dependency', icon: '⇢', iconColor: '#8a8f8f' },
+  UMLInclude: { name: 'Include', icon: '⇢', iconColor: '#8a8f8f' },
+  UMLExtend: { name: 'Extend', icon: '⇢', iconColor: '#8a8f8f' },
+  UMLInterfaceRealization: { name: 'InterfaceRealization', icon: '▷', iconColor: '#8a8f8f' },
+  UMLAttribute: { name: 'Attribute', icon: '•', iconColor: '#8a6d3b' },
+  UMLOperation: { name: 'Operation', icon: '•', iconColor: '#3b7a8a' },
+  UMLEnumLiteral: { name: 'Enumeration Literal', icon: '•', iconColor: '#997a00' },
+  UMLLifeLine: { name: 'Lifeline', icon: '▯', iconColor: '#5c8ac7' },
+  UMLMessage: { name: 'Message', icon: '→', iconColor: '#8a8f8f' },
+  UMLState: { name: 'State', icon: '▢', iconColor: '#b06ab3' },
+  UMLTransition: { name: 'Transition', icon: '→', iconColor: '#8a8f8f' },
+  UMLInitialState: { name: 'Initial State', icon: '●', iconColor: '#353535' },
+  UMLFinalState: { name: 'Final State', icon: '◉', iconColor: '#353535' },
+  UMLChoice: { name: 'Choice', icon: '◇', iconColor: '#353535' },
+  UMLJunction: { name: 'Junction', icon: '◆', iconColor: '#353535' },
+  UMLShallowHistory: { name: 'Shallow History', icon: 'Ⓗ', iconColor: '#353535' },
+  UMLDeepHistory: { name: 'Deep History', icon: 'Ⓗ', iconColor: '#353535' },
+  UMLAction: { name: 'Action', icon: '▢', iconColor: '#2e9e9e' },
+  UMLControlFlow: { name: 'Control Flow', icon: '→', iconColor: '#8a8f8f' },
+  UMLInitialNode: { name: 'Initial Node', icon: '●', iconColor: '#353535' },
+  UMLActivityFinalNode: { name: 'Activity Final', icon: '◉', iconColor: '#353535' },
+  UMLFlowFinalNode: { name: 'Flow Final', icon: '⊗', iconColor: '#353535' },
+  UMLDecisionNode: { name: 'Decision', icon: '◇', iconColor: '#353535' },
+  UMLMergeNode: { name: 'Merge', icon: '◇', iconColor: '#353535' },
+  UMLForkNode: { name: 'Fork', icon: '▬', iconColor: '#353535' },
+  UMLJoinNode: { name: 'Join', icon: '▬', iconColor: '#353535' },
+  UMLClassDiagram: { name: 'ClassDiagram', icon: '▦', iconColor: '#1390d6' },
+  UMLUseCaseDiagram: { name: 'UseCaseDiagram', icon: '▦', iconColor: '#1390d6' },
+  UMLSequenceDiagram: { name: 'SequenceDiagram', icon: '▦', iconColor: '#1390d6' },
+  UMLStatechartDiagram: { name: 'StatechartDiagram', icon: '▦', iconColor: '#1390d6' },
+  UMLActivityDiagram: { name: 'ActivityDiagram', icon: '▦', iconColor: '#1390d6' },
+  UMLNote: { name: 'Note', icon: '📄', iconColor: '#e8c860' },
+};
+
+// Per-diagram-type SVG glyphs so the three diagram kinds are distinguishable
+// at a glance (class = compartment box, usecase = ellipse + actor, sequence = lifeline)
+export const diagramSvgIcons = {
+  UMLClassDiagram: `<svg viewBox="0 0 14 14"><rect x="1.5" y="1.5" width="11" height="11" rx="1.2" fill="#eaf4fc" stroke="#1390d6" stroke-width="1.1"/><line x1="1.5" y1="5.4" x2="12.5" y2="5.4" stroke="#1390d6" stroke-width="1"/><line x1="1.5" y1="8.4" x2="12.5" y2="8.4" stroke="#1390d6" stroke-width="1"/></svg>`,
+  UMLUseCaseDiagram: `<svg viewBox="0 0 14 14"><ellipse cx="8.2" cy="7.6" rx="4.6" ry="3.4" fill="#e8f6ea" stroke="#2e9e44" stroke-width="1.1"/><circle cx="3.1" cy="3.1" r="1.4" fill="none" stroke="#2e9e44" stroke-width="1"/><line x1="3.1" y1="4.5" x2="3.1" y2="7.4" stroke="#2e9e44" stroke-width="1"/><line x1="1.7" y1="5.6" x2="4.5" y2="5.6" stroke="#2e9e44" stroke-width="1"/><line x1="3.1" y1="7.4" x2="2" y2="9.6" stroke="#2e9e44" stroke-width="1"/><line x1="3.1" y1="7.4" x2="4.2" y2="9.6" stroke="#2e9e44" stroke-width="1"/></svg>`,
+  UMLSequenceDiagram: `<svg viewBox="0 0 14 14"><rect x="3" y="1.5" width="8" height="3.6" rx="0.9" fill="#f1ecfa" stroke="#7d5ba6" stroke-width="1.1"/><line x1="7" y1="5.1" x2="7" y2="12.5" stroke="#7d5ba6" stroke-width="1.1" stroke-dasharray="2 1.7"/></svg>`,
+  UMLStatechartDiagram: `<svg viewBox="0 0 14 14"><rect x="1.5" y="4" width="11" height="7" rx="3" fill="#f4edfa" stroke="#7d5ba6" stroke-width="1.1"/><circle cx="4.2" cy="7.5" r="1.4" fill="#7d5ba6"/></svg>`,
+  UMLActivityDiagram: `<svg viewBox="0 0 14 14"><rect x="3.5" y="4.5" width="9" height="6" rx="2.6" fill="#e6f5f5" stroke="#2e9e9e" stroke-width="1.1"/><circle cx="2" cy="7.5" r="1.3" fill="#353535"/></svg>`,
+};
+
+export function diagramIcon(type) {
+  return diagramSvgIcons[type] || `<svg viewBox="0 0 14 14"><rect x="1.5" y="1.5" width="11" height="11" rx="1.2" fill="#eef1f1" stroke="#8a9a9a" stroke-width="1.1"/></svg>`;
+}
+
+// Diagram toolbox definitions (id references factory creator)
+export const ToolboxGroups = [
+  {
+    id: 'common', name: '常用',
+    items: [
+      { id: 'tool-select', name: '选择', icon: 'select' },
+      { id: 'tool-note', name: '注释', icon: 'note' },
+      { id: 'tool-noteLink', name: '注释连接', icon: 'noteLink' },
+      { id: 'tool-text', name: '文本', icon: 'text' },
+      { id: 'tool-rect', name: '矩形', icon: 'rect' },
+      { id: 'tool-ellipse', name: '椭圆', icon: 'ellipse' },
+    ],
+  },
+  {
+    id: 'class', name: '类图',
+    items: [
+      { id: 'tool-class', name: '类', icon: 'class' },
+      { id: 'tool-interface', name: '接口', icon: 'interface' },
+      { id: 'tool-enum', name: '枚举', icon: 'enum' },
+      { id: 'tool-dataType', name: '数据类型', icon: 'dataType' },
+      { id: 'tool-package', name: '包', icon: 'package' },
+      { id: 'tool-association', name: '关联', icon: 'assoc' },
+      { id: 'tool-directed', name: '定向关联', icon: 'assocDir' },
+      { id: 'tool-aggregation', name: '聚合', icon: 'aggr' },
+      { id: 'tool-composition', name: '组合', icon: 'comp' },
+      { id: 'tool-dependency', name: '依赖', icon: 'dep' },
+      { id: 'tool-generalization', name: '泛化', icon: 'gen' },
+      { id: 'tool-ifaceReal', name: '接口实现', icon: 'real' },
+    ],
+  },
+  {
+    id: 'usecase', name: '用例图',
+    items: [
+      { id: 'tool-actor', name: '参与者', icon: 'actor' },
+      { id: 'tool-usecase', name: '用例', icon: 'usecase' },
+      { id: 'tool-subject', name: '系统边界', icon: 'subject' },
+      { id: 'tool-assoc', name: '关联', icon: 'assoc' },
+      { id: 'tool-include', name: '包含', icon: 'dep' },
+      { id: 'tool-extend', name: '扩展', icon: 'dep' },
+      { id: 'tool-gen', name: '泛化', icon: 'gen' },
+    ],
+  },
+  {
+    id: 'sequence', name: '序列图',
+    items: [
+      { id: 'tool-lifeline', name: '生命线', icon: 'lifeline' },
+      { id: 'tool-syncMessage', name: '同步消息', icon: 'msgSync' },
+      { id: 'tool-asyncMessage', name: '异步消息', icon: 'msgAsync' },
+      { id: 'tool-replyMessage', name: '回复消息', icon: 'msgReply' },
+      { id: 'tool-note', name: '注释', icon: 'note' },
+    ],
+  },
+  {
+    id: 'statechart', name: '状态机图',
+    items: [
+      { id: 'tool-state', name: '状态', icon: 'state' },
+      { id: 'tool-initialState', name: '初始状态', icon: 'initial' },
+      { id: 'tool-finalState', name: '终止状态', icon: 'final' },
+      { id: 'tool-choice', name: '选择', icon: 'decision' },
+      { id: 'tool-shallowHistory', name: '浅历史', icon: 'history' },
+      { id: 'tool-deepHistory', name: '深历史', icon: 'historyDeep' },
+      { id: 'tool-junction', name: '连接点', icon: 'junction' },
+      { id: 'tool-transition', name: '迁移', icon: 'assocDir' },
+      { id: 'tool-selfTransition', name: '自迁移', icon: 'assocDir' },
+    ],
+  },
+  {
+    id: 'activity', name: '活动图',
+    items: [
+      { id: 'tool-action', name: '动作', icon: 'action' },
+      { id: 'tool-initialNode', name: '初始节点', icon: 'initial' },
+      { id: 'tool-activityFinal', name: '活动终点', icon: 'final' },
+      { id: 'tool-flowFinal', name: '流终点', icon: 'flowFinal' },
+      { id: 'tool-decisionNode', name: '判定', icon: 'decision' },
+      { id: 'tool-mergeNode', name: '合并', icon: 'decision' },
+      { id: 'tool-forkNode', name: '分叉', icon: 'fork' },
+      { id: 'tool-joinNode', name: '汇合', icon: 'fork' },
+      { id: 'tool-controlFlow', name: '控制流', icon: 'assocDir' },
+    ],
+  },
+];
+
+// Which edge tool maps to which model type + line style
+export const EdgeDefs = {
+  UMLAssociation: { lineStyle: 'solid', tailArrow: 'none', headArrow: 'none' },
+  'UMLAssociation+directed': { lineStyle: 'solid', tailArrow: 'none', headArrow: 'open' },
+  'UMLAssociation+aggregation': { lineStyle: 'solid', tailArrow: 'hollowDiamond', headArrow: 'none' },
+  'UMLAssociation+composition': { lineStyle: 'solid', tailArrow: 'filledDiamond', headArrow: 'none' },
+  UMLDependency: { lineStyle: 'dashed', tailArrow: 'none', headArrow: 'open' },
+  UMLGeneralization: { lineStyle: 'solid', tailArrow: 'none', headArrow: 'hollowTriangle' },
+  UMLInterfaceRealization: { lineStyle: 'dashed', tailArrow: 'none', headArrow: 'hollowTriangle' },
+  UMLInclude: { lineStyle: 'dashed', tailArrow: 'none', headArrow: 'open', stereotype: '«include»' },
+  UMLExtend: { lineStyle: 'dashed', tailArrow: 'none', headArrow: 'open', stereotype: '«extend»' },
+  'UMLMessage+sync': { lineStyle: 'solid', headArrow: 'filledTriangle' },
+  'UMLMessage+async': { lineStyle: 'solid', headArrow: 'open' },
+  'UMLMessage+reply': { lineStyle: 'dashed', headArrow: 'open' },
+  UMLNoteLink: { lineStyle: 'dashed', tailArrow: 'none', headArrow: 'none' },
+  UMLTransition: { lineStyle: 'solid', tailArrow: 'none', headArrow: 'open' },
+  UMLSelfTransition: { lineStyle: 'solid', tailArrow: 'none', headArrow: 'open' },
+  UMLControlFlow: { lineStyle: 'solid', tailArrow: 'none', headArrow: 'open' },
+};
+
+export const NodeDefaults = {
+  UMLClass: { width: 130, height: 80 },
+  UMLInterface: { width: 130, height: 80 },
+  UMLEnumeration: { width: 130, height: 80 },
+  UMLDataType: { width: 130, height: 70 },
+  UMLActor: { width: 40, height: 55 },
+  UMLUseCase: { width: 120, height: 50 },
+  UMLPackage: { width: 100, height: 60 },
+  UMLNote: { width: 110, height: 70 },
+  Subject: { width: 340, height: 300 },
+  UMLLifeLine: { width: 100, height: 32 },
+  UMLTextView: { width: 100, height: 24 },
+  UMLRectView: { width: 110, height: 60 },
+  UMLEllipseView: { width: 110, height: 60 },
+  UMLState: { width: 140, height: 60 },
+  UMLInitialState: { width: 24, height: 24 },
+  UMLFinalState: { width: 26, height: 26 },
+  UMLChoice: { width: 26, height: 26 },
+  UMLJunction: { width: 22, height: 22 },
+  UMLShallowHistory: { width: 24, height: 24 },
+  UMLDeepHistory: { width: 24, height: 24 },
+  UMLAction: { width: 110, height: 50 },
+  UMLInitialNode: { width: 24, height: 24 },
+  UMLActivityFinalNode: { width: 26, height: 26 },
+  UMLFlowFinalNode: { width: 26, height: 26 },
+  UMLDecisionNode: { width: 26, height: 26 },
+  UMLMergeNode: { width: 26, height: 26 },
+  UMLForkNode: { width: 100, height: 8 },
+  UMLJoinNode: { width: 100, height: 8 },
+};

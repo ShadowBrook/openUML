@@ -1,0 +1,306 @@
+// property-editor.js — right-side Properties/Styles panels
+
+import { repository } from '../core/repository.js';
+import { commandStack } from '../core/commands.js';
+import { ModelKinds, VISIBILITY } from '../core/metamodel.js';
+import { createAttribute, createOperation, createLiteral } from '../core/factory.js';
+
+export class PropertyEditor {
+  constructor() {
+    this.propPanel = document.getElementById('property-editor');
+    this.stylePanel = document.getElementById('style-editor');
+    this.currentModel = null;
+    this.currentView = null;
+    repository.on('select', ({ model }) => {
+      this.show(model);
+    });
+    repository.on('change', () => {
+      if (this.currentModel) this.show(this.currentModel, { keepFocus: true });
+    });
+    document.addEventListener('stack-changed', () => {
+      if (this.currentModel) this.show(repository.lookup(this.currentModel._id) || this.currentModel, { keepFocus: true });
+    });
+  }
+
+  show(model, { keepFocus = false } = {}) {
+    const active = document.activeElement;
+    this.currentModel = model;
+    this.currentView = null;
+    // find selected view for style editing
+    const viewId = repository.selections[0];
+    if (viewId) {
+      const v = repository.lookup(viewId);
+      if (v && v.modelRef === model?._id) this.currentView = v;
+    }
+    this._renderProps(model);
+    this._renderStyles(model);
+    if (keepFocus && active && active.tagName === 'INPUT') active.focus();
+  }
+
+  _section(title, open = true) {
+    const sec = document.createElement('div');
+    sec.className = 'prop-section';
+    const h = document.createElement('div');
+    h.className = 'prop-section-header';
+    h.innerHTML = `<span class="arrow">${open ? '▾' : '▸'}</span><span>${title}</span>`;
+    const body = document.createElement('div');
+    h.onclick = () => {
+      body.classList.toggle('hidden');
+      h.querySelector('.arrow').textContent = body.classList.contains('hidden') ? '▸' : '▾';
+    };
+    sec.appendChild(h);
+    sec.appendChild(body);
+    this.propPanel.appendChild(sec);
+    return body;
+  }
+
+  _row(parent, label, value, onChange, input = 'text', options = null) {
+    const row = document.createElement('div');
+    row.className = 'prop-row';
+    const l = document.createElement('label');
+    l.textContent = label;
+    row.appendChild(l);
+    const val = document.createElement('div');
+    val.className = 'prop-value';
+    let el;
+    if (input === 'select') {
+      el = document.createElement('select');
+      for (const [v, text] of options) {
+        const o = document.createElement('option');
+        o.value = v; o.textContent = text;
+        if (v === value) o.selected = true;
+        el.appendChild(o);
+      }
+    } else if (input === 'textarea') {
+      el = document.createElement('textarea');
+      el.value = value ?? '';
+    } else {
+      el = document.createElement('input');
+      el.type = 'text';
+      el.value = value ?? '';
+    }
+    el.addEventListener('change', () => onChange(el.value));
+    el.addEventListener('keydown', (e) => e.stopPropagation());
+    val.appendChild(el);
+    row.appendChild(val);
+    parent.appendChild(row);
+    return el;
+  }
+
+  _renderProps(model) {
+    const panel = this.propPanel;
+    panel.innerHTML = '';
+    if (!model) {
+      panel.innerHTML = '<div class="prop-empty">在图表或模型资源管理器中选择一个元素</div>';
+      return;
+    }
+    const meta = ModelKinds[model.type] || { name: model.type };
+    // Identity
+    const idSec = this._section(`${meta.name} — ${model.name || ''}`);
+    this._row(idSec, 'name', model.name, (v) => this._set(model, 'name', v));
+    if (model.type !== 'UMLNote') {
+      this._row(idSec, 'stereotype', model.stereotype || '', (v) => this._set(model, 'stereotype', v));
+    }
+    // Documentation
+    const docSec = this._section('文档');
+    this._row(docSec, 'documentation', model.documentation, (v) => this._set(model, 'documentation', v), 'textarea');
+
+    // Attributes
+    if (Array.isArray(model.attributes)) {
+      const sec = this._section('属性 (Attributes)');
+      this._listEditor(sec, model, 'attributes', createAttribute, (a) => {
+        const vis = VISIBILITY[a.visibility]?.symbol ?? '+';
+        return { vis, name: a.name, type: a.type };
+      }, [
+        { key: 'name', label: '名称' },
+        { key: 'type', label: '类型' },
+      ]);
+    }
+    // Operations
+    if (Array.isArray(model.operations)) {
+      const sec = this._section('操作 (Operations)');
+      this._listEditor(sec, model, 'operations', createOperation, (o) => {
+        const vis = VISIBILITY[o.visibility]?.symbol ?? '+';
+        const params = (o.parameters || []).map((p) => p.name).join(', ');
+        return { vis, name: `${o.name}(${params})`, type: o.returnType };
+      }, [
+        { key: 'name', label: '名称' },
+        { key: 'returnType', label: '返回类型' },
+      ]);
+    }
+    // Literals
+    if (Array.isArray(model.literals)) {
+      const sec = this._section('枚举字面量');
+      this._listEditor(sec, model, 'literals', createLiteral, (l) => ({ vis: '', name: l.name, type: '' }), [
+        { key: 'name', label: '名称' },
+      ]);
+    }
+    // Association ends
+    if (model.type === 'UMLAssociation' && this.currentView) {
+      const sec = this._section('关联端 (Ends)');
+      const v = this.currentView;
+      this._row(sec, 'end1 (tail) role', v.tailRoleName || '', (val) => this._setView(v, 'tailRoleName', val));
+      this._row(sec, 'end1 multiplicity', v.tailMultiplicity || '', (val) => this._setView(v, 'tailMultiplicity', val));
+      this._row(sec, 'end2 (head) role', v.headRoleName || '', (val) => this._setView(v, 'headRoleName', val));
+      this._row(sec, 'end2 multiplicity', v.headMultiplicity || '', (val) => this._setView(v, 'headMultiplicity', val));
+    }
+    // Edge naming
+    if (this.currentView && this.currentView.isEdge) {
+      const sec = this._section('连接');
+      this._row(sec, '显示名称', this.currentView.nameVisible !== false, (val) => this._setView(this.currentView, 'nameVisible', val === 'true'), 'select', [['true', '是'], ['false', '否']]);
+      this._row(sec, '线型', this.currentView.lineStyle, (val) => this._setView(this.currentView, 'lineStyle', val), 'select', [['solid', '实线'], ['dashed', '虚线']]);
+    }
+  }
+
+  _listEditor(parent, model, listKey, creator, formatter, editableFields) {
+    const wrap = document.createElement('div');
+    wrap.className = 'list-editor';
+    const toolbar = document.createElement('div');
+    toolbar.className = 'list-editor-toolbar';
+    const addBtn = document.createElement('button');
+    addBtn.textContent = '＋ 添加';
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '－ 删除';
+    toolbar.appendChild(addBtn);
+    toolbar.appendChild(delBtn);
+    wrap.appendChild(toolbar);
+    const items = document.createElement('div');
+    items.className = 'list-editor-items';
+    wrap.appendChild(items);
+
+    let selectedIdx = -1;
+    const renderItems = () => {
+      items.innerHTML = '';
+      (model[listKey] || []).forEach((item, idx) => {
+        const f = formatter(item);
+        const row = document.createElement('div');
+        row.className = 'list-editor-item' + (idx === selectedIdx ? ' selected' : '');
+        row.innerHTML = `<span class="li-vis">${f.vis}</span><span class="li-name">${esc(f.name)}</span><span class="li-type">${esc(f.type)}</span>`;
+        row.onclick = () => { selectedIdx = idx; renderItems(); this._itemDetail(item, editableFields); };
+        items.appendChild(row);
+      });
+      if (selectedIdx >= 0 && model[listKey][selectedIdx]) {
+        this._itemDetail(model[listKey][selectedIdx], editableFields);
+      } else {
+        const detail = this.propPanel.querySelector('.item-detail');
+        if (detail) detail.remove();
+      }
+    };
+    addBtn.onclick = () => {
+      const item = creator();
+      const old = model[listKey];
+      commandStack.exec({
+        label: 'add member',
+        redo: () => { model[listKey] = [...old, item]; },
+        undo: () => { model[listKey] = old; },
+      });
+      selectedIdx = (model[listKey] || []).length - 1;
+      renderItems();
+    };
+    delBtn.onclick = () => {
+      if (selectedIdx < 0) return;
+      const old = model[listKey];
+      commandStack.exec({
+        label: 'remove member',
+        redo: () => { model[listKey] = old.filter((_, i) => i !== selectedIdx); },
+        undo: () => { model[listKey] = old; },
+      });
+      selectedIdx = -1;
+      renderItems();
+    };
+    parent.appendChild(wrap);
+    const detail = document.createElement('div');
+    detail.className = 'item-detail';
+    parent.appendChild(detail);
+    this._renderListItems = renderItems;
+    renderItems();
+  }
+
+  _itemDetail(item, editableFields) {
+    const old = this.propPanel.querySelector('.item-detail');
+    if (old) old.innerHTML = '';
+    if (!old) return;
+    for (const f of editableFields) {
+      const row = document.createElement('div');
+      row.className = 'prop-row';
+      row.innerHTML = `<label>${f.label}</label>`;
+      const val = document.createElement('div');
+      val.className = 'prop-value';
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = item[f.key] ?? '';
+      input.addEventListener('change', () => {
+        const prev = item[f.key];
+        commandStack.exec({
+          label: 'edit member',
+          redo: () => { item[f.key] = input.value; },
+          undo: () => { item[f.key] = prev; },
+        });
+      });
+      input.addEventListener('keydown', (e) => e.stopPropagation());
+      val.appendChild(input);
+      row.appendChild(val);
+      old.appendChild(row);
+    }
+  }
+
+  _renderStyles(model) {
+    const panel = this.stylePanel;
+    panel.innerHTML = '';
+    if (!this.currentView) {
+      panel.innerHTML = '<div class="prop-empty">选择图表中的元素后可编辑样式</div>';
+      return;
+    }
+    const v = this.currentView;
+    const sec = document.createElement('div');
+    sec.className = 'prop-section';
+    sec.innerHTML = '<div class="prop-section-header"><span class="arrow">▾</span><span>填充与线条</span></div>';
+    const body = document.createElement('div');
+    sec.appendChild(body);
+    panel.appendChild(sec);
+
+    this._row(body, 'fillColor', v.fillColor || '', (val) => this._setView(v, 'fillColor', val));
+    this._row(body, 'lineColor', v.lineColor || '', (val) => this._setView(v, 'lineColor', val));
+    this._row(body, 'fontColor', v.fontColor || '', (val) => this._setView(v, 'fontColor', val));
+    this._row(body, 'fontSize', v.fontSize || 12, (val) => this._setView(v, 'fontSize', parseInt(val) || 12), 'number');
+    // color picker row helper
+    for (const [key, label] of [['fillColor', '填充颜色'], ['lineColor', '线条颜色'], ['fontColor', '字体颜色']]) {
+      const row = document.createElement('div');
+      row.className = 'prop-row';
+      row.innerHTML = `<label>${label}</label>`;
+      const val = document.createElement('div');
+      val.className = 'prop-value';
+      const pick = document.createElement('input');
+      pick.type = 'color';
+      pick.value = v[key] || '#ffffff';
+      pick.style.width = '40px';
+      pick.addEventListener('change', () => this._setView(v, key, pick.value));
+      val.appendChild(pick);
+      row.appendChild(val);
+      body.appendChild(row);
+    }
+  }
+
+  _set(model, prop, value) {
+    const old = model[prop];
+    if (old === value) return;
+    commandStack.exec({
+      label: 'set ' + prop,
+      redo: () => { model[prop] = value; },
+      undo: () => { model[prop] = old; },
+    });
+  }
+  _setView(view, prop, value) {
+    const old = view[prop];
+    if (old === value) return;
+    commandStack.exec({
+      label: 'set style',
+      redo: () => { view[prop] = value; },
+      undo: () => { view[prop] = old; },
+    });
+  }
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
