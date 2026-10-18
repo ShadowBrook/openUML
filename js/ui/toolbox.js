@@ -57,6 +57,11 @@ const Icons = {
   object: `<svg viewBox="0 0 30 26"><rect x="4" y="5" width="22" height="16" fill="#eef4fb" stroke="#4a4f4f"/><line x1="9" y1="13" x2="21" y2="13" stroke="#4a4f4f"/></svg>`,
   subsystem: `<svg viewBox="0 0 30 26"><rect x="4" y="8" width="22" height="14" fill="#f7ead7" stroke="#4a4f4f"/><rect x="4" y="3" width="16" height="6" fill="#f7ead7" stroke="#4a4f4f"/><rect x="7" y="5" width="4" height="3" fill="#fff" stroke="#4a4f4f" stroke-width="0.8"/></svg>`,
   modelIcon: `<svg viewBox="0 0 30 26"><rect x="4" y="8" width="22" height="14" fill="#eaf4fc" stroke="#4a4f4f"/><rect x="4" y="3" width="16" height="6" fill="#eaf4fc" stroke="#4a4f4f"/><path d="M8 6 l2.4 2.4 M12.8 6 l-2.4 2.4" stroke="#1390d6" stroke-width="1"/></svg>`,
+  composite: `<svg viewBox="0 0 30 26"><rect x="3" y="3" width="24" height="20" rx="5" fill="#f4edfa" stroke="#4a4f4f"/><line x1="3" y1="10" x2="27" y2="10" stroke="#4a4f4f"/><circle cx="9" cy="17" r="2" fill="#353535"/><rect x="14" y="14" width="10" height="6" rx="2" fill="none" stroke="#4a4f4f"/></svg>`,
+  sendSignal: `<svg viewBox="0 0 30 26"><path d="M4 6 h17 l5 7 l-5 7 h-17 Z" fill="#e8f6f6" stroke="#4a4f4f"/></svg>`,
+  acceptSignal: `<svg viewBox="0 0 30 26"><path d="M8 6 h18 v14 h-18 l-4 -7 Z" fill="#e8f6f6" stroke="#4a4f4f"/></svg>`,
+  swimlaneV: `<svg viewBox="0 0 30 26"><rect x="3" y="3" width="24" height="20" fill="#fafbfb" stroke="#4a4f4f"/><rect x="3" y="3" width="7" height="20" fill="#f0f2f2" stroke="#4a4f4f"/><line x1="14" y1="3" x2="14" y2="23" stroke="#b6bdbd"/><line x1="20" y1="3" x2="20" y2="23" stroke="#b6bdbd"/></svg>`,
+  swimlaneH: `<svg viewBox="0 0 30 26"><rect x="3" y="3" width="24" height="20" fill="#fafbfb" stroke="#4a4f4f"/><rect x="3" y="3" width="24" height="7" fill="#f0f2f2" stroke="#4a4f4f"/><line x1="3" y1="15" x2="27" y2="15" stroke="#b6bdbd"/></svg>`,
 };
 
 // tool id -> canvas tool descriptor
@@ -107,6 +112,13 @@ export const ToolMap = {
   'tool-forkNode': { kind: 'node', nodeType: 'UMLForkNode' },
   'tool-joinNode': { kind: 'node', nodeType: 'UMLJoinNode' },
   'tool-controlFlow': { kind: 'edge', edgeType: 'UMLControlFlow' },
+  'tool-objectNode': { kind: 'node', nodeType: 'UMLObjectNode' },
+  'tool-objectFlow': { kind: 'edge', edgeType: 'UMLObjectFlow' },
+  'tool-sendSignal': { kind: 'node', nodeType: 'UMLSendSignal' },
+  'tool-acceptSignal': { kind: 'node', nodeType: 'UMLAcceptSignal' },
+  'tool-swimlaneV': { kind: 'node', nodeType: 'UMLSwimlaneVert' },
+  'tool-swimlaneH': { kind: 'node', nodeType: 'UMLSwimlaneHorz' },
+  'tool-compositeState': { kind: 'node', nodeType: 'UMLCompositeState' },
   'tool-package2': { kind: 'node', nodeType: 'UMLPackage' },
   'tool-package3': { kind: 'node', nodeType: 'UMLPackage' },
   'tool-component': { kind: 'node', nodeType: 'UMLComponent' },

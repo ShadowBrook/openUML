@@ -320,6 +320,62 @@ export function renderNode(g, view, model, kind) {
       meta.textSlots.name = { box: new Rect(x, y, tabW, tabH), text: model.name, field: 'name', align: 'left' };
       break;
     }
+    case 'swimlaneV':
+    case 'swimlaneH': {
+      // partition with a title band (vertical: left band with rotated text)
+      svgEl('rect', { x, y, width: w, height: h, fill: view.fillColor || '#fafbfb', stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
+      const band = 30;
+      const name = (model && model.name) || view.text || view.laneName || '';
+      const nameBold = true;
+      if (kind === 'swimlaneV') {
+        svgEl('rect', { x, y, width: band, height: h, fill: '#f0f2f2', stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
+        const g2 = svgEl('g', { transform: `translate(${x + band / 2}, ${y + h / 2}) rotate(-90)` }, g);
+        const t = svgEl('text', { x: 0, y: fs * 0.35, 'text-anchor': 'middle', 'font-size': fs + 1, 'font-weight': 700, fill: fontColor }, g2);
+        t.textContent = name;
+        meta.textSlots.name = { box: new Rect(x, y, band, h), text: name, field: 'laneName', align: 'center' };
+      } else {
+        svgEl('rect', { x, y, width: w, height: band, fill: '#f0f2f2', stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
+        const t = svgEl('text', { x: x + w / 2, y: y + band / 2 + fs * 0.35, 'text-anchor': 'middle', 'font-size': fs + 1, 'font-weight': 700, fill: fontColor }, g);
+        t.textContent = name;
+        meta.textSlots.name = { box: new Rect(x, y, w, band), text: name, field: 'laneName', align: 'center' };
+      }
+      break;
+    }
+    case 'composite': {
+      // composite state: rounded rect + name compartment line
+      svgEl('rect', { x, y, width: w, height: h, rx: 12, ry: 12, fill, stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
+      const nameH = fs + 16;
+      svgEl('line', { x1: x, y1: y + nameH, x2: x + w, y2: y + nameH, stroke: line, 'stroke-width': 1 }, g);
+      const t = svgEl('text', { x: x + w / 2, y: y + nameH - 7, 'text-anchor': 'middle', 'font-size': fs, fill: fontColor, 'font-weight': 700 }, g);
+      t.textContent = model.name;
+      meta.textSlots.name = { box: new Rect(x, y, w, nameH), text: model.name, field: 'name', align: 'center' };
+      break;
+    }
+    case 'objectnode': {
+      // object flow node: rectangle with underlined name
+      svgEl('rect', { x, y, width: w, height: h, fill, stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
+      const t = svgEl('text', { x: x + w / 2, y: y + h / 2 + fs * 0.35, 'text-anchor': 'middle', 'font-size': fs, fill: fontColor, 'text-decoration': 'underline' }, g);
+      t.textContent = model.name;
+      meta.textSlots.name = { box: new Rect(x, y, w, h), text: model.name, field: 'name', align: 'center' };
+      break;
+    }
+    case 'sendsignal':
+    case 'acceptsignal': {
+      // pentagon (send) / left-notched shape (accept)
+      const notch = 16;
+      let dPath;
+      if (kind === 'sendsignal') {
+        dPath = `M ${x} ${y} L ${x + w - notch} ${y} L ${x + w} ${y + h / 2} L ${x + w - notch} ${y + h} L ${x} ${y + h} Z`;
+      } else {
+        dPath = `M ${x + notch} ${y} L ${x + w} ${y} L ${x + w} ${y + h} L ${x + notch} ${y + h} L ${x} ${y + h / 2} Z`;
+      }
+      svgEl('path', { d: dPath, fill, stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
+      const tx = x + (kind === 'sendsignal' ? (w - notch) / 2 : notch + (w - notch) / 2);
+      const t = svgEl('text', { x: tx, y: y + h / 2 + fs * 0.35, 'text-anchor': 'middle', 'font-size': fs, fill: fontColor, 'font-style': 'italic' }, g);
+      t.textContent = model.name;
+      meta.textSlots.name = { box: new Rect(x, y, w, h), text: model.name, field: 'name', align: 'center' };
+      break;
+    }
     case 'note': {
       const fold = 12;
       svgEl('path', {

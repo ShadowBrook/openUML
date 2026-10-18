@@ -95,8 +95,10 @@ export class DiagramCanvas {
     for (const v of views) {
       if (!v.isEdge) rects.set(v._id, new Rect(v.x, v.y, v.width, v.height));
     }
-    // draw nodes first, then activation bars, edges on top.
-    const nodes = views.filter((v) => !v.isEdge);
+    // draw nodes first (containers below their children), then activation bars, edges on top.
+    const isContainer = (v) => v.$type === 'UMLSwimlaneVert' || v.$type === 'UMLSwimlaneHorz' || v.$type === 'UMLCompositeState';
+    const nodes = views.filter((v) => !v.isEdge)
+      .sort((a, b) => (isContainer(a) ? 0 : 1) - (isContainer(b) ? 0 : 1));
     const edges = views.filter((v) => v.isEdge);
     this._renderFrame(nodes);
     for (const v of nodes) this._renderNodeView(v);
@@ -137,6 +139,12 @@ export class DiagramCanvas {
       : v.$type === 'UMLObject' ? 'object'
       : v.$type === 'UMLSubsystem' ? 'subsystem'
       : v.$type === 'UMLModel' ? 'package'
+      : v.$type === 'UMLSwimlaneVert' ? 'swimlaneV'
+      : v.$type === 'UMLSwimlaneHorz' ? 'swimlaneH'
+      : v.$type === 'UMLCompositeState' ? 'composite'
+      : v.$type === 'UMLObjectNode' ? 'objectnode'
+      : v.$type === 'UMLSendSignal' ? 'sendsignal'
+      : v.$type === 'UMLAcceptSignal' ? 'acceptsignal'
       : v.$type === 'UMLNote' ? 'note' : 'class';
     const meta = renderNode(g, v, model, kind);
     g.dataset.id = v._id;
@@ -322,15 +330,42 @@ export class DiagramCanvas {
     this.setStatusMessage('已删除拐点');
   }
 
+  // ---------------- containment (swimlanes / composite states) ----------------
+  static CONTAINER_TYPES = ['UMLSwimlaneVert', 'UMLSwimlaneHorz', 'UMLCompositeState'];
+  isContainerView(v) {
+    return DiagramCanvas.CONTAINER_TYPES.includes(v.$type);
+  }
+
+  /** smallest container whose bounds contain the point (excluding self) */
+  findContainerFor(view) {
+    let best = null;
+    for (const v of this.diagram.elements || []) {
+      if (v.isEdge || v._id === view._id || !this.isContainerView(v)) continue;
+      if (new Rect(v.x, v.y, v.width, v.height).contains(
+        view.x + view.width / 2, view.y + view.height / 2)) {
+        if (!best || v.width * v.height < best.width * best.height) best = v;
+      }
+    }
+    return best;
+  }
+
+  /** children (one level) of the given container views */
+  childrenOfContainer(containerId, exclude = []) {
+    const excluded = new Set(exclude);
+    return (this.diagram.elements || []).filter((v) =>
+      !v.isEdge && !excluded.has(v._id) && v.container === containerId);
+  }
+
   // ---------------- hit testing ----------------
   hitTest(w) {
     if (!this.diagram) return null;
     const views = this.diagram.elements || [];
-    // nodes by box, topmost (last) first — pure geometry, works even before a render
+    // nodes by box, topmost (last) first — pure geometry, works even before a render.
+    // containment containers are skipped here and checked last (children win).
     for (let i = views.length - 1; i >= 0; i--) {
       const v = views[i];
       if (v.isEdge) continue;
-      if (v.$type === 'Subject' || v.$type === 'UMLNote') continue;
+      if (v.$type === 'Subject' || v.$type === 'UMLNote' || this.isContainerView(v)) continue;
       let rect = new Rect(v.x, v.y, v.width, v.height);
       if (v.$type === 'UMLActor') rect = new Rect(v.x - 20, v.y, v.width + 40, v.height + 20);
       if (v.$type === 'UMLLifeLine') {
@@ -355,7 +390,7 @@ export class DiagramCanvas {
     // big passive containers last
     for (let i = views.length - 1; i >= 0; i--) {
       const v = views[i];
-      if (v.isEdge || (v.$type !== 'Subject' && v.$type !== 'UMLNote')) continue;
+      if (v.isEdge || (v.$type !== 'Subject' && v.$type !== 'UMLNote' && !this.isContainerView(v))) continue;
       if (new Rect(v.x, v.y, v.width, v.height).contains(w.x, w.y)) {
         const r = this.renderers.get(v._id);
         return r || { view: v, kind: 'node', meta: { textSlots: {}, compartments: {} }, g: null };
@@ -475,12 +510,17 @@ export class DiagramCanvas {
     }
     repository.select(sel, this._primaryModel());
     const selectedViews = sel.map((sid) => this.renderers.get(sid)).filter(Boolean);
-    this.drag = {
-      kind: 'move',
-      start: w,
-      moved: false,
-      items: selectedViews.map((r) => ({ view: r.view, orig: { x: r.view.x, y: r.view.y, points: (r.view.points || []).map((p) => ({ ...p })) } })),
-    };
+    // moving a container drags its children along
+    const items = [];
+    for (const r of selectedViews) {
+      items.push({ view: r.view, orig: { x: r.view.x, y: r.view.y, points: (r.view.points || []).map((p) => ({ ...p })) } });
+      if (this.isContainerView(r.view)) {
+        for (const child of this.childrenOfContainer(r.view._id, sel)) {
+          items.push({ view: child, orig: { x: child.x, y: child.y, points: [] } });
+        }
+      }
+    }
+    this.drag = { kind: 'move', start: w, moved: false, items };
   }
 
   _primaryModel() {
@@ -613,10 +653,28 @@ export class DiagramCanvas {
 
     if (d.kind === 'move') {
       if (d.moved) {
+        // reassign containment: moved nodes land in whichever container covers them
+        const containerChanges = [];
+        for (const it of d.items) {
+          const v = it.view;
+          if (v.isEdge || this.isContainerView(v)) continue;
+          const target = this.findContainerFor(v);
+          const from = v.container || null;
+          const to = target ? target._id : null;
+          if (from !== to) containerChanges.push({ v, from, to });
+        }
         commandStack.pushExecuted({
           label: 'move',
-          redo: () => { for (const it of d.items) { it.view.x = it.newX; it.view.y = it.newY; } this.requestRender(); },
-          undo: () => { for (const it of d.items) { it.view.x = it.orig.x; it.view.y = it.orig.y; } this.requestRender(); },
+          redo: () => {
+            for (const it of d.items) { it.view.x = it.newX; it.view.y = it.newY; }
+            for (const ch of containerChanges) ch.v.container = ch.to;
+            this.requestRender();
+          },
+          undo: () => {
+            for (const it of d.items) { it.view.x = it.orig.x; it.view.y = it.orig.y; }
+            for (const ch of containerChanges) ch.v.container = ch.from;
+            this.requestRender();
+          },
         });
         for (const it of d.items) { it.newX = it.view.x; it.newY = it.view.y; }
       }
@@ -771,13 +829,23 @@ export class DiagramCanvas {
       const val = host.value.trim();
       const model = repository.lookup(view.modelRef);
       this._closeTextEditor();
-      if (!model || val === slot.text) return;
-      const old = model[slot.field];
-      commandStack.exec({
-        label: 'rename',
-        redo: () => { model[slot.field] = val; },
-        undo: () => { model[slot.field] = old; },
-      });
+      if (val === slot.text) return;
+      if (model) {
+        const old = model[slot.field];
+        commandStack.exec({
+          label: 'rename',
+          redo: () => { model[slot.field] = val; },
+          undo: () => { model[slot.field] = old; },
+        });
+      } else {
+        // view-only element (swimlane / text shape): the field lives on the view
+        const old = view[slot.field];
+        commandStack.exec({
+          label: 'rename',
+          redo: () => { view[slot.field] = val; },
+          undo: () => { view[slot.field] = old; },
+        });
+      }
     };
     host.addEventListener('blur', commit);
     host.addEventListener('keydown', (ev) => {
@@ -854,8 +922,10 @@ export class DiagramCanvas {
     if (model) {
       ops.push({ redo: () => repository.addChild(parentModel, model), undo: () => repository.removeChild(model) });
     }
+    const target = this.findContainerFor(view);
+    const toContainer = target ? target._id : null;
     ops.push({
-      redo: () => { diagram.elements.push(view); view.__diagram = diagram; repository._reindex(); },
+      redo: () => { diagram.elements.push(view); view.__diagram = diagram; view.container = toContainer; repository._reindex(); },
       undo: () => {
         const i = diagram.elements.indexOf(view);
         if (i >= 0) diagram.elements.splice(i, 1);
@@ -1005,16 +1075,21 @@ export class DiagramCanvas {
       const idx = parent ? parent.ownedElements.indexOf(m) : -1;
       return () => { if (parent) repository.addChild(parent, m, idx); };
     });
-    // remove this diagram's views of the deleted models, plus model-less views
+    // remove this diagram's views of the deleted models, plus model-less views;
+    // deleting a container releases its children (undo restores the link)
     for (const v of views) {
       if (v.modelRef && models.includes(repository.lookup(v.modelRef))) continue;
+      const wasContainer = this.isContainerView(v);
+      const children = wasContainer ? this.childrenOfContainer(v._id) : [];
       fns.push(() => {
+        for (const ch of children) ch.container = null;
         const i = diagram.elements.indexOf(v);
         if (i >= 0) diagram.elements.splice(i, 1);
       });
       undoFns.push(() => {
         const i = diagram.elements.indexOf(v);
         diagram.elements.splice(Math.max(0, i < 0 ? diagram.elements.length : i), 0, v);
+        for (const ch of children) ch.container = v._id;
       });
     }
     commandStack.exec({
