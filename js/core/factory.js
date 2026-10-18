@@ -23,6 +23,7 @@ export function createModel(type, name, extra = {}) {
   if (type === 'UMLCombinedFragment') {
     el.operator = 'alt';
     el.operands = [{ guard: '' }, { guard: '' }];
+    el.operandBoundaries = [0.5];
   }
   return el;
 }

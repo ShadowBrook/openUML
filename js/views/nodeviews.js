@@ -397,11 +397,15 @@ export function renderNode(g, view, model, kind) {
         'font-size': fs, 'font-weight': 700, fill: fontColor,
       }, g);
       opText.textContent = model.operator || 'alt';
-      // operand separators + guards (operands split the remaining height evenly)
+      // operand separators + guards (custom boundaries when present, else even split)
       const innerY = y + tabH, innerH = Math.max(10, h - tabH);
-      const opH = innerH / operands.length;
+      const n = operands.length;
+      const fractions = (Array.isArray(model.operandBoundaries) && model.operandBoundaries.length === n - 1)
+        ? model.operandBoundaries
+        : Array.from({ length: n - 1 }, (_, i) => (i + 1) / n);
+      const starts = [innerY, ...fractions.map((f) => innerY + innerH * f)];
       operands.forEach((op, i) => {
-        const oy = innerY + i * opH;
+        const oy = starts[i];
         if (i > 0) {
           svgEl('line', { x1: x, y1: oy, x2: x + w, y2: oy, stroke: line, 'stroke-width': 1, 'stroke-dasharray': '5 4' }, g);
         }

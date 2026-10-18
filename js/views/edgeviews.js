@@ -92,7 +92,15 @@ export function renderMessage(g, view, model, tailView, headView) {
   }
 
   const tailX = tailView.x + tailView.width / 2;
-  const headX = headView.x + headView.width / 2;
+  const isCreate = view.$type === 'UMLMessage+create';
+  const isDelete = view.$type === 'UMLMessage+delete';
+  // StarUML attaches a create message to the left/right edge of the target
+  // lifeline head, not to its center line
+  let headX = headView.x + headView.width / 2;
+  if (isCreate) {
+    const headCenter = headView.x + headView.width / 2;
+    headX = tailX <= headCenter ? headView.x : headView.x + headView.width;
+  }
   const points = [{ x: tailX, y }, { x: headX, y }];
   meta.points = points;
 
@@ -112,13 +120,22 @@ export function renderMessage(g, view, model, tailView, headView) {
       svgEl('path', { d: arrowPath(headX, y, angle, def), fill: 'none', stroke: line, 'stroke-width': def.stroke || 1.3, class: 'edge-head' }, g);
     }
   }
-  // label above the middle: name(params)
-  const name = model?.name || '';
-  if (name) {
+  // destroy: X (destruction occurrence) at the target lifeline
+  if (isDelete) {
+    const k = 7;
+    svgEl('line', { x1: headX - k, y1: y - k, x2: headX + k, y2: y + k, stroke: line, 'stroke-width': 1.6, class: 'edge-head' }, g);
+    svgEl('line', { x1: headX - k, y1: y + k, x2: headX + k, y2: y - k, stroke: line, 'stroke-width': 1.6, class: 'edge-head' }, g);
+  }
+  // label above the middle: «create» / «destroy» + name(params)
+  const labelParts = [];
+  if (view.stereotype) labelParts.push(view.stereotype);
+  if (model?.name) labelParts.push(model.name);
+  if (labelParts.length) {
     const mid = midPoint(points);
-    const t = svgEl('text', { x: mid.x, y: y - 6, 'text-anchor': 'middle', 'font-size': fs, fill: view.fontColor || '#353535' }, g);
-    t.textContent = name;
-    meta.labels.push({ el: t, kind: 'name', box: { x: mid.x - 50, y: y - fs - 8, width: 100, height: fs + 4 } });
+    const t = svgEl('text', { x: mid.x, y: y - 6, 'text-anchor': 'middle', 'font-size': fs, fill: view.fontColor || '#353535', 'font-style': 'italic' }, g);
+    t.textContent = labelParts.join(' ');
+    const textW = Math.max(50, t.textContent.length * fs * 0.55);
+    meta.labels.push({ el: t, kind: 'name', box: { x: mid.x - textW / 2, y: y - fs - 8, width: textW, height: fs + 4 } });
   }
   return meta;
 }

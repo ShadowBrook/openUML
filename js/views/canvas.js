@@ -91,6 +91,7 @@ export class DiagramCanvas {
     if (!this.diagram) return;
 
     const views = this.diagram.elements || [];
+    this._applySequenceLayout(views);
     const rects = new Map();
     for (const v of views) {
       if (!v.isEdge) rects.set(v._id, new Rect(v.x, v.y, v.width, v.height));
@@ -186,6 +187,35 @@ export class DiagramCanvas {
     svgEl('rect', { x: fx, y: fy, width: tabW, height: tabH, fill: '#f7f8f8', stroke: '#9aa4a4', 'stroke-width': 1 }, this.contentLayer);
     const t = svgEl('text', { x: fx + 6, y: fy + 13, 'font-size': 10, fill: '#5a6262' }, this.contentLayer);
     t.textContent = tabText;
+  }
+
+  /**
+   * Sequence-diagram layout rules (mirrors StarUML's arrange()):
+   * a lifeline targeted by a create message has its head centered on the
+   * message's y so the arrow lands on the newly created object.
+   */
+  _applySequenceLayout(views) {
+    if (!this.diagram || !this.diagram.type === 'UMLSequenceDiagram') return;
+    const heads = new Map(views.filter((v) => v.$type === 'UMLLifeLine').map((v) => [v._id, v]));
+    for (const e of views) {
+      if (!e.isEdge || e.$type !== 'UMLMessage+create') continue;
+      const head = heads.get(e.head);
+      if (!head) continue;
+      const targetY = e.y - head.height / 2;
+      if (Math.abs(head.y - targetY) > 0.5) head.y = targetY;
+    }
+  }
+
+  /** Absolute y positions of a combined fragment's operand separators. */
+  fragmentOperandYs(view, model) {
+    const n = Math.max(1, (model.operands || []).length);
+    const tabH = 22;
+    const innerTop = view.y + tabH;
+    const innerH = Math.max(10, view.height - tabH);
+    const fr = (Array.isArray(model.operandBoundaries) && model.operandBoundaries.length === n - 1)
+      ? model.operandBoundaries
+      : Array.from({ length: n - 1 }, (_, i) => (i + 1) / n);
+    return { innerTop, innerH, fractions: fr, ys: fr.map((f) => innerTop + innerH * f) };
   }
 
   /**
@@ -292,6 +322,21 @@ export class DiagramCanvas {
         for (const [k, [hx, hy]] of Object.entries(hs)) {
           const c = svgEl('circle', { cx: hx, cy: hy, r: 4.5 / this.zoom, class: 'handle', 'data-handle': k, 'data-node': v._id, 'stroke-width': 1.2 / this.zoom }, this.overlayLayer);
           c.style.cursor = { n: 'ns-resize', s: 'ns-resize', e: 'ew-resize', w: 'ew-resize', nw: 'nwse-resize', se: 'nwse-resize', ne: 'nesw-resize', sw: 'nesw-resize' }[k];
+        }
+      }
+      // operand separators of a selected combined fragment are draggable
+      if (r && r.kind === 'node' && r.view.$type === 'UMLCombinedFragment') {
+        const model = repository.lookup(r.view.modelRef);
+        if (model) {
+          const { ys } = this.fragmentOperandYs(r.view, model);
+          for (let i = 0; i < ys.length; i++) {
+            const h = svgEl('rect', {
+              x: r.view.x + r.view.width / 2 - 16, y: ys[i] - 3, width: 32, height: 6,
+              rx: 2, fill: '#fff', stroke: '#1390d6', 'stroke-width': 1 / this.zoom,
+              class: 'op-handle', 'data-op-index': i, 'data-edge': r.view._id,
+            }, this.overlayLayer);
+            h.style.cursor = 'ns-resize';
+          }
         }
       }
       // waypoint editing for a single selected edge
@@ -468,6 +513,19 @@ export class DiagramCanvas {
     const w = this.clientToWorld(e);
     // handle resize?
     const t = e.target;
+    if (t.classList?.contains('op-handle')) {
+      const r = this.renderers.get(t.dataset.edge);
+      const model = r && repository.lookup(r.view.modelRef);
+      if (r && model) {
+        const { innerTop, innerH, fractions } = this.fragmentOperandYs(r.view, model);
+        const idx = parseInt(t.dataset.opIndex, 10);
+        this.drag = {
+          kind: 'op-move', view: r.view, model, index: idx, innerTop, innerH,
+          orig: fractions.slice(), moved: false,
+        };
+      }
+      return;
+    }
     if (t.classList?.contains('handle') && t.classList.contains('wp-handle')) {
       // drag an existing waypoint (or convert a computed bend into one)
       const r = this.renderers.get(t.dataset.edge);
@@ -636,6 +694,17 @@ export class DiagramCanvas {
       this.requestRender();
       return;
     }
+    if (d.kind === 'op-move') {
+      const lo = d.index === 0 ? 0.03 : d.orig[d.index - 1] + 0.03;
+      const hi = d.index === d.orig.length - 1 ? 0.97 : d.orig[d.index + 1] - 0.03;
+      const f = Math.min(hi, Math.max(lo, (w.y - d.innerTop) / d.innerH));
+      const next = d.orig.slice();
+      next[d.index] = f;
+      d.model.operandBoundaries = next;
+      d.moved = true;
+      this.requestRender();
+      return;
+    }
   }
 
   _drawMarquee() {
@@ -748,6 +817,22 @@ export class DiagramCanvas {
           redo: () => { view.labelOffset = { ...after }; this.requestRender(); },
           undo: () => { view.labelOffset = { ...before }; this.requestRender(); },
         });
+      }
+      this.requestRender();
+      return;
+    }
+
+    if (d.kind === 'op-move') {
+      if (d.moved) {
+        const model = d.model;
+        const after = (model.operandBoundaries || []).slice();
+        const before = d.orig.slice();
+        commandStack.pushExecuted({
+          label: 'move operand',
+          redo: () => { model.operandBoundaries = after.slice(); this.requestRender(); },
+          undo: () => { model.operandBoundaries = before.slice(); this.requestRender(); },
+        });
+        this.setStatusMessage('已调整操作数分隔');
       }
       this.requestRender();
       return;
