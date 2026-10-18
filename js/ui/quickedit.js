@@ -78,7 +78,7 @@ export function openQuickEdit(canvas, view, model, opts = {}) {
   if (!view) return;
   const isClassLike = model && Array.isArray(model.attributes) && model.type !== 'UMLEnumeration';
   const isEnum = model && model.type === 'UMLEnumeration';
-  const noteLike = view.$type === 'UMLNote';
+  const noteLike = view.$type === 'UMLNote' || view.$type === 'UMLConstraint';
 
   panel = document.createElement('div');
   panel.className = 'quickedit';

@@ -10,12 +10,14 @@ export function createModel(type, name, extra = {}) {
     name: name ?? defaultName(type),
     stereotype: '',
     documentation: '',
+    tags: [],
     ownedElements: [],
     ...extra,
   };
   if (type === 'UMLClass' || type === 'UMLInterface' || type === 'UMLDataType') {
     el.attributes = [];
     el.operations = [];
+    el.templateParameters = [];
   }
   if (type === 'UMLEnumeration') {
     el.literals = [];

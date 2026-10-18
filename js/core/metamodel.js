@@ -55,6 +55,7 @@ export const ModelKinds = {
   UMLAcceptSignal: { name: 'Accept Signal', icon: '◁', iconColor: '#2e9e9e' },
   UMLCombinedFragment: { name: 'Combined Fragment', icon: '▤', iconColor: '#b06ab3' },
   UMLInteractionUse: { name: 'Interaction Use', icon: '▥', iconColor: '#b06ab3' },
+  UMLConstraint: { name: 'Constraint', icon: '▤', iconColor: '#b06ab3' },
   UMLComponent: { name: 'Component', icon: ' ⧉', iconColor: '#c77d2e' },
   UMLArtifact: { name: 'Artifact', icon: '▤', iconColor: '#8a8f8f' },
   UMLNode: { name: 'Node', icon: '⬒', iconColor: '#5c8ac7' },
@@ -103,6 +104,7 @@ export const ToolboxGroups = [
       { id: 'tool-text', name: '文本', icon: 'text' },
       { id: 'tool-rect', name: '矩形', icon: 'rect' },
       { id: 'tool-ellipse', name: '椭圆', icon: 'ellipse' },
+      { id: 'tool-constraint', name: '约束', icon: 'constraint' },
     ],
   },
   {
@@ -293,6 +295,7 @@ export const NodeDefaults = {
   UMLAcceptSignal: { width: 110, height: 44 },
   UMLCombinedFragment: { width: 340, height: 180 },
   UMLInteractionUse: { width: 220, height: 90 },
+  UMLConstraint: { width: 150, height: 46 },
   UMLComponent: { width: 120, height: 50 },
   UMLArtifact: { width: 110, height: 50 },
   UMLNode: { width: 120, height: 65 },

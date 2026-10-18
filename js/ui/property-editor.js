@@ -101,9 +101,33 @@ export class PropertyEditor {
     if (model.type !== 'UMLNote') {
       this._row(idSec, 'stereotype', model.stereotype || '', (v) => this._set(model, 'stereotype', v));
     }
-    // Documentation
-    const docSec = this._section('文档');
-    this._row(docSec, 'documentation', model.documentation, (v) => this._set(model, 'documentation', v), 'textarea');
+    // Documentation (constraints carry their specification here)
+    const docSec = this._section(model.type === 'UMLConstraint' ? '约束规范 (Specification)' : '文档');
+    this._row(docSec, model.type === 'UMLConstraint' ? 'specification' : 'documentation',
+      model.documentation || '', (v) => this._set(model, 'documentation', v), 'textarea');
+
+    // Template parameters (classifiers)
+    if (Array.isArray(model.templateParameters)) {
+      const sec = this._section('模板参数 (Template Parameters)');
+      this._listEditor(sec, model, 'templateParameters',
+        () => ({ _id: 'tp-' + Math.random().toString(36).slice(2, 9), name: 'T', type: '' }),
+        (p) => ({ vis: '«T»', name: p.name, type: p.type }),
+        [
+          { key: 'name', label: '名称' },
+          { key: 'type', label: '类型 (可选)' },
+        ]);
+    }
+    // Tag values (any model element)
+    {
+      const sec = this._section('标记值 (Tags)');
+      this._listEditor(sec, model, 'tags',
+        () => ({ _id: 'tag-' + Math.random().toString(36).slice(2, 9), name: 'tag', value: '' }),
+        (t) => ({ vis: '=', name: t.name, type: t.value }),
+        [
+          { key: 'name', label: '名称' },
+          { key: 'value', label: '值' },
+        ]);
+    }
 
     // Attributes
     if (Array.isArray(model.attributes)) {

@@ -153,6 +153,7 @@ export class DiagramCanvas {
       : v.$type === 'UMLAcceptSignal' ? 'acceptsignal'
       : v.$type === 'UMLCombinedFragment' ? 'fragment'
       : v.$type === 'UMLInteractionUse' ? 'ref'
+      : v.$type === 'UMLConstraint' ? 'constraint'
       : v.$type === 'UMLNote' ? 'note' : 'class';
     const meta = renderNode(g, v, model, kind);
     g.dataset.id = v._id;
@@ -1312,7 +1313,7 @@ export class DiagramCanvas {
       UMLAction: 'UMLAction', UMLComponent: 'UMLComponent', UMLArtifact: 'UMLArtifact',
       UMLNode: 'UMLNode', UMLObject: 'UMLObject', UMLSubsystem: 'UMLSubsystem',
       UMLObjectNode: 'UMLObjectNode', UMLSendSignal: 'UMLSendSignal', UMLAcceptSignal: 'UMLAcceptSignal',
-      UMLLifeLine: 'UMLLifeLine', UMLNote: 'UMLNote',
+      UMLLifeLine: 'UMLLifeLine', UMLNote: 'UMLNote', UMLConstraint: 'UMLConstraint',
     }[model.type];
     if (!viewType) {
       this.setStatusMessage(`${model.type} 不能放到图表中`);

@@ -14,19 +14,29 @@ export function svgEl(tag, attrs = {}, parent = null) {
   return el;
 }
 
+/** `{tag=value, ...}` suffix (StarUML property string). */
+export function fmtTags(el) {
+  const tags = (el && el.tags) || [];
+  if (!tags.length) return '';
+  const parts = tags
+    .map((t) => (t.value !== undefined && t.value !== '' ? `${t.name}=${t.value}` : t.name))
+    .filter(Boolean);
+  return parts.length ? ` {${parts.join(', ')}}` : '';
+}
+
 export function fmtAttribute(a) {
   const vis = VISIBILITY[a.visibility]?.symbol ?? '+';
   const staticPrefix = a.isStatic ? 'underline' : '';
   const typePart = a.type ? `: ${a.type}` : '';
   const defPart = a.defaultValue ? ` = ${a.defaultValue}` : '';
-  return { text: `${vis}${a.name}${typePart}${defPart}`, staticPrefix };
+  return { text: `${vis}${a.name}${typePart}${defPart}${fmtTags(a)}`, staticPrefix };
 }
 
 export function fmtOperation(op) {
   const vis = VISIBILITY[op.visibility]?.symbol ?? '+';
   const params = (op.parameters || []).map((p) => `${p.name}${p.type ? ': ' + p.type : ''}`).join(', ');
   const ret = op.returnType ? `: ${op.returnType}` : '';
-  return { text: `${vis}${op.name}(${params})${ret}`, staticPrefix: op.isStatic ? 'underline' : '' };
+  return { text: `${vis}${op.name}(${params})${ret}${fmtTags(op)}`, staticPrefix: op.isStatic ? 'underline' : '' };
 }
 
 function drawName(g, x, y, w, text, { fontSize = 12, bold = true, italic = false, color = '#353535', stereotype = null } = {}) {
@@ -92,15 +102,36 @@ export function renderNode(g, view, model, kind) {
       const nameH = (view.stereotypeShown ? fs + 2 : 0) + fs + 10;
       const attrH = compartmentHeight(attrs, fs);
       const opH = compartmentHeight(ops, fs);
-      // auto-grow: the frame never clips its compartments (StarUML sizeToContent)
-      const hEff = Math.max(h, nameH + attrH + opH);
+      // template parameters sit in a compartment overlapping the top-right corner;
+      // the name/attribute/operation area is shifted down by its height (StarUML layout)
+      const tps = (model.templateParameters || []).filter((p) => p && p.name);
+      const tpItems = tps.map((p) => `${p.name}${p.type ? ' : ' + p.type : ''}`);
+      const tpTextW = tpItems.length ? Math.max(...tpItems.map((t) => t.length * fs * 0.6)) + 14 : 0;
+      const tpBoxW = tpItems.length ? Math.min(w, Math.max(46, tpTextW)) : 0;
+      const tpBoxH = tpItems.length ? tpItems.length * (fs + 3) + 8 : 0;
+      const tpShift = tpBoxH ? Math.max(0, tpBoxH - 8) : 0;
+      const hEff = Math.max(h, tpShift + nameH + attrH + opH);
       meta.autoHeight = hEff;
       const stereotype = kind === 'interface' ? '«interface»' : (view.stereotypeShown ? model.stereotype || null : (model.stereotype || null));
       // frame
       svgEl('rect', { x, y, width: w, height: hEff, fill, stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
-      // name compartment
-      drawName(g, x, y + 4, w, model.name, { fontSize: fs, color: fontColor, stereotype, italic: kind === 'datatype' });
-      let yy = y + nameH;
+      // name compartment (tag values are appended like StarUML property strings)
+      drawName(g, x, y + tpShift + 4, w, model.name + fmtTags(model), { fontSize: fs, color: fontColor, stereotype, italic: kind === 'datatype' });
+      // template parameter compartment at the top-right corner
+      if (tpItems.length) {
+        const bx = x + w - tpBoxW, by = y;
+        svgEl('rect', {
+          x: bx, y: by, width: tpBoxW, height: tpBoxH, fill: '#ffffff', stroke: line,
+          'stroke-width': 1, 'stroke-dasharray': '5 3', class: 'node-frame',
+        }, g);
+        let ty = by + fs + 2;
+        for (const it of tpItems) {
+          const t = svgEl('text', { x: bx + 6, y: ty, 'font-size': fs - 1, fill: fontColor }, g);
+          t.textContent = it;
+          ty += fs + 3;
+        }
+      }
+      let yy = y + tpShift + nameH;
       svgEl('line', { x1: x, y1: yy, x2: x + w, y2: yy, stroke: line, 'stroke-width': 1 }, g);
       meta.compartments.attributes = new Rect(x + 1, yy, w - 2, attrH);
       drawCompartmentList(g, attrs, { x, y: yy, width: w }, fs, fontColor);
@@ -110,7 +141,7 @@ export function renderNode(g, view, model, kind) {
       drawCompartmentList(g, ops, { x, y: yy, width: w }, fs, fontColor);
       yy += opH;
       if (yy < y + hEff - 1) svgEl('line', { x1: x, y1: y + hEff, x2: x + w, y2: y + hEff, stroke: line }, g);
-      meta.textSlots.name = { box: new Rect(x, y, w, nameH), text: model.name, field: 'name', align: 'center' };
+      meta.textSlots.name = { box: new Rect(x, y + tpShift, w, nameH), text: model.name, field: 'name', align: 'center' };
       break;
     }
     case 'enumeration': {
@@ -440,14 +471,18 @@ export function renderNode(g, view, model, kind) {
       meta.textSlots.name = { box: new Rect(x, y + tabH, w, h - tabH), text: model.name, field: 'name', align: 'center' };
       break;
     }
-    case 'note': {
+    case 'note':
+    case 'constraint': {
+      const isConstraint = kind === 'constraint';
       const fold = 12;
       svgEl('path', {
         d: `M ${x} ${y} L ${x + w - fold} ${y} L ${x + w} ${y + fold} L ${x + w} ${y + h} L ${x} ${y + h} Z`,
-        fill: view.fillColor || '#ffffef', stroke: line, 'stroke-width': 1, class: 'node-frame',
+        fill: view.fillColor || (isConstraint ? '#ffffff' : '#ffffef'), stroke: line, 'stroke-width': 1, class: 'node-frame',
       }, g);
       svgEl('path', { d: `M ${x + w - fold} ${y} L ${x + w - fold} ${y + fold} L ${x + w} ${y + fold}`, fill: 'none', stroke: line }, g);
-      const text = model.documentation || '';
+      // constraints render as {specification} (StarUML UMLConstraintView)
+      const raw = model.documentation || '';
+      const text = isConstraint ? `{${raw}}` : raw;
       const words = text.split(/\s+/).filter(Boolean);
       const maxChars = Math.floor((w - 10) / (fs * 0.62));
       const lines = [];
@@ -460,11 +495,11 @@ export function renderNode(g, view, model, kind) {
       if (cur && lines.length < Math.floor((h - 10) / (fs + 3))) lines.push(cur);
       let ty = y + 8 + fs;
       for (const ln of lines) {
-        const t = svgEl('text', { x: x + 6, y: ty, 'font-size': fs, fill: '#555' }, g);
+        const t = svgEl('text', { x: x + 6, y: ty, 'font-size': fs, fill: '#555', 'font-style': isConstraint ? 'italic' : 'normal' }, g);
         t.textContent = ln;
         ty += fs + 3;
       }
-      meta.textSlots.body = { box: new Rect(x, y, w, h), text: model.documentation || '', field: 'documentation', align: 'left' };
+      meta.textSlots.body = { box: new Rect(x, y, w, h), text: raw, field: 'documentation', align: 'left' };
       meta.textSlots.name = meta.textSlots.body;
       break;
     }
