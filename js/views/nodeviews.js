@@ -381,6 +381,39 @@ export function renderNode(g, view, model, kind) {
       meta.textSlots.name = { box: new Rect(x, y, w, h), text: model.name, field: 'name', align: 'center' };
       break;
     }
+    case 'fragment': {
+      // combined fragment: frame + pentagon operator tab + interaction operands
+      const operands = (model.operands && model.operands.length) ? model.operands : [{ guard: '' }];
+      const tabH = 22;
+      svgEl('rect', { x, y, width: w, height: h, fill: view.fillColor || 'none', stroke: line, 'stroke-width': 1.2, class: 'node-frame' }, g);
+      // pentagon tab: (x,y) → (x+tw,y) → (x+tw+8,y+tabH/2) → (x+tw,y+tabH) → (x,y+tabH)
+      const tw = Math.max(34, 16 + String(model.operator || 'alt').length * 7);
+      svgEl('path', {
+        d: `M ${x} ${y} L ${x + tw} ${y} L ${x + tw + 8} ${y + tabH / 2} L ${x + tw} ${y + tabH} L ${x} ${y + tabH} Z`,
+        fill: '#ffffff', stroke: line, 'stroke-width': 1, class: 'node-frame',
+      }, g);
+      const opText = svgEl('text', {
+        x: x + tw / 2, y: y + tabH / 2 + fs * 0.36, 'text-anchor': 'middle',
+        'font-size': fs, 'font-weight': 700, fill: fontColor,
+      }, g);
+      opText.textContent = model.operator || 'alt';
+      // operand separators + guards (operands split the remaining height evenly)
+      const innerY = y + tabH, innerH = Math.max(10, h - tabH);
+      const opH = innerH / operands.length;
+      operands.forEach((op, i) => {
+        const oy = innerY + i * opH;
+        if (i > 0) {
+          svgEl('line', { x1: x, y1: oy, x2: x + w, y2: oy, stroke: line, 'stroke-width': 1, 'stroke-dasharray': '5 4' }, g);
+        }
+        if (op.guard) {
+          const gt = svgEl('text', { x: x + 8, y: oy + fs + 6, 'font-size': fs - 1, fill: fontColor }, g);
+          gt.textContent = op.guard;
+        }
+      });
+      // operator text is editable in place
+      meta.textSlots.operator = { box: new Rect(x, y, tw, tabH), text: model.operator || 'alt', field: 'operator', align: 'center' };
+      break;
+    }
     case 'note': {
       const fold = 12;
       svgEl('path', {

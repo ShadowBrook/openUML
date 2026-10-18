@@ -95,10 +95,10 @@ export class DiagramCanvas {
     for (const v of views) {
       if (!v.isEdge) rects.set(v._id, new Rect(v.x, v.y, v.width, v.height));
     }
-    // draw nodes first (containers below their children), then activation bars, edges on top.
-    const isContainer = (v) => v.$type === 'UMLSwimlaneVert' || v.$type === 'UMLSwimlaneHorz' || v.$type === 'UMLCompositeState';
+    // draw nodes first (containers/backdrops below their children), then edges on top.
+    const isBackdrop = (v) => v.$type === 'UMLSwimlaneVert' || v.$type === 'UMLSwimlaneHorz' || v.$type === 'UMLCompositeState' || v.$type === 'UMLCombinedFragment';
     const nodes = views.filter((v) => !v.isEdge)
-      .sort((a, b) => (isContainer(a) ? 0 : 1) - (isContainer(b) ? 0 : 1));
+      .sort((a, b) => (isBackdrop(a) ? 0 : 1) - (isBackdrop(b) ? 0 : 1));
     const edges = views.filter((v) => v.isEdge);
     this._renderFrame(nodes);
     for (const v of nodes) this._renderNodeView(v);
@@ -145,6 +145,7 @@ export class DiagramCanvas {
       : v.$type === 'UMLObjectNode' ? 'objectnode'
       : v.$type === 'UMLSendSignal' ? 'sendsignal'
       : v.$type === 'UMLAcceptSignal' ? 'acceptsignal'
+      : v.$type === 'UMLCombinedFragment' ? 'fragment'
       : v.$type === 'UMLNote' ? 'note' : 'class';
     const meta = renderNode(g, v, model, kind);
     g.dataset.id = v._id;
@@ -371,7 +372,7 @@ export class DiagramCanvas {
     for (let i = views.length - 1; i >= 0; i--) {
       const v = views[i];
       if (v.isEdge) continue;
-      if (v.$type === 'Subject' || v.$type === 'UMLNote' || this.isContainerView(v)) continue;
+      if (v.$type === 'Subject' || v.$type === 'UMLNote' || this.isContainerView(v) || v.$type === 'UMLCombinedFragment') continue;
       let rect = new Rect(v.x, v.y, v.width, v.height);
       if (v.$type === 'UMLActor') rect = new Rect(v.x - 20, v.y, v.width + 40, v.height + 20);
       if (v.$type === 'UMLLifeLine') {
@@ -396,7 +397,7 @@ export class DiagramCanvas {
     // big passive containers last
     for (let i = views.length - 1; i >= 0; i--) {
       const v = views[i];
-      if (v.isEdge || (v.$type !== 'Subject' && v.$type !== 'UMLNote' && !this.isContainerView(v))) continue;
+      if (v.isEdge || (v.$type !== 'Subject' && v.$type !== 'UMLNote' && v.$type !== 'UMLCombinedFragment' && !this.isContainerView(v))) continue;
       if (new Rect(v.x, v.y, v.width, v.height).contains(w.x, w.y)) {
         const r = this.renderers.get(v._id);
         return r || { view: v, kind: 'node', meta: { textSlots: {}, compartments: {} }, g: null };
@@ -1135,19 +1136,49 @@ export class DiagramCanvas {
     const ids = [...repository.selections];
     if (!ids.length || !this.diagram) return;
     const diagram = this.diagram; // capture: undo/redo must target the owning diagram
-    const views = ids.map((id) => repository.lookup(id)).filter(Boolean);
-    const fns = views.map((v) => () => {
-      const i = diagram.elements.indexOf(v);
-      if (i >= 0) diagram.elements.splice(i, 1);
+    const els = diagram.elements || [];
+    // selected views plus the edges attached to them (same diagram)
+    const removeIds = new Set(ids.filter((id) => els.some((v) => v._id === id)));
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const v of els) {
+        if (v.isEdge && !removeIds.has(v._id) && (removeIds.has(v.tail) || removeIds.has(v.head))) {
+          removeIds.add(v._id);
+          changed = true;
+        }
+      }
+    }
+    const removals = [];
+    els.forEach((v, i) => {
+      if (removeIds.has(v._id)) removals.push({ view: v, index: i, container: v.container || null });
     });
-    const undoFns = views.map((v) => {
-      const i = diagram.elements.indexOf(v);
-      return () => { diagram.elements.splice(Math.min(i, diagram.elements.length), 0, v); };
-    });
+    if (!removals.length) return;
+    const released = [];
+    for (const r of removals) {
+      if (!this.isContainerView(r.view)) continue;
+      for (const ch of els) if (ch.container === r.view._id) released.push({ parent: r.view, child: ch });
+    }
+    removals.sort((a, b) => b.index - a.index);
     commandStack.exec({
       label: 'delete views',
-      redo: () => { for (const fn of fns) fn(); repository.select([]); this.requestRender(); },
-      undo: () => { for (const fn of undoFns) fn(); this.requestRender(); },
+      redo: () => {
+        for (const r of removals) {
+          const i = diagram.elements.indexOf(r.view);
+          if (i >= 0) diagram.elements.splice(i, 1);
+        }
+        for (const rel of released) rel.child.container = null;
+        repository.select([]);
+        this.requestRender();
+      },
+      undo: () => {
+        for (const r of [...removals].sort((a, b) => a.index - b.index)) {
+          diagram.elements.splice(Math.min(r.index, diagram.elements.length), 0, r.view);
+          r.view.container = r.container;
+        }
+        for (const rel of released) rel.child.container = rel.parent._id;
+        this.requestRender();
+      },
     });
     this.setStatusMessage('已从图表中删除（模型元素保留）');
   }
@@ -1155,42 +1186,105 @@ export class DiagramCanvas {
   deleteSelectionDeep() {
     const ids = [...repository.selections];
     if (!ids.length || !this.diagram) return;
-    const diagram = this.diagram; // capture: undo/redo must target the owning diagram
-    const views = ids.map((id) => repository.lookup(id)).filter(Boolean);
-    const models = views.map((v) => repository.lookup(v.modelRef)).filter(Boolean);
-    const fns = [];
-    for (const m of models) {
-      if (!m.__parent) continue;
-      fns.push(() => repository.removeChild(m));
+    const selected = ids.map((id) => repository.lookup(id)).filter(Boolean);
+    const modelSet = new Set();
+    const models = [];
+    for (const v of selected) {
+      const m = repository.lookup(v.modelRef);
+      if (m && m.__parent && !modelSet.has(m._id)) { modelSet.add(m._id); models.push(m); }
     }
-    const undoFns = models.map((m) => {
+    // view-only selection (text/rect/swimlane...): just delete the views
+    if (!models.length) { this.deleteSelection(); return; }
+
+    // 1) every diagram in the project (views live on diagram nodes)
+    const diagrams = [];
+    repository.walk((n) => { if (Array.isArray(n.elements)) diagrams.push(n); });
+
+    // 2) all views of the deleted models, across all diagrams
+    const removedIds = new Set();
+    for (const d of diagrams) {
+      for (const v of d.elements || []) {
+        if (v.modelRef && modelSet.has(v.modelRef)) removedIds.add(v._id);
+      }
+    }
+    // 3) edges attached to removed views (dangling relations are meaningless)
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const d of diagrams) {
+        for (const v of d.elements || []) {
+          if (v.isEdge && !removedIds.has(v._id) && (removedIds.has(v.tail) || removedIds.has(v.head))) {
+            removedIds.add(v._id);
+            changed = true;
+          }
+        }
+      }
+    }
+    // 4) edge models of removed edge views, so the model tree keeps no dangling relations
+    const extraModels = [];
+    for (const d of diagrams) {
+      for (const v of d.elements || []) {
+        if (!removedIds.has(v._id) || !v.isEdge || !v.modelRef) continue;
+        const em = repository.lookup(v.modelRef);
+        if (em && em.__parent && !modelSet.has(em._id) && !extraModels.includes(em)) extraModels.push(em);
+      }
+    }
+
+    // 5) collect view removals per diagram with original indices
+    const removals = [];
+    for (const d of diagrams) {
+      (d.elements || []).forEach((v, i) => {
+        if (removedIds.has(v._id)) removals.push({ diagram: d, view: v, index: i, container: v.container || null });
+      });
+    }
+    const released = [];
+    for (const d of diagrams) {
+      for (const v of d.elements || []) {
+        if (v.container && removedIds.has(v.container)) released.push({ containerId: v.container, child: v });
+      }
+    }
+
+    const allModels = [...models, ...extraModels];
+    const fns = [];
+    const undoFns = [];
+    // remove models
+    for (const m of allModels) {
+      if (!m.__parent) continue;
       const parent = m.__parent;
-      const idx = parent ? parent.ownedElements.indexOf(m) : -1;
-      return () => { if (parent) repository.addChild(parent, m, idx); };
-    });
-    // remove this diagram's views of the deleted models, plus model-less views;
-    // deleting a container releases its children (undo restores the link)
-    for (const v of views) {
-      if (v.modelRef && models.includes(repository.lookup(v.modelRef))) continue;
-      const wasContainer = this.isContainerView(v);
-      const children = wasContainer ? this.childrenOfContainer(v._id) : [];
+      const idx = parent.ownedElements.indexOf(m);
+      fns.push(() => repository.removeChild(m));
+      undoFns.push(() => repository.addChild(parent, m, idx));
+    }
+    // remove views (descending index per diagram)
+    const byDiagram = new Map();
+    for (const r of removals) {
+      if (!byDiagram.has(r.diagram)) byDiagram.set(r.diagram, []);
+      byDiagram.get(r.diagram).push(r);
+    }
+    for (const [diag, list] of byDiagram) {
+      list.sort((a, b) => b.index - a.index);
       fns.push(() => {
-        for (const ch of children) ch.container = null;
-        const i = diagram.elements.indexOf(v);
-        if (i >= 0) diagram.elements.splice(i, 1);
+        for (const r of list) {
+          const i = diag.elements.indexOf(r.view);
+          if (i >= 0) diag.elements.splice(i, 1);
+        }
       });
       undoFns.push(() => {
-        const i = diagram.elements.indexOf(v);
-        diagram.elements.splice(Math.max(0, i < 0 ? diagram.elements.length : i), 0, v);
-        for (const ch of children) ch.container = v._id;
+        for (const r of [...list].sort((a, b) => a.index - b.index)) {
+          diag.elements.splice(Math.min(r.index, diag.elements.length), 0, r.view);
+          r.view.container = r.container;
+        }
       });
     }
+    fns.push(() => { for (const rel of released) rel.child.container = null; });
+    undoFns.push(() => { for (const rel of released) rel.child.container = rel.containerId; });
+
     commandStack.exec({
       label: 'delete model',
       redo: () => { for (const fn of fns) fn(); repository.select([]); this.requestRender(); },
       undo: () => { for (const fn of undoFns) fn(); this.requestRender(); },
     });
-    this.setStatusMessage('已删除模型元素');
+    this.setStatusMessage(`已从模型删除（移除 ${removals.length} 个视图）`);
   }
 
   bringToFront() { this._reorder(true); }

@@ -23,11 +23,12 @@
               "x": 80,
               "y": 60,
               "width": 130,
-              "height": 80,
+              "height": 94,
               "fillColor": "",
               "lineColor": "",
               "fontColor": "",
-              "fontSize": 12
+              "fontSize": 12,
+              "container": null
             },
             {
               "_id": "v-b-hjbrv",
@@ -40,7 +41,8 @@
               "fillColor": "",
               "lineColor": "",
               "fontColor": "",
-              "fontSize": 12
+              "fontSize": 12,
+              "container": null
             },
             {
               "_id": "v-e-90ib4",
@@ -97,7 +99,8 @@
               "tailRoleName": "",
               "tailMultiplicity": "",
               "headRoleName": "",
-              "headMultiplicity": ""
+              "headMultiplicity": "",
+              "container": null
             },
             {
               "_id": "e-n-98xzw",
@@ -115,7 +118,8 @@
               "tailRoleName": "",
               "tailMultiplicity": "",
               "headRoleName": "",
-              "headMultiplicity": ""
+              "headMultiplicity": "",
+              "container": null
             },
             {
               "_id": "e-p-yk3ff",
@@ -156,7 +160,8 @@
               "tailRoleName": "",
               "tailMultiplicity": "",
               "headRoleName": "",
-              "headMultiplicity": ""
+              "headMultiplicity": "",
+              "container": null
             },
             {
               "_id": "v-t-ylvci",
@@ -587,6 +592,20 @@
               "headRoleName": "",
               "headMultiplicity": "",
               "y": 360
+            },
+            {
+              "_id": "v-4-4abmj",
+              "$type": "UMLCombinedFragment",
+              "modelRef": "m-3-6f0od",
+              "x": 240,
+              "y": 270,
+              "width": 540,
+              "height": 180,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12,
+              "container": null
             }
           ],
           "defaultDiagram": false
@@ -1214,6 +1233,20 @@
               "tailMultiplicity": "",
               "headRoleName": "",
               "headMultiplicity": ""
+            },
+            {
+              "_id": "v-2-vr6vw",
+              "$type": "UMLClass",
+              "modelRef": "m-a-lyrtq",
+              "x": 950,
+              "y": 620,
+              "width": 130,
+              "height": 80,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12,
+              "container": null
             }
           ],
           "defaultDiagram": false
@@ -2122,6 +2155,23 @@
           "stereotype": "",
           "documentation": "",
           "ownedElements": []
+        },
+        {
+          "_id": "m-3-6f0od",
+          "type": "UMLCombinedFragment",
+          "name": "CombinedFragment1",
+          "stereotype": "",
+          "documentation": "",
+          "ownedElements": [],
+          "operator": "alt",
+          "operands": [
+            {
+              "guard": "[库存充足]"
+            },
+            {
+              "guard": "[缺货]"
+            }
+          ]
         }
       ]
     }

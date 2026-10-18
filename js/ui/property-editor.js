@@ -144,6 +144,51 @@ export class PropertyEditor {
       this._row(sec, 'end2 (head) role', v.headRoleName || '', (val) => this._setView(v, 'headRoleName', val));
       this._row(sec, 'end2 multiplicity', v.headMultiplicity || '', (val) => this._setView(v, 'headMultiplicity', val));
     }
+    // Combined fragment: operator + interaction operands
+    if (model.type === 'UMLCombinedFragment') {
+      const sec = this._section('组合片段 (Combined Fragment)');
+      this._row(sec, 'operator', model.operator || 'alt', (v) => this._set(model, 'operator', v), 'select',
+        [['alt', 'alt'], ['opt', 'opt'], ['loop', 'loop'], ['par', 'par'], ['break', 'break'],
+         ['critical', 'critical'], ['neg', 'neg'], ['assert', 'assert'], ['ignore', 'ignore'], ['consider', 'consider']]);
+      (model.operands || []).forEach((op, i) => {
+        this._row(sec, `operand ${i + 1} 守卫`, op.guard || '', (v) => {
+          const old = model.operands;
+          const next = old.map((o, j) => (j === i ? { ...o, guard: v } : o));
+          commandStack.exec({ label: 'set guard', redo: () => { model.operands = next; }, undo: () => { model.operands = old; } });
+        });
+      });
+      const ctrl = document.createElement('div');
+      ctrl.className = 'prop-row';
+      const lbl = document.createElement('label');
+      lbl.textContent = 'operands';
+      const val = document.createElement('div');
+      val.className = 'prop-value';
+      val.style.display = 'flex';
+      val.style.gap = '4px';
+      const add = document.createElement('button');
+      add.className = 'btn';
+      add.textContent = '＋ 添加';
+      add.onclick = () => {
+        const old = model.operands || [];
+        const next = [...old, { guard: '' }];
+        commandStack.exec({ label: 'add operand', redo: () => { model.operands = next; }, undo: () => { model.operands = old; } });
+      };
+      const del = document.createElement('button');
+      del.className = 'btn';
+      del.textContent = '－ 删除';
+      del.onclick = () => {
+        const old = model.operands || [];
+        if (old.length <= 1) return;
+        const next = old.slice(0, -1);
+        commandStack.exec({ label: 'remove operand', redo: () => { model.operands = next; }, undo: () => { model.operands = old; } });
+      };
+      val.appendChild(add);
+      val.appendChild(del);
+      ctrl.appendChild(lbl);
+      ctrl.appendChild(val);
+      sec.appendChild(ctrl);
+    }
+
     // Edge naming
     if (this.currentView && this.currentView.isEdge) {
       const sec = this._section('连接');

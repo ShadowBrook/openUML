@@ -20,6 +20,10 @@ export function createModel(type, name, extra = {}) {
   if (type === 'UMLEnumeration') {
     el.literals = [];
   }
+  if (type === 'UMLCombinedFragment') {
+    el.operator = 'alt';
+    el.operands = [{ guard: '' }, { guard: '' }];
+  }
   return el;
 }
 
