@@ -309,6 +309,22 @@ export function renderEdge(g, edge, model, tailRect, headRect, opts = {}) {
       box: new Rect(mid.x - textW / 2 - 3, mid.y - fs - 9, textW + 6, fs + 7),
     });
   }
+  // object-diagram link object: a small underlined object box on the link midpoint
+  if (edge.$type === 'UMLLinkObject') {
+    const name = edge.name || '';
+    const bw = Math.max(70, name.length * fs * 0.6 + 18);
+    const bh = fs + 14;
+    svgEl('rect', {
+      x: mid.x - bw / 2, y: mid.y - bh / 2, width: bw, height: bh,
+      fill: edge.fillColor || '#ffffff', stroke: line, 'stroke-width': 1, class: 'node-frame',
+    }, g);
+    const t = svgEl('text', {
+      x: mid.x, y: mid.y + fs * 0.35, 'text-anchor': 'middle', 'font-size': fs,
+      fill: fontColor, 'text-decoration': 'underline',
+    }, g);
+    t.textContent = name;
+  }
+
   if (model?.type === 'UMLAssociation') {
     if (edge.headRoleName) {
       const t = svgEl('text', { x: headEnd.x, y: headEnd.y - 6, 'font-size': fs, fill: fontColor, 'text-anchor': 'middle' }, g);

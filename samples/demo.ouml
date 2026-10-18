@@ -22,8 +22,8 @@
               "modelRef": "m-4-5jm51",
               "x": 80,
               "y": 60,
-              "width": 130,
-              "height": 94,
+              "width": 190,
+              "height": 124,
               "fillColor": "",
               "lineColor": "",
               "fontColor": "",
@@ -175,6 +175,20 @@
               "lineColor": "",
               "fontColor": "",
               "fontSize": 12
+            },
+            {
+              "_id": "v-3-q5ilo",
+              "$type": "UMLConstraint",
+              "modelRef": "m-2-minff",
+              "x": 800,
+              "y": 560,
+              "width": 170,
+              "height": 46,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12,
+              "container": null
             }
           ],
           "defaultDiagram": true
@@ -194,7 +208,14 @@
               "type": "String",
               "visibility": "public",
               "defaultValue": "",
-              "isStatic": false
+              "isStatic": false,
+              "tags": [
+                {
+                  "_id": "g2",
+                  "name": "pk",
+                  "value": "true"
+                }
+              ]
             },
             {
               "_id": "a-7-r16cr",
@@ -224,6 +245,25 @@
               "returnType": "",
               "visibility": "public",
               "isStatic": false
+            }
+          ],
+          "templateParameters": [
+            {
+              "_id": "tp1",
+              "name": "T",
+              "type": ""
+            },
+            {
+              "_id": "tp2",
+              "name": "K",
+              "type": "String"
+            }
+          ],
+          "tags": [
+            {
+              "_id": "g1",
+              "name": "entity",
+              "value": "Order"
             }
           ]
         },
@@ -2366,6 +2406,198 @@
             }
           ],
           "operandBoundaries": []
+        },
+        {
+          "_id": "m-2-minff",
+          "type": "UMLConstraint",
+          "name": "Constraint1",
+          "stereotype": "",
+          "documentation": "amount > 0",
+          "tags": [],
+          "ownedElements": []
+        },
+        {
+          "_id": "d-2-vjciv",
+          "type": "UMLObjectDiagram",
+          "name": "OrderObjects",
+          "ownedElements": [],
+          "elements": [
+            {
+              "_id": "v-4-djooo",
+              "$type": "UMLObject",
+              "modelRef": "m-3-873he",
+              "x": 120,
+              "y": 120,
+              "width": 123,
+              "height": 45,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12
+            },
+            {
+              "_id": "v-6-n2y3x",
+              "$type": "UMLObject",
+              "modelRef": "m-5-gnaaa",
+              "x": 440,
+              "y": 120,
+              "width": 167,
+              "height": 45,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12
+            },
+            {
+              "_id": "v-8-duhl6",
+              "$type": "UMLComponentInstance",
+              "modelRef": "m-7-a82dn",
+              "x": 120,
+              "y": 300,
+              "width": 225,
+              "height": 50,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12
+            },
+            {
+              "_id": "v-a-gjh89",
+              "$type": "UMLArtifactInstance",
+              "modelRef": "m-9-oi1oz",
+              "x": 420,
+              "y": 300,
+              "width": 219,
+              "height": 50,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12
+            },
+            {
+              "_id": "v-c-c6ynx",
+              "$type": "UMLNodeInstance",
+              "modelRef": "m-b-3aegb",
+              "x": 700,
+              "y": 300,
+              "width": 160,
+              "height": 65,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12
+            },
+            {
+              "_id": "e-d-ikjo2",
+              "$type": "UMLLink",
+              "isEdge": true,
+              "isMessage": false,
+              "modelRef": "",
+              "tail": "v-4-djooo",
+              "head": "v-6-n2y3x",
+              "points": [],
+              "lineStyle": "solid",
+              "tailArrow": "none",
+              "headArrow": "none",
+              "stereotype": "",
+              "nameVisible": true,
+              "tailRoleName": "",
+              "tailMultiplicity": "",
+              "headRoleName": "",
+              "headMultiplicity": ""
+            },
+            {
+              "_id": "e-e-iwzrr",
+              "$type": "UMLLinkObject",
+              "isEdge": true,
+              "isMessage": false,
+              "modelRef": "",
+              "tail": "v-8-duhl6",
+              "head": "v-a-gjh89",
+              "points": [],
+              "lineStyle": "solid",
+              "tailArrow": "none",
+              "headArrow": "none",
+              "stereotype": "",
+              "nameVisible": true,
+              "tailRoleName": "",
+              "tailMultiplicity": "",
+              "headRoleName": "",
+              "headMultiplicity": "",
+              "name": "owns (LinkObject)"
+            },
+            {
+              "_id": "e-f-4ygvp",
+              "$type": "UMLDirectedLink",
+              "isEdge": true,
+              "isMessage": false,
+              "modelRef": "",
+              "tail": "v-6-n2y3x",
+              "head": "v-4-djooo",
+              "points": [],
+              "lineStyle": "solid",
+              "tailArrow": "none",
+              "headArrow": "open",
+              "stereotype": "",
+              "nameVisible": true,
+              "tailRoleName": "",
+              "tailMultiplicity": "",
+              "headRoleName": "",
+              "headMultiplicity": "",
+              "messages": []
+            }
+          ],
+          "defaultDiagram": false
+        },
+        {
+          "_id": "m-3-873he",
+          "type": "UMLObject",
+          "name": "order1",
+          "stereotype": "",
+          "documentation": "",
+          "tags": [],
+          "ownedElements": [],
+          "classifier": "Order"
+        },
+        {
+          "_id": "m-5-gnaaa",
+          "type": "UMLObject",
+          "name": "customer1",
+          "stereotype": "",
+          "documentation": "",
+          "tags": [],
+          "ownedElements": [],
+          "classifier": "Customer"
+        },
+        {
+          "_id": "m-7-a82dn",
+          "type": "UMLComponentInstance",
+          "name": "web:WebService",
+          "stereotype": "",
+          "documentation": "",
+          "tags": [],
+          "ownedElements": [],
+          "classifier": "WebService"
+        },
+        {
+          "_id": "m-9-oi1oz",
+          "type": "UMLArtifactInstance",
+          "name": "config.jar",
+          "stereotype": "",
+          "documentation": "",
+          "tags": [],
+          "ownedElements": [],
+          "classifier": "ConfigArtifact"
+        },
+        {
+          "_id": "m-b-3aegb",
+          "type": "UMLNodeInstance",
+          "name": "server1",
+          "stereotype": "",
+          "documentation": "",
+          "tags": [],
+          "ownedElements": [],
+          "classifier": "AppServer"
         }
       ]
     }

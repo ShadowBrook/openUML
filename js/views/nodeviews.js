@@ -14,8 +14,15 @@ export function svgEl(tag, attrs = {}, parent = null) {
   return el;
 }
 
-/** `{tag=value, ...}` suffix (StarUML property string). */
-export function fmtTags(el) {
+/** Instance notation: `name : Classifier` (UML object/instance). */
+export function instanceLabel(model) {
+  const cls = (model && model.classifier) || '';
+  const name = (model && model.name) || '';
+  if (!cls) return name;
+  return name ? `${name} : ${cls}` : `: ${cls}`;
+}
+
+/** `{tag=value, ...}` suffix (StarUML property string). */export function fmtTags(el) {
   const tags = (el && el.tags) || [];
   if (!tags.length) return '';
   const parts = tags
@@ -299,31 +306,48 @@ export function renderNode(g, view, model, kind) {
       svgEl('rect', { x, y, width: w, height: h, fill: '#353535', stroke: '#353535', class: 'node-frame' }, g);
       break;
     }
-    case 'component': {
+    case 'component':
+    case 'componentInst': {
       // component rectangle with two small tab rectangles on the left edge
+      const inst = kind === 'componentInst';
+      const label = inst ? instanceLabel(model) : model.name;
       svgEl('rect', { x: x + 12, y, width: w - 12, height: h, fill, stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
       svgEl('rect', { x, y: y + h * 0.18, width: 12, height: h * 0.28, fill: '#fff', stroke: line, 'stroke-width': 1 }, g);
       svgEl('rect', { x, y: y + h * 0.54, width: 12, height: h * 0.28, fill: '#fff', stroke: line, 'stroke-width': 1 }, g);
-      const t = svgEl('text', { x: x + 12 + (w - 12) / 2, y: y + h / 2 + fs * 0.35, 'text-anchor': 'middle', 'font-size': fs, fill: fontColor }, g);
-      t.textContent = model.name;
+      const t = svgEl('text', {
+        x: x + 12 + (w - 12) / 2, y: y + h / 2 + fs * 0.35, 'text-anchor': 'middle', 'font-size': fs, fill: fontColor,
+        'text-decoration': inst ? 'underline' : 'none',
+      }, g);
+      t.textContent = label;
+      if (inst) meta.autoWidth = Math.max(w, label.length * fs * 0.62 + 24);
       meta.textSlots.name = { box: new Rect(x + 12, y, w - 12, h), text: model.name, field: 'name', align: 'center' };
       break;
     }
-    case 'artifact': {
+    case 'artifact':
+    case 'artifactInst': {
       // document shape with folded top-right corner
+      const inst = kind === 'artifactInst';
+      const label = inst ? instanceLabel(model) : model.name;
       const fold = 12;
       svgEl('path', {
         d: `M ${x} ${y} L ${x + w - fold} ${y} L ${x + w} ${y + fold} L ${x + w} ${y + h} L ${x} ${y + h} Z`,
         fill, stroke: line, 'stroke-width': 1, class: 'node-frame',
       }, g);
       svgEl('path', { d: `M ${x + w - fold} ${y} L ${x + w - fold} ${y + fold} L ${x + w} ${y + fold}`, fill: 'none', stroke: line }, g);
-      const t = svgEl('text', { x: x + w / 2, y: y + h / 2 + fs * 0.35, 'text-anchor': 'middle', 'font-size': fs, fill: fontColor }, g);
-      t.textContent = model.name;
+      const t = svgEl('text', {
+        x: x + w / 2, y: y + h / 2 + fs * 0.35, 'text-anchor': 'middle', 'font-size': fs, fill: fontColor,
+        'text-decoration': inst ? 'underline' : 'none',
+      }, g);
+      t.textContent = label;
+      if (inst) meta.autoWidth = Math.max(w, label.length * fs * 0.62 + 18);
       meta.textSlots.name = { box: new Rect(x, y, w, h), text: model.name, field: 'name', align: 'center' };
       break;
     }
-    case 'node3d': {
+    case 'node3d':
+    case 'nodeInst': {
       // deployment node drawn as a 3D box
+      const inst = kind === 'nodeInst';
+      const label = inst ? instanceLabel(model) : model.name;
       const d = 8;
       svgEl('path', {
         d: `M ${x} ${y + d} L ${x + w} ${y + d} L ${x + w} ${y + h} L ${x} ${y + h} Z`,
@@ -331,16 +355,22 @@ export function renderNode(g, view, model, kind) {
       }, g);
       svgEl('path', { d: `M ${x} ${y + d} L ${x + d} ${y} L ${x + w + d} ${y} L ${x + w} ${y + d}`, fill: '#fff', stroke: line, 'stroke-width': 1 }, g);
       svgEl('path', { d: `M ${x + w} ${y + d} L ${x + w + d} ${y} L ${x + w + d} ${y + h - d} L ${x + w} ${y + h}`, fill: '#fff', stroke: line, 'stroke-width': 1 }, g);
-      const t = svgEl('text', { x: x + w / 2, y: y + h / 2 + fs * 0.35, 'text-anchor': 'middle', 'font-size': fs, fill: fontColor }, g);
-      t.textContent = model.name;
+      const t = svgEl('text', {
+        x: x + w / 2, y: y + h / 2 + fs * 0.35, 'text-anchor': 'middle', 'font-size': fs, fill: fontColor,
+        'text-decoration': inst ? 'underline' : 'none',
+      }, g);
+      t.textContent = label;
+      if (inst) meta.autoWidth = Math.max(w, label.length * fs * 0.62 + 18);
       meta.textSlots.name = { box: new Rect(x, y + d, w, h - d), text: model.name, field: 'name', align: 'center' };
       break;
     }
     case 'object': {
-      // communication-diagram object: rectangle with underlined name
+      // object: rectangle with underlined "name : Classifier"
+      const label = instanceLabel(model);
       svgEl('rect', { x, y, width: w, height: h, fill, stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
       const t = svgEl('text', { x: x + w / 2, y: y + h / 2 + fs * 0.35, 'text-anchor': 'middle', 'font-size': fs, fill: fontColor, 'text-decoration': 'underline' }, g);
-      t.textContent = model.name;
+      t.textContent = label;
+      meta.autoWidth = Math.max(w, label.length * fs * 0.62 + 18);
       meta.textSlots.name = { box: new Rect(x, y, w, h), text: model.name, field: 'name', align: 'center' };
       break;
     }

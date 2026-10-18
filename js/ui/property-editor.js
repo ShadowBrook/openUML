@@ -213,9 +213,18 @@ export class PropertyEditor {
       sec.appendChild(ctrl);
     }
 
+    // Instance: classifier (the type being instantiated)
+    if (['UMLObject', 'UMLArtifactInstance', 'UMLComponentInstance', 'UMLNodeInstance'].includes(model.type)) {
+      const sec = this._section('实例 (Instance)');
+      this._row(sec, 'classifier', model.classifier || '', (v) => this._set(model, 'classifier', v.trim()));
+    }
+
     // Edge naming
     if (this.currentView && this.currentView.isEdge) {
       const sec = this._section('连接');
+      if (this.currentView.$type === 'UMLLinkObject') {
+        this._row(sec, 'name', this.currentView.name || '', (val) => this._setView(this.currentView, 'name', val));
+      }
       this._row(sec, '显示名称', this.currentView.nameVisible !== false, (val) => this._setView(this.currentView, 'nameVisible', val === 'true'), 'select', [['true', '是'], ['false', '否']]);
       this._row(sec, '线型', this.currentView.lineStyle, (val) => this._setView(this.currentView, 'lineStyle', val), 'select', [['solid', '实线'], ['dashed', '虚线']]);
     }

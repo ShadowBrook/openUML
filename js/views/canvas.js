@@ -143,6 +143,9 @@ export class DiagramCanvas {
       : v.$type === 'UMLArtifact' ? 'artifact'
       : v.$type === 'UMLNode' ? 'node3d'
       : v.$type === 'UMLObject' ? 'object'
+      : v.$type === 'UMLComponentInstance' ? 'componentInst'
+      : v.$type === 'UMLArtifactInstance' ? 'artifactInst'
+      : v.$type === 'UMLNodeInstance' ? 'nodeInst'
       : v.$type === 'UMLSubsystem' ? 'subsystem'
       : v.$type === 'UMLModel' ? 'package'
       : v.$type === 'UMLSwimlaneVert' ? 'swimlaneV'
@@ -164,6 +167,10 @@ export class DiagramCanvas {
       v.height = Math.ceil(meta.autoHeight);
       this.requestRender();
     }
+    if (meta.autoWidth && meta.autoWidth > v.width + 0.5) {
+      v.width = Math.ceil(meta.autoWidth);
+      this.requestRender();
+    }
   }
 
   /**
@@ -177,6 +184,7 @@ export class DiagramCanvas {
       UMLStatechartDiagram: 'stm', UMLActivityDiagram: 'ad',
       UMLComponentDiagram: 'cp', UMLDeploymentDiagram: 'dp',
       UMLPackageDiagram: 'pkg', UMLCommunicationDiagram: 'comm',
+      UMLObjectDiagram: 'od',
     };
     const prefix = prefixes[this.diagram.type];
     if (!prefix) return;
@@ -1010,6 +1018,11 @@ export class DiagramCanvas {
         openConnectorEdit(this, view);
         return;
       }
+      if (view.$type === 'UMLLinkObject') {
+        const mid = meta.points ? meta.points[Math.floor(meta.points.length / 2)] : w;
+        this._editText(view, { box: new Rect(mid.x - 40, mid.y - 12, 80, 24), text: view.name || '', field: 'name', align: 'center' }, e);
+        return;
+      }
       const model = repository.lookup(view.modelRef);
       if (model) {
         const label = (meta.labels && meta.labels[0]) || null;
@@ -1221,8 +1234,9 @@ export class DiagramCanvas {
   createEdge(edgeType, tailId, headId, upPoint = null) {
     if (!this.diagram) return;
     const tailV = repository.lookup(tailId), headV = repository.lookup(headId);
-    // view-only connectors: note link, containment, communication links
-    if (edgeType === 'UMLNoteLink' || edgeType === 'UMLContainment' || edgeType === 'UMLConnector' || edgeType === 'UMLLinkMessage') {
+    // view-only connectors: note link, containment, communication links, object-diagram links
+    if (edgeType === 'UMLNoteLink' || edgeType === 'UMLContainment' || edgeType === 'UMLConnector' || edgeType === 'UMLLinkMessage'
+        || edgeType === 'UMLLink' || edgeType === 'UMLDirectedLink' || edgeType === 'UMLLinkObject') {
       const diagram = this.diagram;
       const requested = edgeType;
       if (requested === 'UMLLinkMessage') {
@@ -1245,6 +1259,7 @@ export class DiagramCanvas {
       }
       const view = createEdgeView(edgeType, '', tailId, headId);
       view.messages = requested === 'UMLLinkMessage' ? [{ text: '' }] : [];
+      if (edgeType === 'UMLLinkObject') view.name = 'link';
       compound('connect', [{
         redo: () => { diagram.elements.push(view); view.__diagram = diagram; repository._reindex(); },
         undo: () => {
@@ -1314,6 +1329,8 @@ export class DiagramCanvas {
       UMLNode: 'UMLNode', UMLObject: 'UMLObject', UMLSubsystem: 'UMLSubsystem',
       UMLObjectNode: 'UMLObjectNode', UMLSendSignal: 'UMLSendSignal', UMLAcceptSignal: 'UMLAcceptSignal',
       UMLLifeLine: 'UMLLifeLine', UMLNote: 'UMLNote', UMLConstraint: 'UMLConstraint',
+      UMLArtifactInstance: 'UMLArtifactInstance', UMLComponentInstance: 'UMLComponentInstance',
+      UMLNodeInstance: 'UMLNodeInstance',
     }[model.type];
     if (!viewType) {
       this.setStatusMessage(`${model.type} 不能放到图表中`);

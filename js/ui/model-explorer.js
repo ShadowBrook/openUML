@@ -9,6 +9,7 @@ const ViewableModelTypes = new Set([
   'UMLActor', 'UMLUseCase', 'UMLState', 'UMLCompositeState', 'UMLAction',
   'UMLComponent', 'UMLArtifact', 'UMLNode', 'UMLObject', 'UMLSubsystem',
   'UMLObjectNode', 'UMLSendSignal', 'UMLAcceptSignal', 'UMLLifeLine', 'UMLNote',
+  'UMLArtifactInstance', 'UMLComponentInstance', 'UMLNodeInstance', 'UMLConstraint',
 ]);
 
 export class ModelExplorer {

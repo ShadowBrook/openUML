@@ -60,6 +60,10 @@ export const ModelKinds = {
   UMLArtifact: { name: 'Artifact', icon: '▤', iconColor: '#8a8f8f' },
   UMLNode: { name: 'Node', icon: '⬒', iconColor: '#5c8ac7' },
   UMLObject: { name: 'Object', icon: '▭', iconColor: '#5c8ac7' },
+  UMLArtifactInstance: { name: 'Artifact Instance', icon: '▤', iconColor: '#8a8f8f' },
+  UMLComponentInstance: { name: 'Component Instance', icon: '⧉', iconColor: '#c77d2e' },
+  UMLNodeInstance: { name: 'Node Instance', icon: '⬒', iconColor: '#5c8ac7' },
+  UMLLinkObject: { name: 'Link Object', icon: '▭', iconColor: '#5c8ac7' },
   UMLSubsystem: { name: 'Subsystem', icon: '🗃', iconColor: '#c77d2e' },
   UMLModel: { name: 'Model', icon: '▦', iconColor: '#1390d6' },
   UMLConnector: { name: 'Link', icon: '─', iconColor: '#8a8f8f' },
@@ -72,6 +76,7 @@ export const ModelKinds = {
   UMLDeploymentDiagram: { name: 'DeploymentDiagram', icon: '▦', iconColor: '#1390d6' },
   UMLPackageDiagram: { name: 'PackageDiagram', icon: '▦', iconColor: '#1390d6' },
   UMLCommunicationDiagram: { name: 'CommunicationDiagram', icon: '▦', iconColor: '#1390d6' },
+  UMLObjectDiagram: { name: 'ObjectDiagram', icon: '▦', iconColor: '#1390d6' },
   UMLNote: { name: 'Note', icon: '📄', iconColor: '#e8c860' },
 };
 
@@ -87,6 +92,7 @@ export const diagramSvgIcons = {
   UMLDeploymentDiagram: `<svg viewBox="0 0 14 14"><path d="M4.5 4 L10.5 4 L12.5 6 L12.5 12 L6.5 12 L4.5 10 Z" fill="#eaf2fb" stroke="#5c8ac7" stroke-width="1"/><path d="M10.5 4 L10.5 6 L12.5 6" fill="none" stroke="#5c8ac7" stroke-width="1"/></svg>`,
   UMLPackageDiagram: `<svg viewBox="0 0 14 14"><rect x="2" y="5" width="10" height="7" fill="#f7ead7" stroke="#c77d2e" stroke-width="1.1"/><rect x="2" y="2.5" width="5" height="2.8" fill="#f7ead7" stroke="#c77d2e" stroke-width="1.1"/></svg>`,
   UMLCommunicationDiagram: `<svg viewBox="0 0 14 14"><rect x="1.5" y="1.5" width="4" height="3" fill="#eef4fb" stroke="#5c8ac7" stroke-width="1"/><rect x="8.5" y="9.5" width="4" height="3" fill="#eef4fb" stroke="#5c8ac7" stroke-width="1"/><line x1="3.5" y1="4.5" x2="10.5" y2="9.5" stroke="#5c8ac7" stroke-width="1"/><text x="7.6" y="6.4" font-size="5" fill="#5c8ac7">1:</text></svg>`,
+  UMLObjectDiagram: `<svg viewBox="0 0 14 14"><rect x="2" y="4" width="10" height="6" fill="#eef4fb" stroke="#5c8ac7" stroke-width="1.1"/><line x1="4" y1="7" x2="10" y2="7" stroke="#5c8ac7" stroke-width="0.9"/><line x1="9" y1="11.5" x2="12" y2="11.5" stroke="#5c8ac7" stroke-width="0.9"/></svg>`,
 };
 
 export function diagramIcon(type) {
@@ -218,6 +224,18 @@ export const ToolboxGroups = [
     ],
   },
   {
+    id: 'objectdiag', name: '对象图',
+    items: [
+      { id: 'tool-object', name: '对象', icon: 'object' },
+      { id: 'tool-artifactInstance', name: '构件实例', icon: 'artifact' },
+      { id: 'tool-componentInstance', name: '组件实例', icon: 'component' },
+      { id: 'tool-nodeInstance', name: '节点实例', icon: 'node3d' },
+      { id: 'tool-odLink', name: '链接', icon: 'assoc' },
+      { id: 'tool-odDirectedLink', name: '定向链接', icon: 'assocDir' },
+      { id: 'tool-odLinkObject', name: '链接对象', icon: 'linkObject' },
+    ],
+  },
+  {
     id: 'communication', name: '通信图',
     items: [
       { id: 'tool-object', name: '对象', icon: 'object' },
@@ -256,6 +274,9 @@ export const EdgeDefs = {
   UMLContainment: { lineStyle: 'solid', tailArrow: 'containment', headArrow: 'none' },
   UMLConnector: { lineStyle: 'solid', tailArrow: 'none', headArrow: 'none' },
   UMLObjectFlow: { lineStyle: 'solid', tailArrow: 'none', headArrow: 'open' },
+  UMLLink: { lineStyle: 'solid', tailArrow: 'none', headArrow: 'none' },
+  UMLDirectedLink: { lineStyle: 'solid', tailArrow: 'none', headArrow: 'open' },
+  UMLLinkObject: { lineStyle: 'solid', tailArrow: 'none', headArrow: 'none' },
 };
 
 export const NodeDefaults = {
@@ -300,6 +321,10 @@ export const NodeDefaults = {
   UMLArtifact: { width: 110, height: 50 },
   UMLNode: { width: 120, height: 65 },
   UMLObject: { width: 110, height: 45 },
+  UMLArtifactInstance: { width: 110, height: 50 },
+  UMLComponentInstance: { width: 120, height: 50 },
+  UMLNodeInstance: { width: 120, height: 65 },
+  UMLLinkObject: { width: 0, height: 0 },
   UMLSubsystem: { width: 110, height: 65 },
   UMLConnector: { width: 0, height: 0 },
 };

@@ -22,6 +22,9 @@ export function createModel(type, name, extra = {}) {
   if (type === 'UMLEnumeration') {
     el.literals = [];
   }
+  if (type === 'UMLObject' || type === 'UMLArtifactInstance' || type === 'UMLComponentInstance' || type === 'UMLNodeInstance') {
+    el.classifier = extra.classifier ?? '';
+  }
   if (type === 'UMLCombinedFragment') {
     el.operator = 'alt';
     el.operands = [{ guard: '' }, { guard: '' }];
