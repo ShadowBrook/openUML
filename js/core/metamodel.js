@@ -47,11 +47,22 @@ export const ModelKinds = {
   UMLMergeNode: { name: 'Merge', icon: '◇', iconColor: '#353535' },
   UMLForkNode: { name: 'Fork', icon: '▬', iconColor: '#353535' },
   UMLJoinNode: { name: 'Join', icon: '▬', iconColor: '#353535' },
+  UMLComponent: { name: 'Component', icon: ' ⧉', iconColor: '#c77d2e' },
+  UMLArtifact: { name: 'Artifact', icon: '▤', iconColor: '#8a8f8f' },
+  UMLNode: { name: 'Node', icon: '⬒', iconColor: '#5c8ac7' },
+  UMLObject: { name: 'Object', icon: '▭', iconColor: '#5c8ac7' },
+  UMLSubsystem: { name: 'Subsystem', icon: '🗃', iconColor: '#c77d2e' },
+  UMLModel: { name: 'Model', icon: '▦', iconColor: '#1390d6' },
+  UMLConnector: { name: 'Link', icon: '─', iconColor: '#8a8f8f' },
   UMLClassDiagram: { name: 'ClassDiagram', icon: '▦', iconColor: '#1390d6' },
   UMLUseCaseDiagram: { name: 'UseCaseDiagram', icon: '▦', iconColor: '#1390d6' },
   UMLSequenceDiagram: { name: 'SequenceDiagram', icon: '▦', iconColor: '#1390d6' },
   UMLStatechartDiagram: { name: 'StatechartDiagram', icon: '▦', iconColor: '#1390d6' },
   UMLActivityDiagram: { name: 'ActivityDiagram', icon: '▦', iconColor: '#1390d6' },
+  UMLComponentDiagram: { name: 'ComponentDiagram', icon: '▦', iconColor: '#1390d6' },
+  UMLDeploymentDiagram: { name: 'DeploymentDiagram', icon: '▦', iconColor: '#1390d6' },
+  UMLPackageDiagram: { name: 'PackageDiagram', icon: '▦', iconColor: '#1390d6' },
+  UMLCommunicationDiagram: { name: 'CommunicationDiagram', icon: '▦', iconColor: '#1390d6' },
   UMLNote: { name: 'Note', icon: '📄', iconColor: '#e8c860' },
 };
 
@@ -63,6 +74,10 @@ export const diagramSvgIcons = {
   UMLSequenceDiagram: `<svg viewBox="0 0 14 14"><rect x="3" y="1.5" width="8" height="3.6" rx="0.9" fill="#f1ecfa" stroke="#7d5ba6" stroke-width="1.1"/><line x1="7" y1="5.1" x2="7" y2="12.5" stroke="#7d5ba6" stroke-width="1.1" stroke-dasharray="2 1.7"/></svg>`,
   UMLStatechartDiagram: `<svg viewBox="0 0 14 14"><rect x="1.5" y="4" width="11" height="7" rx="3" fill="#f4edfa" stroke="#7d5ba6" stroke-width="1.1"/><circle cx="4.2" cy="7.5" r="1.4" fill="#7d5ba6"/></svg>`,
   UMLActivityDiagram: `<svg viewBox="0 0 14 14"><rect x="3.5" y="4.5" width="9" height="6" rx="2.6" fill="#e6f5f5" stroke="#2e9e9e" stroke-width="1.1"/><circle cx="2" cy="7.5" r="1.3" fill="#353535"/></svg>`,
+  UMLComponentDiagram: `<svg viewBox="0 0 14 14"><rect x="4.5" y="3" width="8" height="8" rx="1" fill="#fdf3e7" stroke="#c77d2e" stroke-width="1.1"/><rect x="1.5" y="4.5" width="2.4" height="2" fill="#fff" stroke="#c77d2e"/><rect x="1.5" y="8" width="2.4" height="2" fill="#fff" stroke="#c77d2e"/></svg>`,
+  UMLDeploymentDiagram: `<svg viewBox="0 0 14 14"><path d="M4.5 4 L10.5 4 L12.5 6 L12.5 12 L6.5 12 L4.5 10 Z" fill="#eaf2fb" stroke="#5c8ac7" stroke-width="1"/><path d="M10.5 4 L10.5 6 L12.5 6" fill="none" stroke="#5c8ac7" stroke-width="1"/></svg>`,
+  UMLPackageDiagram: `<svg viewBox="0 0 14 14"><rect x="2" y="5" width="10" height="7" fill="#f7ead7" stroke="#c77d2e" stroke-width="1.1"/><rect x="2" y="2.5" width="5" height="2.8" fill="#f7ead7" stroke="#c77d2e" stroke-width="1.1"/></svg>`,
+  UMLCommunicationDiagram: `<svg viewBox="0 0 14 14"><rect x="1.5" y="1.5" width="4" height="3" fill="#eef4fb" stroke="#5c8ac7" stroke-width="1"/><rect x="8.5" y="9.5" width="4" height="3" fill="#eef4fb" stroke="#5c8ac7" stroke-width="1"/><line x1="3.5" y1="4.5" x2="10.5" y2="9.5" stroke="#5c8ac7" stroke-width="1"/><text x="7.6" y="6.4" font-size="5" fill="#5c8ac7">1:</text></svg>`,
 };
 
 export function diagramIcon(type) {
@@ -149,6 +164,45 @@ export const ToolboxGroups = [
       { id: 'tool-controlFlow', name: '控制流', icon: 'assocDir' },
     ],
   },
+  {
+    id: 'component', name: '组件图',
+    items: [
+      { id: 'tool-package2', name: '包', icon: 'package' },
+      { id: 'tool-component', name: '组件', icon: 'component' },
+      { id: 'tool-artifact', name: '构件', icon: 'artifact' },
+      { id: 'tool-interface2', name: '接口', icon: 'interface' },
+      { id: 'tool-dependency2', name: '依赖', icon: 'dep' },
+      { id: 'tool-compReal', name: '组件实现', icon: 'real' },
+    ],
+  },
+  {
+    id: 'deployment', name: '部署图',
+    items: [
+      { id: 'tool-node', name: '节点', icon: 'node3d' },
+      { id: 'tool-artifact2', name: '构件', icon: 'artifact' },
+      { id: 'tool-deployment', name: '部署', icon: 'dep' },
+      { id: 'tool-commPath', name: '通信路径', icon: 'assoc' },
+    ],
+  },
+  {
+    id: 'packagediag', name: '包图',
+    items: [
+      { id: 'tool-package3', name: '包', icon: 'package' },
+      { id: 'tool-subsystem', name: '子系统', icon: 'subsystem' },
+      { id: 'tool-model', name: '模型', icon: 'modelIcon' },
+      { id: 'tool-containment', name: '包含', icon: 'assoc' },
+      { id: 'tool-dependency3', name: '依赖', icon: 'dep' },
+    ],
+  },
+  {
+    id: 'communication', name: '通信图',
+    items: [
+      { id: 'tool-object', name: '对象', icon: 'object' },
+      { id: 'tool-actor2', name: '参与者', icon: 'actor' },
+      { id: 'tool-link', name: '链接', icon: 'assoc' },
+      { id: 'tool-linkMessage', name: '消息', icon: 'msgSync' },
+    ],
+  },
 ];
 
 // Which edge tool maps to which model type + line style
@@ -169,6 +223,11 @@ export const EdgeDefs = {
   UMLTransition: { lineStyle: 'solid', tailArrow: 'none', headArrow: 'open' },
   UMLSelfTransition: { lineStyle: 'solid', tailArrow: 'none', headArrow: 'open' },
   UMLControlFlow: { lineStyle: 'solid', tailArrow: 'none', headArrow: 'open' },
+  UMLDeployment: { lineStyle: 'dashed', tailArrow: 'none', headArrow: 'open', stereotype: '«deploy»' },
+  UMLCommunicationPath: { lineStyle: 'solid', tailArrow: 'none', headArrow: 'none' },
+  UMLComponentRealization: { lineStyle: 'dashed', tailArrow: 'none', headArrow: 'hollowTriangle' },
+  UMLContainment: { lineStyle: 'solid', tailArrow: 'containment', headArrow: 'none' },
+  UMLConnector: { lineStyle: 'solid', tailArrow: 'none', headArrow: 'none' },
 };
 
 export const NodeDefaults = {
@@ -200,4 +259,10 @@ export const NodeDefaults = {
   UMLMergeNode: { width: 26, height: 26 },
   UMLForkNode: { width: 100, height: 8 },
   UMLJoinNode: { width: 100, height: 8 },
+  UMLComponent: { width: 120, height: 50 },
+  UMLArtifact: { width: 110, height: 50 },
+  UMLNode: { width: 120, height: 65 },
+  UMLObject: { width: 110, height: 45 },
+  UMLSubsystem: { width: 110, height: 65 },
+  UMLConnector: { width: 0, height: 0 },
 };

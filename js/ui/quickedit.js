@@ -193,3 +193,76 @@ export function openQuickEdit(canvas, view, model, opts = {}) {
 
 export function closeQuickEdit() { close(); }
 export function quickEditOpen() { return !!panel; }
+
+/** Communication-diagram link: edit the numbered messages stacked on a connector. */
+export function openConnectorEdit(canvas, view) {
+  close();
+  if (!view) return;
+  panel = document.createElement('div');
+  panel.className = 'quickedit';
+  const sec = document.createElement('div');
+  sec.className = 'qe-section';
+  sec.textContent = 'message';
+  panel.appendChild(sec);
+
+  const msgs = view.messages || [];
+  const inputs = [];
+  msgs.forEach((msg, i) => {
+    const rw = document.createElement('div');
+    rw.className = 'qe-row';
+    const label = document.createElement('span');
+    label.className = 'qe-label';
+    label.textContent = `${i + 1}:`;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'qe-input';
+    input.value = msg.text || '';
+    input.placeholder = 'name()';
+    rw.appendChild(label);
+    rw.appendChild(input);
+    panel.appendChild(rw);
+    inputs.push({ input, i });
+  });
+  if (!msgs.length) {
+    const empty = document.createElement('div');
+    empty.className = 'qe-label';
+    empty.textContent = '（用消息工具添加）';
+    panel.appendChild(empty);
+  }
+
+  const commitAll = () => {
+    const next = msgs.map((m, i) => ({ text: inputs[i] ? inputs[i].input.value : m.text }));
+    const changed = next.some((m, i) => m.text !== msgs[i].text);
+    if (!changed) return;
+    commandStack.exec({
+      label: 'edit messages',
+      redo: () => { view.messages = next; },
+      undo: () => { view.messages = msgs; },
+    });
+  };
+  for (const { input } of inputs) {
+    input.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter') { e.preventDefault(); commitAll(); }
+      if (e.key === 'Escape') close();
+    });
+    input.addEventListener('blur', commitAll);
+  }
+
+  const r = canvas.svg.getBoundingClientRect();
+  const mid = (view.points && view.points[Math.floor(view.points.length / 2)]) || { x: view.x, y: view.y };
+  const sx = r.left + mid.x * canvas.zoom + canvas.panX + 16;
+  const sy = r.top + mid.y * canvas.zoom + canvas.panY - 10;
+  document.body.appendChild(panel);
+  const pw = panel.getBoundingClientRect();
+  panel.style.left = Math.max(6, Math.min(sx, window.innerWidth - pw.width - 8)) + 'px';
+  panel.style.top = Math.max(6, Math.min(sy, window.innerHeight - pw.height - 8)) + 'px';
+  if (inputs.length) { inputs[0].input.focus(); inputs[0].input.select(); }
+
+  setTimeout(() => {
+    const closer = (e) => {
+      if (panel && !panel.contains(e.target)) { close(); window.removeEventListener('mousedown', closer); }
+    };
+    window.addEventListener('mousedown', closer);
+  }, 0);
+}

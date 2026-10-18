@@ -1269,6 +1269,427 @@
           "stereotype": "",
           "documentation": "",
           "ownedElements": []
+        },
+        {
+          "_id": "d-2-36s77",
+          "type": "UMLComponentDiagram",
+          "name": "SystemParts",
+          "ownedElements": [],
+          "elements": [
+            {
+              "_id": "v-4-2smlr",
+              "$type": "UMLComponent",
+              "modelRef": "m-3-i759o",
+              "x": 80,
+              "y": 80,
+              "width": 120,
+              "height": 50,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12
+            },
+            {
+              "_id": "v-6-hzvy4",
+              "$type": "UMLComponent",
+              "modelRef": "m-5-09exn",
+              "x": 360,
+              "y": 80,
+              "width": 120,
+              "height": 50,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12
+            },
+            {
+              "_id": "v-8-k31na",
+              "$type": "UMLComponent",
+              "modelRef": "m-7-yq0w3",
+              "x": 360,
+              "y": 220,
+              "width": 120,
+              "height": 50,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12
+            },
+            {
+              "_id": "v-a-f3vd0",
+              "$type": "UMLArtifact",
+              "modelRef": "m-9-uaj17",
+              "x": 660,
+              "y": 150,
+              "width": 110,
+              "height": 50,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12
+            },
+            {
+              "_id": "v-c-vhl7r",
+              "$type": "UMLInterface",
+              "modelRef": "m-b-bu3az",
+              "x": 620,
+              "y": 300,
+              "width": 130,
+              "height": 80,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12
+            },
+            {
+              "_id": "e-e-q2f3u",
+              "$type": "UMLDependency",
+              "isEdge": true,
+              "isMessage": false,
+              "modelRef": "m-d-818hh",
+              "tail": "v-4-2smlr",
+              "head": "v-6-hzvy4",
+              "points": [],
+              "lineStyle": "dashed",
+              "tailArrow": "none",
+              "headArrow": "open",
+              "stereotype": "",
+              "nameVisible": true,
+              "tailRoleName": "",
+              "tailMultiplicity": "",
+              "headRoleName": "",
+              "headMultiplicity": ""
+            },
+            {
+              "_id": "e-g-dtv5c",
+              "$type": "UMLComponentRealization",
+              "isEdge": true,
+              "isMessage": false,
+              "modelRef": "m-f-3zeis",
+              "tail": "v-8-k31na",
+              "head": "v-c-vhl7r",
+              "points": [],
+              "lineStyle": "dashed",
+              "tailArrow": "none",
+              "headArrow": "hollowTriangle",
+              "stereotype": "",
+              "nameVisible": true,
+              "tailRoleName": "",
+              "tailMultiplicity": "",
+              "headRoleName": "",
+              "headMultiplicity": ""
+            }
+          ],
+          "defaultDiagram": false
+        },
+        {
+          "_id": "m-3-i759o",
+          "type": "UMLComponent",
+          "name": "WebUI",
+          "stereotype": "",
+          "documentation": "",
+          "ownedElements": []
+        },
+        {
+          "_id": "m-5-09exn",
+          "type": "UMLComponent",
+          "name": "OrderService",
+          "stereotype": "",
+          "documentation": "",
+          "ownedElements": []
+        },
+        {
+          "_id": "m-7-yq0w3",
+          "type": "UMLComponent",
+          "name": "PaymentService",
+          "stereotype": "",
+          "documentation": "",
+          "ownedElements": []
+        },
+        {
+          "_id": "m-9-uaj17",
+          "type": "UMLArtifact",
+          "name": "orders.db",
+          "stereotype": "",
+          "documentation": "",
+          "ownedElements": []
+        },
+        {
+          "_id": "m-b-bu3az",
+          "type": "UMLInterface",
+          "name": "IPayment",
+          "stereotype": "",
+          "documentation": "",
+          "ownedElements": [],
+          "attributes": [],
+          "operations": []
+        },
+        {
+          "_id": "m-d-818hh",
+          "type": "UMLDependency",
+          "name": "",
+          "stereotype": "",
+          "documentation": "",
+          "ownedElements": []
+        },
+        {
+          "_id": "m-f-3zeis",
+          "type": "UMLInterfaceRealization",
+          "name": "",
+          "stereotype": "",
+          "documentation": "",
+          "ownedElements": []
+        },
+        {
+          "_id": "d-h-acpx7",
+          "type": "UMLDeploymentDiagram",
+          "name": "Topology",
+          "ownedElements": [],
+          "elements": [
+            {
+              "_id": "v-j-2oka7",
+              "$type": "UMLNode",
+              "modelRef": "m-i-lty1l",
+              "x": 80,
+              "y": 100,
+              "width": 120,
+              "height": 65,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12
+            },
+            {
+              "_id": "v-l-1xboj",
+              "$type": "UMLNode",
+              "modelRef": "m-k-4mjvz",
+              "x": 380,
+              "y": 100,
+              "width": 120,
+              "height": 65,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12
+            },
+            {
+              "_id": "v-n-kmd1w",
+              "$type": "UMLNode",
+              "modelRef": "m-m-i3nq7",
+              "x": 380,
+              "y": 280,
+              "width": 120,
+              "height": 65,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12
+            },
+            {
+              "_id": "v-p-rjcnu",
+              "$type": "UMLArtifact",
+              "modelRef": "m-o-52i56",
+              "x": 420,
+              "y": 170,
+              "width": 110,
+              "height": 50,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12
+            },
+            {
+              "_id": "e-q-4k8l6",
+              "$type": "UMLCommunicationPath",
+              "isEdge": true,
+              "isMessage": false,
+              "modelRef": "",
+              "tail": "v-j-2oka7",
+              "head": "v-l-1xboj",
+              "points": [],
+              "lineStyle": "solid",
+              "tailArrow": "none",
+              "headArrow": "none",
+              "stereotype": "",
+              "nameVisible": true,
+              "tailRoleName": "",
+              "tailMultiplicity": "",
+              "headRoleName": "",
+              "headMultiplicity": ""
+            },
+            {
+              "_id": "e-r-c7fkq",
+              "$type": "UMLDeployment",
+              "isEdge": true,
+              "isMessage": false,
+              "modelRef": "",
+              "tail": "v-p-rjcnu",
+              "head": "v-l-1xboj",
+              "points": [],
+              "lineStyle": "dashed",
+              "tailArrow": "none",
+              "headArrow": "open",
+              "stereotype": "«deploy»",
+              "nameVisible": true,
+              "tailRoleName": "",
+              "tailMultiplicity": "",
+              "headRoleName": "",
+              "headMultiplicity": ""
+            }
+          ],
+          "defaultDiagram": false
+        },
+        {
+          "_id": "m-i-lty1l",
+          "type": "UMLNode",
+          "name": "Client PC",
+          "stereotype": "",
+          "documentation": "",
+          "ownedElements": []
+        },
+        {
+          "_id": "m-k-4mjvz",
+          "type": "UMLNode",
+          "name": "App Server",
+          "stereotype": "",
+          "documentation": "",
+          "ownedElements": []
+        },
+        {
+          "_id": "m-m-i3nq7",
+          "type": "UMLNode",
+          "name": "DB Server",
+          "stereotype": "",
+          "documentation": "",
+          "ownedElements": []
+        },
+        {
+          "_id": "m-o-52i56",
+          "type": "UMLArtifact",
+          "name": "app.jar",
+          "stereotype": "",
+          "documentation": "",
+          "ownedElements": []
+        },
+        {
+          "_id": "d-s-b9vz1",
+          "type": "UMLCommunicationDiagram",
+          "name": "OrderComm",
+          "ownedElements": [],
+          "elements": [
+            {
+              "_id": "v-u-mzngy",
+              "$type": "UMLObject",
+              "modelRef": "m-t-8qq20",
+              "x": 80,
+              "y": 100,
+              "width": 110,
+              "height": 45,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12
+            },
+            {
+              "_id": "v-w-pzael",
+              "$type": "UMLObject",
+              "modelRef": "m-v-keyzn",
+              "x": 420,
+              "y": 100,
+              "width": 110,
+              "height": 45,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12
+            },
+            {
+              "_id": "v-y-r62i7",
+              "$type": "UMLObject",
+              "modelRef": "m-x-nz6t9",
+              "x": 250,
+              "y": 300,
+              "width": 110,
+              "height": 45,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12
+            },
+            {
+              "_id": "e-z-gaio9",
+              "$type": "UMLConnector",
+              "isEdge": true,
+              "isMessage": false,
+              "modelRef": "",
+              "tail": "v-u-mzngy",
+              "head": "v-w-pzael",
+              "points": [],
+              "lineStyle": "solid",
+              "tailArrow": "none",
+              "headArrow": "none",
+              "stereotype": "",
+              "nameVisible": true,
+              "tailRoleName": "",
+              "tailMultiplicity": "",
+              "headRoleName": "",
+              "headMultiplicity": "",
+              "messages": [
+                {
+                  "text": "下单(items)"
+                }
+              ]
+            },
+            {
+              "_id": "e-10-cghxh",
+              "$type": "UMLConnector",
+              "isEdge": true,
+              "isMessage": false,
+              "modelRef": "",
+              "tail": "v-w-pzael",
+              "head": "v-y-r62i7",
+              "points": [],
+              "lineStyle": "solid",
+              "tailArrow": "none",
+              "headArrow": "none",
+              "stereotype": "",
+              "nameVisible": true,
+              "tailRoleName": "",
+              "tailMultiplicity": "",
+              "headRoleName": "",
+              "headMultiplicity": "",
+              "messages": [
+                {
+                  "text": "支付(amount)"
+                }
+              ]
+            }
+          ],
+          "defaultDiagram": false
+        },
+        {
+          "_id": "m-t-8qq20",
+          "type": "UMLObject",
+          "name": ": 顾客",
+          "stereotype": "",
+          "documentation": "",
+          "ownedElements": []
+        },
+        {
+          "_id": "m-v-keyzn",
+          "type": "UMLObject",
+          "name": ": 订单系统",
+          "stereotype": "",
+          "documentation": "",
+          "ownedElements": []
+        },
+        {
+          "_id": "m-x-nz6t9",
+          "type": "UMLObject",
+          "name": ": 支付网关",
+          "stereotype": "",
+          "documentation": "",
+          "ownedElements": []
         }
       ]
     }

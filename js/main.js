@@ -109,7 +109,7 @@ function renderTabs() {
   for (const d of diagrams) {
     const row = document.createElement('div');
     row.className = 'diagram-tab' + (d === app.activeDiagram ? ' active' : '');
-    const typeName = { UMLClassDiagram: '类图', UMLUseCaseDiagram: '用例图', UMLSequenceDiagram: '序列图', UMLStatechartDiagram: '状态机图', UMLActivityDiagram: '活动图' }[d.type] || '';
+    const typeName = { UMLClassDiagram: '类图', UMLUseCaseDiagram: '用例图', UMLSequenceDiagram: '序列图', UMLStatechartDiagram: '状态机图', UMLActivityDiagram: '活动图', UMLComponentDiagram: '组件图', UMLDeploymentDiagram: '部署图', UMLPackageDiagram: '包图', UMLCommunicationDiagram: '通信图' }[d.type] || '';
     row.innerHTML = `<span class="tab-icon">${diagramIcon(d.type)}</span><span>${esc(d.name)}</span>` + (typeName && d !== app.activeDiagram ? `<span class="tab-type">${typeName}</span>` : '');
     row.onclick = () => openDiagram(d);
     row.ondblclick = () => renameElement(d);
@@ -440,6 +440,11 @@ function buildMenus() {
           { label: '序列图 (Sequence Diagram)', action: () => addDiagram('UMLSequenceDiagram') },
           { label: '状态机图 (Statechart)', action: () => addDiagram('UMLStatechartDiagram') },
           { label: '活动图 (Activity Diagram)', action: () => addDiagram('UMLActivityDiagram') },
+          '---',
+          { label: '组件图 (Component Diagram)', action: () => addDiagram('UMLComponentDiagram') },
+          { label: '部署图 (Deployment Diagram)', action: () => addDiagram('UMLDeploymentDiagram') },
+          { label: '包图 (Package Diagram)', action: () => addDiagram('UMLPackageDiagram') },
+          { label: '通信图 (Communication Diagram)', action: () => addDiagram('UMLCommunicationDiagram') },
         ] },
         '---',
         { label: '添加类', action: () => addModelElement('UMLClass') },

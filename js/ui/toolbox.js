@@ -51,6 +51,12 @@ const Icons = {
   action: `<svg viewBox="0 0 30 26"><rect x="3" y="6" width="24" height="14" rx="7" fill="#e8f6f6" stroke="#4a4f4f"/><text x="15" y="16" text-anchor="middle" font-size="7" font-style="italic" fill="#4a4f4f">act</text></svg>`,
   flowFinal: `<svg viewBox="0 0 30 26"><circle cx="15" cy="13" r="6" fill="#fff" stroke="#353535" stroke-width="1.2"/><line x1="10.8" y1="8.8" x2="19.2" y2="17.2" stroke="#353535" stroke-width="1.2"/><line x1="10.8" y1="17.2" x2="19.2" y2="8.8" stroke="#353535" stroke-width="1.2"/></svg>`,
   fork: `<svg viewBox="0 0 30 26"><rect x="3" y="11" width="24" height="4" fill="#353535"/></svg>`,
+  component: `<svg viewBox="0 0 30 26"><rect x="7" y="4" width="20" height="18" fill="#fdf3e7" stroke="#4a4f4f"/><rect x="2" y="7" width="5" height="4" fill="#fff" stroke="#4a4f4f"/><rect x="2" y="15" width="5" height="4" fill="#fff" stroke="#4a4f4f"/></svg>`,
+  artifact: `<svg viewBox="0 0 30 26"><path d="M6 3 h14 l5 5 v15 h-19 Z" fill="#eef1f1" stroke="#4a4f4f"/><path d="M20 3 v5 h5" fill="none" stroke="#4a4f4f"/></svg>`,
+  node3d: `<svg viewBox="0 0 30 26"><path d="M5 8 h18 v14 h-18 Z" fill="#eef4fb" stroke="#4a4f4f"/><path d="M5 8 l4 -4 h18 l-4 4 M23 8 l4 -4 v14 l-4 4" fill="#fff" stroke="#4a4f4f"/></svg>`,
+  object: `<svg viewBox="0 0 30 26"><rect x="4" y="5" width="22" height="16" fill="#eef4fb" stroke="#4a4f4f"/><line x1="9" y1="13" x2="21" y2="13" stroke="#4a4f4f"/></svg>`,
+  subsystem: `<svg viewBox="0 0 30 26"><rect x="4" y="8" width="22" height="14" fill="#f7ead7" stroke="#4a4f4f"/><rect x="4" y="3" width="16" height="6" fill="#f7ead7" stroke="#4a4f4f"/><rect x="7" y="5" width="4" height="3" fill="#fff" stroke="#4a4f4f" stroke-width="0.8"/></svg>`,
+  modelIcon: `<svg viewBox="0 0 30 26"><rect x="4" y="8" width="22" height="14" fill="#eaf4fc" stroke="#4a4f4f"/><rect x="4" y="3" width="16" height="6" fill="#eaf4fc" stroke="#4a4f4f"/><path d="M8 6 l2.4 2.4 M12.8 6 l-2.4 2.4" stroke="#1390d6" stroke-width="1"/></svg>`,
 };
 
 // tool id -> canvas tool descriptor
@@ -101,6 +107,25 @@ export const ToolMap = {
   'tool-forkNode': { kind: 'node', nodeType: 'UMLForkNode' },
   'tool-joinNode': { kind: 'node', nodeType: 'UMLJoinNode' },
   'tool-controlFlow': { kind: 'edge', edgeType: 'UMLControlFlow' },
+  'tool-package2': { kind: 'node', nodeType: 'UMLPackage' },
+  'tool-package3': { kind: 'node', nodeType: 'UMLPackage' },
+  'tool-component': { kind: 'node', nodeType: 'UMLComponent' },
+  'tool-artifact': { kind: 'node', nodeType: 'UMLArtifact' },
+  'tool-artifact2': { kind: 'node', nodeType: 'UMLArtifact' },
+  'tool-interface2': { kind: 'node', nodeType: 'UMLInterface' },
+  'tool-dependency2': { kind: 'edge', edgeType: 'UMLDependency' },
+  'tool-dependency3': { kind: 'edge', edgeType: 'UMLDependency' },
+  'tool-compReal': { kind: 'edge', edgeType: 'UMLComponentRealization' },
+  'tool-node': { kind: 'node', nodeType: 'UMLNode' },
+  'tool-deployment': { kind: 'edge', edgeType: 'UMLDeployment' },
+  'tool-commPath': { kind: 'edge', edgeType: 'UMLCommunicationPath' },
+  'tool-subsystem': { kind: 'node', nodeType: 'UMLSubsystem' },
+  'tool-model': { kind: 'node', nodeType: 'UMLModel' },
+  'tool-containment': { kind: 'edge', edgeType: 'UMLContainment' },
+  'tool-object': { kind: 'node', nodeType: 'UMLObject' },
+  'tool-actor2': { kind: 'node', nodeType: 'UMLActor' },
+  'tool-link': { kind: 'edge', edgeType: 'UMLConnector' },
+  'tool-linkMessage': { kind: 'edge', edgeType: 'UMLLinkMessage' },
 };
 
 export function initToolbox(canvas, getActiveToolboxGroup) {

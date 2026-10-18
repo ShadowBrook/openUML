@@ -7,7 +7,7 @@ import { commandStack, compound } from '../core/commands.js';
 import { createModel, createNodeView, createEdgeView, createAttribute } from '../core/factory.js';
 import { renderNode, svgEl } from './nodeviews.js';
 import { renderEdge, renderMessage, renderSelfLoop, distanceToPolyline, computeEdgeGeometry } from './edgeviews.js';
-import { openQuickEdit, closeQuickEdit } from '../ui/quickedit.js';
+import { openQuickEdit, openConnectorEdit, closeQuickEdit } from '../ui/quickedit.js';
 
 const GRID = 10;
 const SNAP_TOL = 5;
@@ -131,6 +131,12 @@ export class DiagramCanvas {
       : v.$type === 'UMLRectView' ? 'rect'
       : v.$type === 'UMLRoundRectView' ? 'roundrect'
       : v.$type === 'UMLEllipseView' ? 'ellipse'
+      : v.$type === 'UMLComponent' ? 'component'
+      : v.$type === 'UMLArtifact' ? 'artifact'
+      : v.$type === 'UMLNode' ? 'node3d'
+      : v.$type === 'UMLObject' ? 'object'
+      : v.$type === 'UMLSubsystem' ? 'subsystem'
+      : v.$type === 'UMLModel' ? 'package'
       : v.$type === 'UMLNote' ? 'note' : 'class';
     const meta = renderNode(g, v, model, kind);
     g.dataset.id = v._id;
@@ -146,6 +152,8 @@ export class DiagramCanvas {
     const prefixes = {
       UMLClassDiagram: 'cd', UMLUseCaseDiagram: 'uc', UMLSequenceDiagram: 'sd',
       UMLStatechartDiagram: 'stm', UMLActivityDiagram: 'ad',
+      UMLComponentDiagram: 'cp', UMLDeploymentDiagram: 'dp',
+      UMLPackageDiagram: 'pkg', UMLCommunicationDiagram: 'comm',
     };
     const prefix = prefixes[this.diagram.type];
     if (!prefix) return;
@@ -233,6 +241,18 @@ export class DiagramCanvas {
       const headRect = rects.get(e.head);
       if (!tailRect || !headRect) { g.remove(); return; }
       meta = renderEdge(g, e, model, tailRect, headRect);
+    }
+    // communication-diagram messages stack above the link midpoint
+    if (e.$type === 'UMLConnector' && (e.messages || []).length) {
+      const mid = meta.points ? meta.points[Math.floor(meta.points.length / 2)] : { x: 0, y: 0 };
+      const mfs = e.fontSize || 11;
+      e.messages.forEach((msg, i) => {
+        const t = svgEl('text', {
+          x: mid.x, y: mid.y - 6 - (e.messages.length - 1 - i) * (mfs + 2),
+          'text-anchor': 'middle', 'font-size': mfs, fill: e.fontColor || '#353535',
+        }, g);
+        t.textContent = `${i + 1}: ${msg.text || '…'}`;
+      });
     }
     g.dataset.id = e._id;
     this.renderers.set(e._id, { g, meta, view: e, kind: 'edge' });
@@ -711,6 +731,10 @@ export class DiagramCanvas {
     }
     // edges: edit the name label in place
     if (hit.kind === 'edge') {
+      if (view.$type === 'UMLConnector') {
+        openConnectorEdit(this, view);
+        return;
+      }
       const model = repository.lookup(view.modelRef);
       if (model) {
         const label = (meta.labels && meta.labels[0]) || null;
@@ -856,10 +880,30 @@ export class DiagramCanvas {
   createEdge(edgeType, tailId, headId, upPoint = null) {
     if (!this.diagram) return;
     const tailV = repository.lookup(tailId), headV = repository.lookup(headId);
-    // note link is a view-only dashed connector (no model element)
-    if (edgeType === 'UMLNoteLink') {
-      const view = createEdgeView('UMLNoteLink', '', tailId, headId);
+    // view-only connectors: note link, containment, communication links
+    if (edgeType === 'UMLNoteLink' || edgeType === 'UMLContainment' || edgeType === 'UMLConnector' || edgeType === 'UMLLinkMessage') {
       const diagram = this.diagram;
+      const requested = edgeType;
+      if (requested === 'UMLLinkMessage') {
+        // communication-diagram message: append to an existing link if one connects the pair
+        const existing = diagram.elements.find((v) => v.$type === 'UMLConnector' &&
+          ((v.tail === tailId && v.head === headId) || (v.tail === headId && v.head === tailId)));
+        if (existing) {
+          const msgs = (existing.messages || []);
+          const next = [...msgs, { text: '' }];
+          commandStack.exec({
+            label: 'add message',
+            redo: () => { existing.messages = next; },
+            undo: () => { existing.messages = msgs; },
+          });
+          repository.select([existing._id], null);
+          this.setStatusMessage(`已添加消息 ${msgs.length + 1}（双击连线编辑文本）`);
+          return;
+        }
+        edgeType = 'UMLConnector';
+      }
+      const view = createEdgeView(edgeType, '', tailId, headId);
+      view.messages = requested === 'UMLLinkMessage' ? [{ text: '' }] : [];
       compound('connect', [{
         redo: () => { diagram.elements.push(view); view.__diagram = diagram; repository._reindex(); },
         undo: () => {
@@ -869,7 +913,9 @@ export class DiagramCanvas {
         },
       }]);
       repository.select([view._id], null);
-      this.setStatusMessage('已连接注释');
+      this.setStatusMessage(requested === 'UMLLinkMessage' || requested === 'UMLConnector'
+        ? '已添加链接（双击连线编辑消息）'
+        : '已连接');
       return;
     }
     const tailM = repository.lookup(tailV.modelRef), headM = repository.lookup(headV.modelRef);

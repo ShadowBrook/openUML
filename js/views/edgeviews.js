@@ -202,6 +202,14 @@ export function renderEdge(g, edge, model, tailRect, headRect, opts = {}) {
 
   const drawArrow = (x, y, angle, spec, className) => {
     const def = ARROW[spec];
+    if (spec === 'containment') {
+      // circled plus at the container end
+      const r = 5;
+      svgEl('circle', { cx: x, cy: y, r, fill: '#fff', stroke: line, 'stroke-width': 1, class: className }, g);
+      svgEl('line', { x1: x - r * 0.55, y1: y, x2: x + r * 0.55, y2: y, stroke: line, 'stroke-width': 1 }, g);
+      svgEl('line', { x1: x, y1: y - r * 0.55, x2: x, y2: y + r * 0.55, stroke: line, 'stroke-width': 1 }, g);
+      return;
+    }
     if (!def) return;
     if (def.closed) {
       svgEl('path', {
