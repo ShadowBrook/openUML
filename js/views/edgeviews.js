@@ -1,7 +1,7 @@
 // edgeviews.js — SVG rendering for UML relationships with UML arrowheads
 
 import { svgEl } from './nodeviews.js';
-import { borderIntersect, orthogonalRoute } from '../core/geometry.js';
+import { borderIntersect, orthogonalRoute, Rect } from '../core/geometry.js';
 
 const ARROW = {
   none: null,
@@ -231,8 +231,10 @@ export function renderEdge(g, edge, model, tailRect, headRect, opts = {}) {
   drawArrow(headEnd.x, headEnd.y, headEnd.angle, edge.headArrow, 'edge-head');
   drawArrow(tailEnd.x, tailEnd.y, tailEnd.angle, edge.tailArrow, 'edge-tail');
 
-  // name label at middle of the polyline
-  const mid = midPoint(points);
+  // name label at middle of the polyline (draggable: edge.labelOffset)
+  const baseMid = midPoint(points);
+  const off = edge.labelOffset || { dx: 0, dy: 0 };
+  const mid = { x: baseMid.x + (off.dx || 0), y: baseMid.y + (off.dy || 0) };
   const labelParts = [];
   if (edge.stereotype) labelParts.push(edge.stereotype);
   if (edge.nameVisible !== false && model?.name) labelParts.push(model.name);
@@ -241,7 +243,11 @@ export function renderEdge(g, edge, model, tailRect, headRect, opts = {}) {
       x: mid.x, y: mid.y - 5, 'text-anchor': 'middle', 'font-size': fs, fill: fontColor, 'font-style': 'italic',
     }, g);
     t.textContent = labelParts.join(' ');
-    meta.labels.push({ el: t, kind: 'name', box: { x: mid.x - 40, y: mid.y - fs - 6, width: 80, height: fs + 4 } });
+    const textW = Math.max(40, t.textContent.length * fs * 0.58);
+    meta.labels.push({
+      el: t, kind: 'name',
+      box: new Rect(mid.x - textW / 2 - 3, mid.y - fs - 9, textW + 6, fs + 7),
+    });
   }
   if (model?.type === 'UMLAssociation') {
     if (edge.headRoleName) {

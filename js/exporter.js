@@ -70,3 +70,22 @@ export function downloadPNG(canvas, filename = 'diagram.png', scale = 2) {
     img.src = url;
   });
 }
+
+/** Print the active diagram via a hidden iframe; the print dialog offers Save as PDF. */
+export function printDiagram(canvas, title = 'Diagram') {
+  const s = diagramToSVG(canvas);
+  if (!s) return false;
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+  document.body.appendChild(iframe);
+  const doc = iframe.contentDocument;
+  doc.open();
+  doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>@page{margin:12mm}html,body{margin:0;padding:0;background:#fff}svg{display:block;width:100%;height:auto}</style></head><body>${s}</body></html>`);
+  doc.close();
+  const win = iframe.contentWindow;
+  setTimeout(() => {
+    try { win.focus(); win.print(); } catch (_) { /* dialogs may be blocked */ }
+    setTimeout(() => iframe.remove(), 60000);
+  }, 300);
+  return true;
+}

@@ -92,9 +92,12 @@ export function renderNode(g, view, model, kind) {
       const nameH = (view.stereotypeShown ? fs + 2 : 0) + fs + 10;
       const attrH = compartmentHeight(attrs, fs);
       const opH = compartmentHeight(ops, fs);
+      // auto-grow: the frame never clips its compartments (StarUML sizeToContent)
+      const hEff = Math.max(h, nameH + attrH + opH);
+      meta.autoHeight = hEff;
       const stereotype = kind === 'interface' ? '«interface»' : (view.stereotypeShown ? model.stereotype || null : (model.stereotype || null));
       // frame
-      svgEl('rect', { x, y, width: w, height: h, fill, stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
+      svgEl('rect', { x, y, width: w, height: hEff, fill, stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
       // name compartment
       drawName(g, x, y + 4, w, model.name, { fontSize: fs, color: fontColor, stereotype, italic: kind === 'datatype' });
       let yy = y + nameH;
@@ -106,7 +109,7 @@ export function renderNode(g, view, model, kind) {
       meta.compartments.operations = new Rect(x + 1, yy, w - 2, opH);
       drawCompartmentList(g, ops, { x, y: yy, width: w }, fs, fontColor);
       yy += opH;
-      if (yy < y + h - 1) svgEl('line', { x1: x, y1: y + h, x2: x + w, y2: y + h, stroke: line }, g);
+      if (yy < y + hEff - 1) svgEl('line', { x1: x, y1: y + hEff, x2: x + w, y2: y + hEff, stroke: line }, g);
       meta.textSlots.name = { box: new Rect(x, y, w, nameH), text: model.name, field: 'name', align: 'center' };
       break;
     }
@@ -114,7 +117,9 @@ export function renderNode(g, view, model, kind) {
       const lits = (model.literals || []).map((l) => ({ text: l.name }));
       const nameH = fs + 10;
       const litH = compartmentHeight(lits, fs);
-      svgEl('rect', { x, y, width: w, height: h, fill, stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
+      const hEff = Math.max(h, nameH + litH);
+      meta.autoHeight = hEff;
+      svgEl('rect', { x, y, width: w, height: hEff, fill, stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
       drawName(g, x, y + 4, w, model.name, { fontSize: fs, color: fontColor, stereotype: '«enumeration»' });
       let yy = y + nameH;
       svgEl('line', { x1: x, y1: yy, x2: x + w, y2: yy, stroke: line }, g);

@@ -12,7 +12,7 @@ import { ModelExplorer } from './ui/model-explorer.js';
 import { PropertyEditor } from './ui/property-editor.js';
 import { buildMenu, showContextMenu } from './ui/menubar.js';
 import { showInputDialog, showConfirmDialog, showAboutDialog } from './ui/dialogs.js';
-import { downloadPNG, downloadSVG } from './exporter.js';
+import { downloadPNG, downloadSVG, printDiagram } from './exporter.js';
 
 const app = {
   canvas: null,
@@ -22,7 +22,16 @@ const app = {
   activeDiagram: null,
   filePath: null,
   dirty: false,
+  theme: 'light',
 };
+
+function setTheme(t) {
+  app.theme = t === 'dark' ? 'dark' : 'light';
+  if (app.theme === 'dark') document.documentElement.dataset.theme = 'dark';
+  else delete document.documentElement.dataset.theme;
+  localStorage.setItem('openuml-theme', app.theme);
+  buildMenus();
+}
 
 // ---------------- project lifecycle ----------------
 
@@ -412,6 +421,7 @@ function buildMenus() {
         '---',
         { label: '导出为 SVG', action: () => { if (app.activeDiagram) downloadSVG(app.canvas, app.activeDiagram.name + '.svg'); } },
         { label: '导出为 PNG', action: () => { if (app.activeDiagram) downloadPNG(app.canvas, app.activeDiagram.name + '.png'); } },
+        { label: '打印 / 导出 PDF…', shortcut: 'Ctrl+P', action: () => { if (app.activeDiagram) printDiagram(app.canvas, app.activeDiagram.name); } },
       ],
     },
     {
@@ -498,6 +508,8 @@ function buildMenus() {
           app.canvas.snapToGrid = !app.canvas.snapToGrid;
           document.getElementById('tb-snap').classList.toggle('active', app.canvas.snapToGrid);
         } },
+        '---',
+        { label: '深色主题', checked: app.theme === 'dark', action: () => setTheme(app.theme === 'dark' ? 'light' : 'dark') },
       ],
     },
     {
@@ -593,6 +605,7 @@ function bindKeys() {
     if (ctrl && e.key.toLowerCase() === 'c') { e.preventDefault(); copySelection(); return; }
     if (ctrl && e.key.toLowerCase() === 'v') { e.preventDefault(); pasteClipboard(); return; }
     if (ctrl && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateSelection(); return; }
+    if (ctrl && e.key.toLowerCase() === 'p') { e.preventDefault(); if (app.activeDiagram) printDiagram(app.canvas, app.activeDiagram.name); return; }
     if (ctrl && (e.key === '=' || e.key === '+')) { e.preventDefault(); app.canvas.zoomIn(); return; }
     if (ctrl && e.key === '-') { e.preventDefault(); app.canvas.zoomOut(); return; }
     if (ctrl && e.shiftKey && e.key.toLowerCase() === 'f') { e.preventDefault(); app.canvas.zoomFit(); return; }
@@ -705,6 +718,8 @@ function boot() {
   initToolbox(canvas);
   bindPanelUI();
   bindKeys();
+  app.theme = localStorage.getItem('openuml-theme') === 'dark' ? 'dark' : 'light';
+  if (app.theme === 'dark') document.documentElement.dataset.theme = 'dark';
   buildMenus();
 
   document.addEventListener('canvas-contextmenu', (e) => {

@@ -149,6 +149,12 @@ export class DiagramCanvas {
     const meta = renderNode(g, v, model, kind);
     g.dataset.id = v._id;
     this.renderers.set(v._id, { g, meta, view: v, kind: 'node' });
+    // auto-fit: grow the view so its compartments are never clipped, then
+    // re-render once so edge attachment points use the new bounds
+    if (meta.autoHeight && meta.autoHeight > v.height + 0.5) {
+      v.height = Math.ceil(meta.autoHeight);
+      this.requestRender();
+    }
   }
 
   /**
@@ -414,6 +420,20 @@ export class DiagramCanvas {
     window.addEventListener('mouseup', (e) => this._mouseup(e));
     svg.addEventListener('dblclick', (e) => this._dblclick(e));
     svg.addEventListener('wheel', (e) => this._wheel(e), { passive: false });
+    // accept model elements dragged from the Model Explorer
+    svg.addEventListener('dragover', (e) => {
+      if (e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('application/x-openuml-model')) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+      }
+    });
+    svg.addEventListener('drop', (e) => {
+      const id = e.dataTransfer && e.dataTransfer.getData('application/x-openuml-model');
+      if (!id) return;
+      e.preventDefault();
+      const model = repository.lookup(id);
+      if (model) this.dropModel(model, this.clientToWorld(e));
+    });
     svg.addEventListener('mousemove', (e) => {
       const w = this.clientToWorld(e);
       document.getElementById('status-cursor').textContent = `${Math.round(w.x)}, ${Math.round(w.y)}`;
@@ -425,8 +445,7 @@ export class DiagramCanvas {
       }));
     });
     svg.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && repository.selections.length === 1) {
-        const r = this.renderers.get(repository.selections[0]);
+      if (e.key === 'Enter' && repository.selections.length === 1) {        const r = this.renderers.get(repository.selections[0]);
         if (r && r.kind === 'node') {
           e.preventDefault();
           openQuickEdit(this, r.view, repository.lookup(r.view.modelRef));
@@ -484,6 +503,20 @@ export class DiagramCanvas {
       const r = this.renderers.get(t.dataset.node);
       this.drag = { kind: 'resize', handle: t.dataset.handle, view: r.view, orig: { x: r.view.x, y: r.view.y, width: r.view.width, height: r.view.height } };
       return;
+    }
+
+    // edge name labels are draggable (StarUML lets you offset relation labels)
+    for (const [, r] of this.renderers) {
+      if (r.kind !== 'edge' || !r.meta.labels || !r.meta.labels.length) continue;
+      const lb = r.meta.labels[0].box;
+      if (lb && new Rect(lb.x, lb.y, lb.width, lb.height).contains(w.x, w.y)) {
+        if (!repository.selections.includes(r.view._id)) repository.select([r.view._id], repository.lookup(r.view.modelRef));
+        this.drag = {
+          kind: 'label', view: r.view, start: w, moved: false,
+          orig: { ...(r.view.labelOffset || { dx: 0, dy: 0 }) },
+        };
+        return;
+      }
     }
 
     const hit = this.hitTest(w);
@@ -591,6 +624,16 @@ export class DiagramCanvas {
       pts[d.index] = this.snapToGrid ? { x: snap(w.x, GRID), y: snap(w.y, GRID) } : { x: w.x, y: w.y };
       d.moved = true;
       this.requestRender();
+      return;
+    }
+    if (d.kind === 'label') {
+      d.view.labelOffset = {
+        dx: Math.round(d.orig.dx + (w.x - d.start.x)),
+        dy: Math.round(d.orig.dy + (w.y - d.start.y)),
+      };
+      d.moved = true;
+      this.requestRender();
+      return;
     }
   }
 
@@ -690,6 +733,21 @@ export class DiagramCanvas {
         redo: () => { Object.assign(view, nw); this.requestRender(); },
         undo: () => { Object.assign(view, orig); this.requestRender(); },
       });
+      this.requestRender();
+      return;
+    }
+
+    if (d.kind === 'label') {
+      if (d.moved) {
+        const view = d.view;
+        const after = { ...view.labelOffset };
+        const before = { ...d.orig };
+        commandStack.pushExecuted({
+          label: 'move label',
+          redo: () => { view.labelOffset = { ...after }; this.requestRender(); },
+          undo: () => { view.labelOffset = { ...before }; this.requestRender(); },
+        });
+      }
       this.requestRender();
       return;
     }
@@ -1030,6 +1088,41 @@ export class DiagramCanvas {
     this.setStatusMessage(modelType === 'UMLMessage'
       ? `已添加消息 ${tailM.name} → ${headM.name}`
       : `已连接 ${tailM.name} → ${headM.name}`);
+  }
+
+  /** Place a view of an existing model element on the active diagram (drag & drop). */
+  dropModel(model, w) {
+    if (!this.diagram) return;
+    const viewType = {
+      UMLClass: 'UMLClass', UMLInterface: 'UMLInterface', UMLEnumeration: 'UMLEnumeration',
+      UMLDataType: 'UMLDataType', UMLPackage: 'UMLPackage', UMLActor: 'UMLActor',
+      UMLUseCase: 'UMLUseCase', UMLState: 'UMLState', UMLCompositeState: 'UMLCompositeState',
+      UMLAction: 'UMLAction', UMLComponent: 'UMLComponent', UMLArtifact: 'UMLArtifact',
+      UMLNode: 'UMLNode', UMLObject: 'UMLObject', UMLSubsystem: 'UMLSubsystem',
+      UMLObjectNode: 'UMLObjectNode', UMLSendSignal: 'UMLSendSignal', UMLAcceptSignal: 'UMLAcceptSignal',
+      UMLLifeLine: 'UMLLifeLine', UMLNote: 'UMLNote',
+    }[model.type];
+    if (!viewType) {
+      this.setStatusMessage(`${model.type} 不能放到图表中`);
+      return;
+    }
+    let x = w.x, y = w.y;
+    if (this.snapToGrid) { x = snap(x, GRID); y = snap(y, GRID); }
+    const extra = viewType === 'UMLLifeLine' ? { lifeHeight: 360 } : {};
+    const view = createNodeView(viewType, model._id, x, y, extra);
+    const diagram = this.diagram;
+    const target = this.findContainerFor(view);
+    const toContainer = target ? target._id : null;
+    compound('drop view', [{
+      redo: () => { diagram.elements.push(view); view.__diagram = diagram; view.container = toContainer; repository._reindex(); },
+      undo: () => {
+        const i = diagram.elements.indexOf(view);
+        if (i >= 0) diagram.elements.splice(i, 1);
+        repository._reindex();
+      },
+    }]);
+    repository.select([view._id], model);
+    this.setStatusMessage(`已将 ${model.name} 放入图表`);
   }
 
   setStatusMessage(msg) {

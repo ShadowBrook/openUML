@@ -595,3 +595,83 @@ html, body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #c3c9c9; border-radius: 5px; border: 2px solid transparent; background-clip: content-box; }
 ::-webkit-scrollbar-thumb:hover { background: #a8b0b0; background-clip: content-box; border: 2px solid transparent; }
+
+/* ============ Dark theme (StarUML-style Black theme) ============ */
+:root[data-theme="dark"] {
+  --text: #d6dada;
+  --text-dim: #98a2a2;
+  --panel-bg: #23282b;
+  --panel-bg-dark: #2b3134;
+  --panel-border: #3c4448;
+  --accent: #2b9fe0;
+  --accent-hover: #47b0ea;
+}
+:root[data-theme="dark"] body { background: var(--panel-bg); color: var(--text); }
+:root[data-theme="dark"] .titlebar { background: linear-gradient(#2f3539, #262b2e); border-bottom-color: #3c4448; }
+:root[data-theme="dark"] .titlebar-title { color: #e6eaea; }
+:root[data-theme="dark"] .menubar { background: #2b3134; border-bottom-color: #3c4448; }
+:root[data-theme="dark"] .menu-top:hover,
+:root[data-theme="dark"] .menu-top.open { background: #3a4247; }
+:root[data-theme="dark"] .menu-dropdown,
+:root[data-theme="dark"] .context-menu,
+:root[data-theme="dark"] .dialog-box,
+:root[data-theme="dark"] .quickedit {
+  background: #2c3235; color: var(--text); border-color: #465055;
+}
+:root[data-theme="dark"] .menu-item .shortcut { color: #8b9698; }
+:root[data-theme="dark"] .menu-sep { background: #3c4448; }
+:root[data-theme="dark"] .pane-header { background: var(--panel-bg-dark); border-bottom-color: var(--panel-border); }
+:root[data-theme="dark"] .pane-title { color: #c3cbcc; }
+:root[data-theme="dark"] .pane-tools button { color: var(--text-dim); }
+:root[data-theme="dark"] .pane-tools button:hover { background: #3a4247; color: #e6eaea; }
+:root[data-theme="dark"] .mini-tab { color: var(--text-dim); }
+:root[data-theme="dark"] .mini-tab:hover { color: #e6eaea; }
+:root[data-theme="dark"] .mini-tab.active { background: #262b2e; color: var(--accent); border-color: #465055; }
+:root[data-theme="dark"] .working-diagrams { border-bottom-color: var(--panel-border); }
+:root[data-theme="dark"] .diagram-tab:hover { background: #33424d; }
+:root[data-theme="dark"] .diagram-tab .tab-type { color: #8b9698; }
+:root[data-theme="dark"] .toolbox { background: #262b2e; }
+:root[data-theme="dark"] .toolbox-group-header { background: var(--panel-bg-dark); color: #c3cbcc; border-bottom-color: #3a4246; }
+:root[data-theme="dark"] .toolbox-item { color: #c9d0d0; }
+:root[data-theme="dark"] .toolbox-item:hover { background: #2f4049; outline-color: #3e6b8a; }
+:root[data-theme="dark"] .toolbox-item.active { background: #2b4a5e; outline-color: var(--accent); }
+:root[data-theme="dark"] .editor-tabs { background: var(--panel-bg-dark); }
+:root[data-theme="dark"] .editor-tab { background: #2f3539; border-color: #465055; color: #c3cbcc; }
+:root[data-theme="dark"] .editor-tab.active { background: #262b2e; color: var(--accent); }
+:root[data-theme="dark"] .model-explorer,
+:root[data-theme="dark"] .editor-panel { background: #262b2e; color: #cdd4d4; }
+:root[data-theme="dark"] .tree-row:hover { background: #2f3c45; }
+:root[data-theme="dark"] .tree-row.selected { background: #2b4a5e; }
+:root[data-theme="dark"] .prop-section { border-bottom-color: #323a3e; }
+:root[data-theme="dark"] .prop-section-header { background: var(--panel-bg-dark); color: #c3cbcc; }
+:root[data-theme="dark"] .prop-row { border-bottom-color: #2c3235; }
+:root[data-theme="dark"] .prop-row > label { color: var(--text-dim); }
+:root[data-theme="dark"] .prop-row input[type="text"],
+:root[data-theme="dark"] .prop-row input[type="number"],
+:root[data-theme="dark"] .prop-row select,
+:root[data-theme="dark"] .prop-row textarea { background: #1e2326; color: var(--text); border-color: #465055; }
+:root[data-theme="dark"] .list-editor { background: #1e2326; border-color: #465055; }
+:root[data-theme="dark"] .list-editor-toolbar { background: var(--panel-bg-dark); border-bottom-color: #3a4246; }
+:root[data-theme="dark"] .list-editor-toolbar button { background: #333a3e; color: var(--text); border-color: #465055; }
+:root[data-theme="dark"] .list-editor-item { border-bottom-color: #323a3e; }
+:root[data-theme="dark"] .list-editor-item:hover { background: #2f3c45; }
+:root[data-theme="dark"] .list-editor-item.selected { background: #2b4a5e; }
+:root[data-theme="dark"] .toolbar { background: rgba(43,49,52,0.96); border-color: #465055; }
+:root[data-theme="dark"] .toolbar button { color: #c9d0d0; }
+:root[data-theme="dark"] .toolbar button:hover { background: #3a4a55; border-color: #4d6f8a; }
+:root[data-theme="dark"] .toolbar button.active { background: #2b4a5e; }
+:root[data-theme="dark"] .toolbar-group + .toolbar-group { border-top-color: #3a4246; }
+:root[data-theme="dark"] .statusbar { background: var(--panel-bg-dark); border-top-color: var(--panel-border); }
+:root[data-theme="dark"] .status-item { border-right-color: #3c4448; color: #b9c1c1; }
+:root[data-theme="dark"] .dialog-title { background: var(--panel-bg-dark); color: #c3cbcc; border-bottom-color: var(--panel-border); }
+:root[data-theme="dark"] .dialog-body input[type="text"],
+:root[data-theme="dark"] .dialog-body select,
+:root[data-theme="dark"] .dialog-body textarea { background: #1e2326; color: var(--text); border-color: #465055; }
+:root[data-theme="dark"] .dialog-buttons { background: #262b2e; border-top-color: #3c4448; }
+:root[data-theme="dark"] .btn { background: #333a3e; color: var(--text); border-color: #465055; }
+:root[data-theme="dark"] .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] .quickedit .qe-input { background: #1e2326; color: var(--text); border-color: #465055; }
+:root[data-theme="dark"] .quickedit .qe-section { border-bottom-color: #3a4246; }
+:root[data-theme="dark"] .quickedit .qe-plus { background: #333a3e; color: var(--text); border-color: #465055; }
+:root[data-theme="dark"] .text-editor-host { background: #1e2326; color: var(--text); }
+:root[data-theme="dark"] ::-webkit-scrollbar-thumb { background: #4a5457; background-clip: content-box; border: 2px solid transparent; }

@@ -3,6 +3,14 @@
 import { repository } from '../core/repository.js';
 import { ModelKinds, diagramIcon } from '../core/metamodel.js';
 
+// model types that can be placed on a diagram by dragging from the tree
+const ViewableModelTypes = new Set([
+  'UMLClass', 'UMLInterface', 'UMLEnumeration', 'UMLDataType', 'UMLPackage',
+  'UMLActor', 'UMLUseCase', 'UMLState', 'UMLCompositeState', 'UMLAction',
+  'UMLComponent', 'UMLArtifact', 'UMLNode', 'UMLObject', 'UMLSubsystem',
+  'UMLObjectNode', 'UMLSendSignal', 'UMLAcceptSignal', 'UMLLifeLine', 'UMLNote',
+]);
+
 export class ModelExplorer {
   constructor(container, hooks = {}) {
     this.container = container;
@@ -97,6 +105,15 @@ export class ModelExplorer {
       this.highlight(node._id);
       if (this.hooks.onContext) this.hooks.onContext(node, { x: e.clientX, y: e.clientY });
     };
+    // drag a model element onto a diagram to create its view (StarUML behavior)
+    if (ViewableModelTypes.has(node.type)) {
+      row.draggable = true;
+      row.addEventListener('dragstart', (ev) => {
+        ev.dataTransfer.setData('application/x-openuml-model', node._id);
+        ev.dataTransfer.setData('text/plain', node.name || '');
+        ev.dataTransfer.effectAllowed = 'copy';
+      });
+    }
     parentEl.appendChild(row);
 
     if (hasKids && isExpanded) this._renderChildren(node, parentEl, depth + 1);
