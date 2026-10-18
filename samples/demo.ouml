@@ -455,8 +455,8 @@
               "_id": "v-4-3vyjd",
               "$type": "UMLLifeLine",
               "modelRef": "m-3-eipe4",
-              "x": 260,
-              "y": 40,
+              "x": 410,
+              "y": -30,
               "width": 100,
               "height": 32,
               "fillColor": "",
@@ -597,8 +597,8 @@
               "_id": "v-4-4abmj",
               "$type": "UMLCombinedFragment",
               "modelRef": "m-3-6f0od",
-              "x": 240,
-              "y": 270,
+              "x": 400,
+              "y": 190,
               "width": 540,
               "height": 180,
               "fillColor": "",
@@ -606,6 +606,130 @@
               "fontColor": "",
               "fontSize": 12,
               "container": null
+            },
+            {
+              "_id": "v-3-bo561",
+              "$type": "UMLLifeLine",
+              "modelRef": "m-2-zmsew",
+              "x": 900,
+              "y": 384,
+              "width": 100,
+              "height": 32,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12,
+              "lifeHeight": 360
+            },
+            {
+              "_id": "e-5-wgw4q",
+              "$type": "UMLMessage+create",
+              "isEdge": true,
+              "isMessage": true,
+              "modelRef": "m-4-v2j8a",
+              "tail": "v-6-0n7fk",
+              "head": "v-3-bo561",
+              "points": [],
+              "lineStyle": "dashed",
+              "tailArrow": "none",
+              "headArrow": "open",
+              "stereotype": "«create»",
+              "nameVisible": true,
+              "tailRoleName": "",
+              "tailMultiplicity": "",
+              "headRoleName": "",
+              "headMultiplicity": "",
+              "y": 400
+            },
+            {
+              "_id": "e-7-e2dn4",
+              "$type": "UMLMessage+delete",
+              "isEdge": true,
+              "isMessage": true,
+              "modelRef": "m-6-1h49n",
+              "tail": "v-6-0n7fk",
+              "head": "v-3-bo561",
+              "points": [],
+              "lineStyle": "solid",
+              "tailArrow": "none",
+              "headArrow": "filledTriangle",
+              "stereotype": "«destroy»",
+              "nameVisible": true,
+              "tailRoleName": "",
+              "tailMultiplicity": "",
+              "headRoleName": "",
+              "headMultiplicity": "",
+              "y": 520
+            },
+            {
+              "_id": "e-3-hd1r3",
+              "$type": "UMLMessage+found",
+              "isEdge": true,
+              "isMessage": true,
+              "modelRef": "m-2-a9q73",
+              "tail": null,
+              "head": "v-6-0n7fk",
+              "points": [],
+              "lineStyle": "solid",
+              "tailArrow": "none",
+              "headArrow": "open",
+              "stereotype": "",
+              "nameVisible": true,
+              "tailRoleName": "",
+              "tailMultiplicity": "",
+              "headRoleName": "",
+              "headMultiplicity": "",
+              "y": 470,
+              "endpointX": 150
+            },
+            {
+              "_id": "v-5-6iiw3",
+              "$type": "UMLInteractionUse",
+              "modelRef": "m-4-0pzi7",
+              "x": 980,
+              "y": 700,
+              "width": 220,
+              "height": 90,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12,
+              "container": null
+            },
+            {
+              "_id": "e-7-umhxf",
+              "$type": "UMLMessage+lost",
+              "isEdge": true,
+              "isMessage": true,
+              "modelRef": "m-6-q1ohy",
+              "tail": "v-4-3vyjd",
+              "head": null,
+              "points": [],
+              "lineStyle": "solid",
+              "tailArrow": "none",
+              "headArrow": "open",
+              "stereotype": "",
+              "nameVisible": true,
+              "tailRoleName": "",
+              "tailMultiplicity": "",
+              "headRoleName": "",
+              "headMultiplicity": "",
+              "y": 460,
+              "endpointX": 1400
+            },
+            {
+              "_id": "v-9-8erjp",
+              "$type": "UMLCombinedFragment",
+              "modelRef": "m-8-9yx84",
+              "x": 440,
+              "y": 205,
+              "width": 180,
+              "height": 80,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12,
+              "container": "v-4-4abmj"
             }
           ],
           "defaultDiagram": false
@@ -2171,7 +2295,77 @@
             {
               "guard": "[缺货]"
             }
+          ],
+          "operandBoundaries": [
+            0.8045569620253165
           ]
+        },
+        {
+          "_id": "m-2-zmsew",
+          "type": "UMLLifeLine",
+          "name": "支付网关",
+          "stereotype": "",
+          "documentation": "",
+          "ownedElements": []
+        },
+        {
+          "_id": "m-4-v2j8a",
+          "type": "UMLMessage",
+          "name": "Message1",
+          "stereotype": "",
+          "documentation": "",
+          "ownedElements": [],
+          "end1ReferenceId": "m-5-egluc",
+          "end2ReferenceId": "m-2-zmsew"
+        },
+        {
+          "_id": "m-6-1h49n",
+          "type": "UMLMessage",
+          "name": "Message2",
+          "stereotype": "",
+          "documentation": "",
+          "ownedElements": [],
+          "end1ReferenceId": "m-5-egluc",
+          "end2ReferenceId": "m-2-zmsew"
+        },
+        {
+          "_id": "m-2-a9q73",
+          "type": "UMLMessage",
+          "name": "Message1",
+          "stereotype": "",
+          "documentation": "",
+          "ownedElements": []
+        },
+        {
+          "_id": "m-4-0pzi7",
+          "type": "UMLInteractionUse",
+          "name": "支付流程",
+          "stereotype": "",
+          "documentation": "",
+          "ownedElements": []
+        },
+        {
+          "_id": "m-6-q1ohy",
+          "type": "UMLMessage",
+          "name": "Message2",
+          "stereotype": "",
+          "documentation": "",
+          "ownedElements": []
+        },
+        {
+          "_id": "m-8-9yx84",
+          "type": "UMLCombinedFragment",
+          "name": "CombinedFragment1",
+          "stereotype": "",
+          "documentation": "",
+          "ownedElements": [],
+          "operator": "loop",
+          "operands": [
+            {
+              "guard": ""
+            }
+          ],
+          "operandBoundaries": []
         }
       ]
     }

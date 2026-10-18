@@ -6,7 +6,7 @@ import { repository } from '../core/repository.js';
 import { commandStack, compound } from '../core/commands.js';
 import { createModel, createNodeView, createEdgeView, createAttribute } from '../core/factory.js';
 import { renderNode, svgEl } from './nodeviews.js';
-import { renderEdge, renderMessage, renderSelfLoop, distanceToPolyline, computeEdgeGeometry } from './edgeviews.js';
+import { renderEdge, renderMessage, renderEndpointMessage, renderSelfLoop, distanceToPolyline, computeEdgeGeometry } from './edgeviews.js';
 import { openQuickEdit, openConnectorEdit, closeQuickEdit } from '../ui/quickedit.js';
 
 const GRID = 10;
@@ -96,10 +96,15 @@ export class DiagramCanvas {
     for (const v of views) {
       if (!v.isEdge) rects.set(v._id, new Rect(v.x, v.y, v.width, v.height));
     }
-    // draw nodes first (containers/backdrops below their children), then edges on top.
+    // draw nodes first (backdrops below their children), then edges on top.
     const isBackdrop = (v) => v.$type === 'UMLSwimlaneVert' || v.$type === 'UMLSwimlaneHorz' || v.$type === 'UMLCompositeState' || v.$type === 'UMLCombinedFragment';
     const nodes = views.filter((v) => !v.isEdge)
-      .sort((a, b) => (isBackdrop(a) ? 0 : 1) - (isBackdrop(b) ? 0 : 1));
+      .sort((a, b) => {
+        const pa = isBackdrop(a) ? 0 : 1, pb = isBackdrop(b) ? 0 : 1;
+        if (pa !== pb) return pa - pb;
+        if (pa === 0) return (b.width * b.height) - (a.width * a.height); // bigger first → nested on top
+        return 0;
+      });
     const edges = views.filter((v) => v.isEdge);
     this._renderFrame(nodes);
     for (const v of nodes) this._renderNodeView(v);
@@ -147,6 +152,7 @@ export class DiagramCanvas {
       : v.$type === 'UMLSendSignal' ? 'sendsignal'
       : v.$type === 'UMLAcceptSignal' ? 'acceptsignal'
       : v.$type === 'UMLCombinedFragment' ? 'fragment'
+      : v.$type === 'UMLInteractionUse' ? 'ref'
       : v.$type === 'UMLNote' ? 'note' : 'class';
     const meta = renderNode(g, v, model, kind);
     g.dataset.id = v._id;
@@ -195,7 +201,7 @@ export class DiagramCanvas {
    * message's y so the arrow lands on the newly created object.
    */
   _applySequenceLayout(views) {
-    if (!this.diagram || !this.diagram.type === 'UMLSequenceDiagram') return;
+    if (!this.diagram || this.diagram.type !== 'UMLSequenceDiagram') return;
     const heads = new Map(views.filter((v) => v.$type === 'UMLLifeLine').map((v) => [v._id, v]));
     for (const e of views) {
       if (!e.isEdge || e.$type !== 'UMLMessage+create') continue;
@@ -230,16 +236,16 @@ export class DiagramCanvas {
     for (const e of views) {
       if (!e.isMessage) continue;
       const tail = byId.get(e.tail), head = byId.get(e.head);
-      if (!tail) continue;
+      if (!tail && !head) continue; // found/lost messages still activate their lifeline
       const push = (ll, y) => {
         if (!ysByLifeline.has(ll._id)) ysByLifeline.set(ll._id, []);
         ysByLifeline.get(ll._id).push(y);
       };
-      if (tail._id === e.head) {
+      if (tail && head && tail._id === e.head) {
         push(tail, e.y);          // self-message: loop spans [y-24, y+16]
       } else {
         if (head) push(head, e.y);
-        push(tail, e.y);
+        if (tail) push(tail, e.y);
       }
     }
     const merged = [];
@@ -272,10 +278,16 @@ export class DiagramCanvas {
     const g = svgEl('g', { class: 'edge-main' }, this.contentLayer);
     let meta;
     if (e.isMessage) {
-      const tailV = repository.lookup(e.tail);
-      const headV = repository.lookup(e.head);
-      if (!tailV || !headV) { g.remove(); return; }
-      meta = renderMessage(g, e, model, tailV, headV);
+      if (e.$type === 'UMLMessage+found' || e.$type === 'UMLMessage+lost') {
+        const ll = repository.lookup(e.$type === 'UMLMessage+found' ? e.head : e.tail);
+        if (!ll) { g.remove(); return; }
+        meta = renderEndpointMessage(g, e, model, ll);
+      } else {
+        const tailV = repository.lookup(e.tail);
+        const headV = repository.lookup(e.head);
+        if (!tailV || !headV) { g.remove(); return; }
+        meta = renderMessage(g, e, model, tailV, headV);
+      }
     } else if (e.tail === e.head) {
       // self-transition / self-association loop
       const rect = rects.get(e.tail);
@@ -401,6 +413,37 @@ export class DiagramCanvas {
     return best;
   }
 
+  /** smallest other combined fragment that encloses the given view (nesting) */
+  findEnclosingFragment(view) {
+    let best = null;
+    for (const v of this.diagram.elements || []) {
+      if (v.isEdge || v._id === view._id || v.$type !== 'UMLCombinedFragment') continue;
+      // a fragment cannot be nested into its own descendant
+      if (v.x >= view.x && v.y >= view.y &&
+          v.x + v.width <= view.x + view.width && v.y + v.height <= view.y + view.height) continue;
+      if (new Rect(v.x, v.y, v.width, v.height).contains(
+        view.x + view.width / 2, view.y + view.height / 2)) {
+        if (!best || v.width * v.height < best.width * best.height) best = v;
+      }
+    }
+    return best;
+  }
+
+  /** direct and indirect children (nested fragments / contained nodes) */
+  descendantsOf(containerId) {
+    const out = [];
+    const stack = [containerId];
+    while (stack.length) {
+      const id = stack.pop();
+      for (const v of this.diagram.elements || []) {
+        if (v.isEdge || v.container !== id) continue;
+        out.push(v);
+        stack.push(v._id);
+      }
+    }
+    return out;
+  }
+
   /** children (one level) of the given container views */
   childrenOfContainer(containerId, exclude = []) {
     const excluded = new Set(exclude);
@@ -421,9 +464,16 @@ export class DiagramCanvas {
       let rect = new Rect(v.x, v.y, v.width, v.height);
       if (v.$type === 'UMLActor') rect = new Rect(v.x - 20, v.y, v.width + 40, v.height + 20);
       if (v.$type === 'UMLLifeLine') {
-        // head box plus a narrow strip along the lifetime line
+        // head box, or a narrow strip along the center lifetime line
         const strip = 6 / this.zoom;
-        rect = new Rect(v.x - strip, v.y, v.width + strip * 2, v.height + (v.lifeHeight || 400));
+        const cx = v.x + v.width / 2;
+        const head = new Rect(v.x, v.y, v.width, v.height);
+        const line = new Rect(cx - strip, v.y + v.height, strip * 2, v.lifeHeight || 400);
+        if (head.contains(w.x, w.y) || line.contains(w.x, w.y)) {
+          const r = this.renderers.get(v._id);
+          return r || { view: v, kind: 'node', meta: { textSlots: {}, compartments: {} }, g: null };
+        }
+        continue;
       }
       if (rect.contains(w.x, w.y)) {
         const r = this.renderers.get(v._id);
@@ -439,16 +489,18 @@ export class DiagramCanvas {
       }
     }
     if (best) return best;
-    // big passive containers last
-    for (let i = views.length - 1; i >= 0; i--) {
-      const v = views[i];
-      if (v.isEdge || (v.$type !== 'Subject' && v.$type !== 'UMLNote' && v.$type !== 'UMLCombinedFragment' && !this.isContainerView(v))) continue;
-      if (new Rect(v.x, v.y, v.width, v.height).contains(w.x, w.y)) {
+    // big passive containers last — prefer the smallest (nested) one
+    let passive = null;
+    for (const v of views) {
+      if (v.isEdge) continue;
+      if (v.$type !== 'Subject' && v.$type !== 'UMLNote' && v.$type !== 'UMLCombinedFragment' && !this.isContainerView(v)) continue;
+      if (!new Rect(v.x, v.y, v.width, v.height).contains(w.x, w.y)) continue;
+      if (!passive || v.width * v.height < passive.view.width * passive.view.height) {
         const r = this.renderers.get(v._id);
-        return r || { view: v, kind: 'node', meta: { textSlots: {}, compartments: {} }, g: null };
+        passive = r || { view: v, kind: 'node', meta: { textSlots: {}, compartments: {} }, g: null };
       }
     }
-    return null;
+    return passive;
   }
 
   // ---------------- tools ----------------
@@ -602,12 +654,13 @@ export class DiagramCanvas {
     }
     repository.select(sel, this._primaryModel());
     const selectedViews = sel.map((sid) => this.renderers.get(sid)).filter(Boolean);
-    // moving a container drags its children along
+    // moving a container (or a fragment with nested content) drags descendants along
     const items = [];
     for (const r of selectedViews) {
       items.push({ view: r.view, orig: { x: r.view.x, y: r.view.y, points: (r.view.points || []).map((p) => ({ ...p })) } });
-      if (this.isContainerView(r.view)) {
-        for (const child of this.childrenOfContainer(r.view._id, sel)) {
+      if (this.isContainerView(r.view) || r.view.$type === 'UMLCombinedFragment') {
+        for (const child of this.descendantsOf(r.view._id)) {
+          if (sel.includes(child._id)) continue;
           items.push({ view: child, orig: { x: child.x, y: child.y, points: [] } });
         }
       }
@@ -720,7 +773,16 @@ export class DiagramCanvas {
   _drawConnectPreview(d) {
     this.overlayLayer.querySelectorAll('.connect-preview').forEach((n) => n.remove());
     const tailR = this.renderers.get(d.tailId);
-    if (!tailR) return;
+    if (!tailR) {
+      // found-message drag from empty canvas: preview a straight dashed line
+      if (!d.startPoint) return;
+      svgEl('path', {
+        d: `M ${d.startPoint.x} ${d.startPoint.y} L ${d.cur.x} ${d.cur.y}`,
+        fill: 'none', stroke: '#1390d6', 'stroke-dasharray': '5 4',
+        'stroke-width': 1.4 / this.zoom, 'vector-effect': 'non-scaling-stroke', class: 'connect-preview',
+      }, this.overlayLayer);
+      return;
+    }
     const tailRect = new Rect(tailR.view.x, tailR.view.y, tailR.view.width, tailR.view.height);
     const hit = this.hitTest(d.cur);
     let headRect = null;
@@ -766,16 +828,22 @@ export class DiagramCanvas {
 
     if (d.kind === 'move') {
       if (d.moved) {
-        // reassign containment: moved nodes land in whichever container covers them
+        // reassign containment: moved nodes land in whichever container covers them;
+        // fragments nest into other fragments only
         const containerChanges = [];
         for (const it of d.items) {
           const v = it.view;
-          if (v.isEdge || this.isContainerView(v)) continue;
-          const target = this.findContainerFor(v);
+          if (v.isEdge) continue;
+          if (this.isContainerView(v) && v.$type !== 'UMLCombinedFragment') continue;
+          const target = v.$type === 'UMLCombinedFragment'
+            ? this.findEnclosingFragment(v)
+            : this.findContainerFor(v);
           const from = v.container || null;
           const to = target ? target._id : null;
           if (from !== to) containerChanges.push({ v, from, to });
         }
+        // pushExecuted does not run redo: apply the containment change now
+        for (const ch of containerChanges) ch.v.container = ch.to;
         commandStack.pushExecuted({
           label: 'move',
           redo: () => {
@@ -870,10 +938,14 @@ export class DiagramCanvas {
       // have delivered a preview for fast or synthetic drags.
       const up = this.clientToWorld(e);
       const hit = this.hitTest(up);
+      const isLost = d.edgeType === 'UMLMessage+lost';
       const allowSelf = d.edgeType === 'UMLSelfTransition' || d.edgeType === 'UMLSelfMessage';
       const targetId = (hit && hit.kind === 'node' && (allowSelf || hit.view._id !== d.tailId)) ? hit.view._id : d.hoverTarget;
       if (targetId) {
-        d.onComplete(targetId, up);
+        d.onComplete(targetId, up, d.startPoint);
+      } else if (isLost) {
+        // dropped in empty space: the message is lost here
+        d.onComplete(null, up, d.startPoint);
       }
     }
   }
@@ -1013,7 +1085,26 @@ export class DiagramCanvas {
       this.createNodeAt(tool.nodeType, w, e);
       this.setTool(null); // StarUML keeps tool for repeat; single-shot is friendlier
     } else if (tool.kind === 'edge') {
-      // require a tail node; drag to head
+      const isFound = tool.edgeType === 'UMLMessage+found';
+      const isLost = tool.edgeType === 'UMLMessage+lost';
+      if (isFound) {
+        // found message: start anywhere (usually empty space), end on a lifeline
+        const d = {
+          kind: 'connect',
+          tailId: hit && hit.kind === 'node' ? hit.view._id : null,
+          startPoint: { x: w.x, y: w.y },
+          cur: w,
+          edgeType: tool.edgeType,
+          allowLoose: false,
+          onComplete: (headId, upPoint, startPoint) => {
+            this.createEndpointMessage('found', startPoint || d.startPoint, headId, upPoint);
+            this.setTool(null);
+          },
+        };
+        this.drag = d;
+        return;
+      }
+      // other edges require a tail node
       if (!hit || hit.kind !== 'node') {
         this.setStatusMessage('请从一个模型元素拖拽到另一个元素');
         return;
@@ -1023,9 +1114,10 @@ export class DiagramCanvas {
         tailId: hit.view._id,
         cur: w,
         edgeType: tool.edgeType,
-        allowLoose: false,
+        allowLoose: isLost,
         onComplete: (headId, upPoint) => {
-          this.createEdge(tool.edgeType, d.tailId, headId, upPoint);
+          if (isLost) this.createEndpointMessage('lost', { x: upPoint.x, y: upPoint.y }, d.tailId, upPoint);
+          else this.createEdge(tool.edgeType, d.tailId, headId, upPoint);
           this.setTool(null);
         },
       };
@@ -1034,6 +1126,38 @@ export class DiagramCanvas {
       this.createNodeAt('UMLNote', w, e);
       this.setTool(null);
     }
+  }
+
+  /** Found/Lost message: one end is an endpoint circle instead of a lifeline. */
+  createEndpointMessage(kind, point, otherId, yPoint) {
+    if (!this.diagram) return;
+    const isFound = kind === 'found';
+    const other = repository.lookup(otherId);
+    if (!other) return;
+    const otherModel = repository.lookup(other.modelRef);
+    const model = createModel('UMLMessage');
+    const tailId = isFound ? null : otherId;
+    const headId = isFound ? otherId : null;
+    const view = createEdgeView(isFound ? 'UMLMessage+found' : 'UMLMessage+lost', model._id, tailId, headId);
+    view.y = snap(yPoint.y, GRID);
+    view.endpointX = snap(point.x, GRID);
+    const parentModel = this._defaultOwnerFor(model);
+    const diagram = this.diagram;
+    compound('connect', [
+      { redo: () => repository.addChild(parentModel, model), undo: () => repository.removeChild(model) },
+      {
+        redo: () => { diagram.elements.push(view); view.__diagram = diagram; repository._reindex(); },
+        undo: () => {
+          const i = diagram.elements.indexOf(view);
+          if (i >= 0) diagram.elements.splice(i, 1);
+          repository._reindex();
+        },
+      },
+    ]);
+    repository.select([view._id], model);
+    this.setStatusMessage(isFound
+      ? `已添加发现消息 → ${otherModel ? otherModel.name : ''}`
+      : `已添加丢失消息 ← ${otherModel ? otherModel.name : ''}`);
   }
 
   createNodeAt(nodeType, w, e) {
@@ -1066,7 +1190,9 @@ export class DiagramCanvas {
     if (model) {
       ops.push({ redo: () => repository.addChild(parentModel, model), undo: () => repository.removeChild(model) });
     }
-    const target = this.findContainerFor(view);
+    const target = nodeType === 'UMLCombinedFragment'
+      ? this.findEnclosingFragment(view)
+      : this.findContainerFor(view);
     const toContainer = target ? target._id : null;
     ops.push({
       redo: () => { diagram.elements.push(view); view.__diagram = diagram; view.container = toContainer; repository._reindex(); },
@@ -1197,7 +1323,9 @@ export class DiagramCanvas {
     const extra = viewType === 'UMLLifeLine' ? { lifeHeight: 360 } : {};
     const view = createNodeView(viewType, model._id, x, y, extra);
     const diagram = this.diagram;
-    const target = this.findContainerFor(view);
+    const target = viewType === 'UMLCombinedFragment'
+      ? this.findEnclosingFragment(view)
+      : this.findContainerFor(view);
     const toContainer = target ? target._id : null;
     compound('drop view', [{
       redo: () => { diagram.elements.push(view); view.__diagram = diagram; view.container = toContainer; repository._reindex(); },
@@ -1241,7 +1369,7 @@ export class DiagramCanvas {
     if (!removals.length) return;
     const released = [];
     for (const r of removals) {
-      if (!this.isContainerView(r.view)) continue;
+      if (!this.isContainerView(r.view) && r.view.$type !== 'UMLCombinedFragment') continue;
       for (const ch of els) if (ch.container === r.view._id) released.push({ parent: r.view, child: ch });
     }
     removals.sort((a, b) => b.index - a.index);

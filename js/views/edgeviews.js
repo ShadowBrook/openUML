@@ -13,9 +13,52 @@ const ARROW = {
 };
 
 /**
- * Self-transition/self-association loop: exits the right side of the node,
- * loops out and re-enters the top. Returns meta.points for hit-testing.
+ * Found/Lost message: one end is a small filled circle (the message endpoint)
+ * instead of a lifeline.
  */
+export function renderEndpointMessage(g, view, model, lifelineView) {
+  const y = view.y;
+  const isFound = view.$type === 'UMLMessage+found';
+  const cx = lifelineView.x + lifelineView.width / 2;
+  const ex = (view.endpointX != null)
+    ? view.endpointX
+    : (isFound ? lifelineView.x - 150 : lifelineView.x + lifelineView.width + 150);
+  const line = view.lineColor || '#353535';
+  const fs = view.fontSize || 11;
+  const points = isFound ? [{ x: ex, y }, { x: cx, y }] : [{ x: cx, y }, { x: ex, y }];
+  const meta = { labels: [], points };
+
+  // filled endpoint circle
+  svgEl('circle', { cx: ex, cy: y, r: 4.5, fill: '#353535', stroke: '#353535', class: 'msg-endpoint' }, g);
+  // line from the circle edge to the lifeline
+  const d = isFound
+    ? `M ${ex + 4.5} ${y} L ${cx} ${y}`
+    : `M ${cx} ${y} L ${ex - 4.5} ${y}`;
+  svgEl('path', {
+    d, fill: 'none', stroke: line, 'stroke-width': 1,
+    'stroke-dasharray': view.lineStyle === 'dashed' ? '6 4' : 'none',
+    class: 'edge-path',
+  }, g);
+  // arrowhead: found → open arrow at the lifeline; lost → open arrow at the circle
+  const def = ARROW.open;
+  if (isFound) {
+    svgEl('path', { d: arrowPath(cx, y, 0, def), fill: 'none', stroke: line, 'stroke-width': def.stroke || 1.3, class: 'edge-head' }, g);
+  } else {
+    svgEl('path', { d: arrowPath(ex - 5, y, Math.PI, def), fill: 'none', stroke: line, 'stroke-width': def.stroke || 1.3, class: 'edge-head' }, g);
+  }
+  const labelParts = [];
+  if (view.stereotype) labelParts.push(view.stereotype);
+  if (model?.name) labelParts.push(model.name);
+  if (labelParts.length) {
+    const mid = { x: (ex + cx) / 2, y };
+    const t = svgEl('text', { x: mid.x, y: y - 6, 'text-anchor': 'middle', 'font-size': fs, fill: view.fontColor || '#353535', 'font-style': 'italic' }, g);
+    t.textContent = labelParts.join(' ');
+    const textW = Math.max(50, t.textContent.length * fs * 0.55);
+    meta.labels.push({ el: t, kind: 'name', box: { x: mid.x - textW / 2, y: y - fs - 8, width: textW, height: fs + 4 } });
+  }
+  return meta;
+}
+
 export function renderSelfLoop(g, edge, model, rect) {
   const line = edge.lineColor || '#353535';
   const fs = edge.fontSize || 11;
