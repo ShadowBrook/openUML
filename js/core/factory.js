@@ -16,7 +16,7 @@ export function createModel(type, name, extra = {}) {
   };
   if (type === 'UMLClass' || type === 'UMLInterface' || type === 'UMLDataType'
       || type === 'UMLInformationItem' || type === 'UMLCollaboration' || type === 'UMLStereotype'
-      || type === 'UMLSignal') {
+      || type === 'UMLSignal' || type === 'UMLAssociationClass') {
     el.attributes = [];
     el.operations = [];
     el.templateParameters = [];
@@ -75,6 +75,7 @@ export function defaultName(type) {
     UMLClass: 'Class', UMLInterface: 'Interface', UMLEnumeration: 'Enumeration',
     UMLDataType: 'DataType', UMLPrimitiveType: 'PrimitiveType',
     UMLSignal: 'Signal', UMLFrame: 'Frame', UMLRealization: 'Realization',
+    UMLAssociationClass: 'AssociationClass',
     UMLCentralBufferNode: 'CentralBuffer', UMLDataStoreNode: 'DataStore',
     UMLActivityParameterNode: 'Parameter', UMLStructuredActivityNode: 'StructuredActivity',
     UMLInterruptibleRegion: 'Region', UMLAcceptTimeEvent: 'TimeEvent',

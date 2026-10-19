@@ -6,7 +6,7 @@ import { repository } from '../core/repository.js';
 import { commandStack, compound } from '../core/commands.js';
 import { createModel, createNodeView, createEdgeView, createAttribute } from '../core/factory.js';
 import { renderNode, svgEl, TIMING_LANE_LABEL_W, viewW, viewH } from './nodeviews.js';
-import { renderEdge, renderMessage, renderEndpointMessage, renderSelfLoop, renderTimingMessage, distanceToPolyline, computeEdgeGeometry } from './edgeviews.js';
+import { renderEdge, renderMessage, renderEndpointMessage, renderSelfLoop, renderTimingMessage, renderAssociationClassLink, distanceToPolyline, computeEdgeGeometry } from './edgeviews.js';
 import { openQuickEdit, openConnectorEdit, closeQuickEdit } from '../ui/quickedit.js';
 
 const DEFAULT_GRID = 10;
@@ -195,6 +195,7 @@ export class DiagramCanvas {
       : v.$type === 'UMLPrimitiveType' ? 'primitive'
       : v.$type === 'UMLFrame' ? 'frame'
       : v.$type === 'UMLNaryAssociation' ? 'nary'
+      : v.$type === 'UMLAssociationClass' ? 'class'
       : v.$type === 'UMLMetaClass' ? 'metaclass'
       : v.$type === 'UMLStereotype' ? 'stereotype'
       : v.$type === 'UMLCollaboration' ? 'collaboration'
@@ -387,7 +388,16 @@ export class DiagramCanvas {
     const model = repository.lookup(e.modelRef);
     const g = svgEl('g', { class: 'edge-main' }, this.contentLayer);
     let meta;
-    if (e.$type === 'UMLTimeMessage') {
+    if (e.$type === 'UMLAssociationClassLink') {
+      const classV = repository.lookup(e.tail);
+      const assoc = repository.lookup(e.anchorEdge);
+      const classRect = classV && rects.get(classV._id);
+      const tailRect = assoc && rects.get(assoc.tail);
+      const headRect = assoc && rects.get(assoc.head);
+      if (!classRect || !tailRect || !headRect) { g.remove(); return; }
+      const assocPoints = computeEdgeGeometry(assoc, tailRect, headRect).points;
+      meta = renderAssociationClassLink(g, e, classRect, assocPoints);
+    } else if (e.$type === 'UMLTimeMessage') {
       const tailV = repository.lookup(e.tail);
       const headV = repository.lookup(e.head);
       if (!tailV || !headV) { g.remove(); return; }
@@ -449,8 +459,12 @@ export class DiagramCanvas {
   /** Rebuild only the listed edges; used by drag previews. */
   _rerenderEdges(ids) {
     if (!this.diagram || !ids.size) return;
+    const expanded = new Set(ids);
+    for (const v of this.diagram.elements || []) {
+      if (v.$type === 'UMLAssociationClassLink' && ids.has(v.anchorEdge)) expanded.add(v._id);
+    }
     const rects = this._currentRects();
-    for (const id of ids) {
+    for (const id of expanded) {
       const edge = repository.lookup(id);
       if (!edge || !edge.isEdge) continue;
       const old = this.renderers.get(id);
@@ -495,7 +509,7 @@ export class DiagramCanvas {
         }
       }
       // waypoint editing for a single selected edge
-      if (r && r.kind === 'edge' && !r.view.isMessage) {
+      if (r && r.kind === 'edge' && !r.view.isMessage && r.view.$type !== 'UMLAssociationClassLink') {
         const pts = r.meta.points || [];
         const s = 4 / this.zoom;
         // existing waypoints (interior points): square handles, draggable, double-click removes
@@ -1472,6 +1486,40 @@ export class DiagramCanvas {
       : `已添加丢失消息 ← ${otherModel ? otherModel.name : ''}`);
   }
 
+  createAssociationClassAt(w, assocView) {
+    if (!this.diagram) return;
+    let x = snap(w.x + 20, this.gridSize);
+    let y = snap(w.y + 40, this.gridSize);
+    const model = createModel('UMLAssociationClass');
+    const classView = createNodeView('UMLAssociationClass', model._id, x, y);
+    const linkView = createEdgeView('UMLAssociationClassLink', '', classView._id, null, {
+      anchorEdge: assocView._id,
+    });
+    const parentModel = this._defaultOwnerFor(model);
+    const diagram = this.diagram;
+    compound('create association class', [
+      { redo: () => repository.addChild(parentModel, model), undo: () => repository.removeChild(model) },
+      {
+        redo: () => { diagram.elements.push(classView); classView.__diagram = diagram; repository._reindex(); },
+        undo: () => {
+          const i = diagram.elements.indexOf(classView);
+          if (i >= 0) diagram.elements.splice(i, 1);
+          repository._reindex();
+        },
+      },
+      {
+        redo: () => { diagram.elements.push(linkView); linkView.__diagram = diagram; repository._reindex(); },
+        undo: () => {
+          const i = diagram.elements.indexOf(linkView);
+          if (i >= 0) diagram.elements.splice(i, 1);
+          repository._reindex();
+        },
+      },
+    ]);
+    repository.select([classView._id], model);
+    this.setStatusMessage('已创建关联类并连接到关联');
+  }
+
   createNodeAt(nodeType, w, e, hit = null) {
     if (!this.diagram) return;
     let x = w.x, y = w.y;
@@ -1479,6 +1527,11 @@ export class DiagramCanvas {
     let model, view;
     let forcedContainer = null;
 
+    if (nodeType === 'UMLAssociationClass' && hit && hit.kind === 'edge'
+        && hit.view.$type === 'UMLAssociation') {
+      this.createAssociationClassAt(w, hit.view);
+      return;
+    }
     if (nodeType === 'UMLNaryAssociation') {
       model = createModel('UMLAssociation', '');
       view = createNodeView('UMLNaryAssociation', model._id, x, y);
@@ -1765,6 +1818,7 @@ export class DiagramCanvas {
       UMLAction: 'UMLAction', UMLComponent: 'UMLComponent', UMLArtifact: 'UMLArtifact',
       UMLNode: 'UMLNode', UMLObject: 'UMLObject', UMLSubsystem: 'UMLSubsystem',
       UMLSignal: 'UMLSignal', UMLPrimitiveType: 'UMLPrimitiveType', UMLFrame: 'UMLFrame',
+      UMLAssociationClass: 'UMLAssociationClass',
       UMLCentralBufferNode: 'UMLCentralBufferNode', UMLDataStoreNode: 'UMLDataStoreNode',
       UMLActivityParameterNode: 'UMLActivityParameterNode', UMLInputPin: 'UMLInputPin',
       UMLOutputPin: 'UMLOutputPin', UMLStructuredActivityNode: 'UMLStructuredActivityNode',
@@ -1835,7 +1889,8 @@ export class DiagramCanvas {
     while (changed) {
       changed = false;
       for (const v of els) {
-        if (v.isEdge && !removeIds.has(v._id) && (removeIds.has(v.tail) || removeIds.has(v.head))) {
+        if (v.isEdge && !removeIds.has(v._id) && (removeIds.has(v.tail) || removeIds.has(v.head)
+          || (v.$type === 'UMLAssociationClassLink' && removeIds.has(v.anchorEdge)))) {
           removeIds.add(v._id);
           changed = true;
         }
@@ -1906,7 +1961,8 @@ export class DiagramCanvas {
       changed = false;
       for (const d of diagrams) {
         for (const v of d.elements || []) {
-          if (v.isEdge && !removedIds.has(v._id) && (removedIds.has(v.tail) || removedIds.has(v.head))) {
+          if (v.isEdge && !removedIds.has(v._id) && (removedIds.has(v.tail) || removedIds.has(v.head)
+            || (v.$type === 'UMLAssociationClassLink' && removedIds.has(v.anchorEdge)))) {
             removedIds.add(v._id);
             changed = true;
           }

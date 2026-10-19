@@ -160,7 +160,7 @@ export class PropertyEditor {
 
     // Display options for class-like nodes
     if (this.currentView && ['UMLClass', 'UMLInterface', 'UMLDataType', 'UMLSignal',
-      'UMLStereotype', 'UMLInformationItem'].includes(model.type)) {
+      'UMLStereotype', 'UMLInformationItem', 'UMLAssociationClass'].includes(model.type)) {
       const sec = this._section('显示 (Display)');
       this._row(sec, '构造型显示', this.currentView.stereotypeDisplay || 'label',
         (v) => this._setView(this.currentView, 'stereotypeDisplay', v), 'select',

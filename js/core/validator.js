@@ -150,6 +150,16 @@ export function validateProject(repo, root = repo.root) {
         });
       }
       if (view.isEdge) {
+        if (view.$type === 'UMLAssociationClassLink' && (!view.anchorEdge || !ids.has(view.anchorEdge))) {
+          add({
+            severity: 'error',
+            code: 'dangling-association-class-link',
+            message: '关联类连接线没有指向当前图表中的关联',
+            diagramId: diagram._id,
+            viewId: view._id,
+            label: viewLabel,
+          });
+        }
         for (const [side, id] of [['起点', view.tail], ['终点', view.head]]) {
           if (id && !ids.has(id)) {
             add({

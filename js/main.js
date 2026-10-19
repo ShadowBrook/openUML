@@ -449,7 +449,11 @@ function copySelection({ toast = true } = {}) {
   if (!views.length) return false;
   const viewIds = new Set(views.map((v) => v._id));
   // edges are only copied when both endpoints travel along
-  const clipViews = views.filter((v) => !v.isEdge || (viewIds.has(v.tail) && viewIds.has(v.head)));
+  const clipViews = views.filter((v) => {
+    if (!v.isEdge) return true;
+    if (v.$type === 'UMLAssociationClassLink') return viewIds.has(v.anchorEdge);
+    return viewIds.has(v.tail) && viewIds.has(v.head);
+  });
   const modelIds = [...new Set(clipViews.map((v) => v.modelRef).filter(Boolean))];
   const models = modelIds.map((id) => repository.lookup(id)).filter((m) => m && m.__parent);
   const container = { _id: '__clip__', type: '__Clip', ownedElements: models, elements: clipViews };
@@ -482,6 +486,7 @@ function pasteClipboard({ toast = true } = {}) {
     if (n.end1ReferenceId && idMap.has(n.end1ReferenceId)) n.end1ReferenceId = idMap.get(n.end1ReferenceId);
     if (n.end2ReferenceId && idMap.has(n.end2ReferenceId)) n.end2ReferenceId = idMap.get(n.end2ReferenceId);
     if (n.container && idMap.has(n.container)) n.container = idMap.get(n.container);
+    if (n.anchorEdge && idMap.has(n.anchorEdge)) n.anchorEdge = idMap.get(n.anchorEdge);
   };
   const newModels = (clone.ownedElements || []);
   for (const m of newModels) remap(m);
@@ -945,6 +950,7 @@ function buildMenus() {
         { label: '添加类', action: () => addModelElement('UMLClass') },
         { label: '添加接口', action: () => addModelElement('UMLInterface') },
         { label: '添加枚举', action: () => addModelElement('UMLEnumeration') },
+        { label: '添加关联类', action: () => addModelElement('UMLAssociationClass') },
         { label: '添加信号', action: () => addModelElement('UMLSignal') },
         { label: '添加原始类型', action: () => addModelElement('UMLPrimitiveType') },
         { label: '添加框架', action: () => addModelElement('UMLFrame') },
@@ -1023,7 +1029,7 @@ function elementContextItems(node, canvas) {
     return items;
   }
   if (['UMLClass', 'UMLInterface', 'UMLEnumeration', 'UMLDataType', 'UMLSignal',
-    'UMLInformationItem', 'UMLStereotype', 'UMLCollaboration'].includes(node.type)) {
+    'UMLAssociationClass', 'UMLInformationItem', 'UMLStereotype', 'UMLCollaboration'].includes(node.type)) {
     items.push(
       { label: '添加属性', action: () => addMember(node, 'attributes') },
       { label: '添加操作', action: () => addMember(node, 'operations') },
@@ -1067,7 +1073,7 @@ function showInDiagram(model, canvas) {
     return;
   }
   if (!['UMLClass', 'UMLInterface', 'UMLEnumeration', 'UMLDataType', 'UMLSignal',
-    'UMLPrimitiveType', 'UMLFrame', 'UMLCentralBufferNode', 'UMLDataStoreNode',
+    'UMLPrimitiveType', 'UMLFrame', 'UMLAssociationClass', 'UMLCentralBufferNode', 'UMLDataStoreNode',
     'UMLActivityParameterNode', 'UMLInputPin', 'UMLOutputPin',
     'UMLStructuredActivityNode', 'UMLInterruptibleRegion', 'UMLAcceptTimeEvent',
     'UMLActor', 'UMLUseCase', 'UMLPackage',

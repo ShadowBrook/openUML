@@ -429,6 +429,36 @@ export function midPoint(points) {
   return points[0];
 }
 
+/** Closest point on a polyline (used to attach association-class links). */
+export function closestPointOnPolyline(p, points) {
+  let best = null, bestD = Infinity;
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i], b = points[i + 1];
+    const l2 = (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
+    let t = l2 === 0 ? 0 : ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / l2;
+    t = Math.max(0, Math.min(1, t));
+    const q = { x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) };
+    const d = Math.hypot(p.x - q.x, p.y - q.y);
+    if (d < bestD) { bestD = d; best = q; }
+  }
+  return best || points[0];
+}
+
+export function renderAssociationClassLink(g, view, classRect, assocPoints) {
+  const line = view.lineColor || '#353535';
+  if (!classRect || !assocPoints || assocPoints.length < 2) {
+    return { labels: [], points: [] };
+  }
+  const center = { x: classRect.cx, y: classRect.cy };
+  const attach = closestPointOnPolyline(center, assocPoints);
+  const border = borderIntersect(classRect, attach);
+  svgEl('line', {
+    x1: border.x, y1: border.y, x2: attach.x, y2: attach.y,
+    stroke: line, 'stroke-width': 1, 'stroke-dasharray': '6 4', class: 'edge-path',
+  }, g);
+  return { labels: [], points: [border, attach] };
+}
+
 /** distance from point to polyline — for hit testing */
 export function distanceToPolyline(p, points) {
   let best = Infinity;
