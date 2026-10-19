@@ -253,6 +253,28 @@ function openDiagram(diagram) {
   persistTabs();
 }
 
+// interaction overview: double-click a ref frame / inline interaction to open
+// (or create) the interaction as an editable sequence-diagram tab
+document.addEventListener('open-interaction', (e) => {
+  const name = (e.detail?.name || '').trim();
+  if (!name) return;
+  let target = null;
+  repository.walk((n) => {
+    if (!target && n.type?.endsWith('Diagram') && (n.name || '') === name) target = n;
+  });
+  if (!target) {
+    const parent = repository.lookup(e.detail?.parentId)?.__parent || repository.root;
+    target = createDiagram('UMLSequenceDiagram', name);
+    commandStack.exec({
+      label: 'add diagram',
+      redo: () => repository.addChild(parent, target),
+      undo: () => repository.removeChild(target),
+    });
+  }
+  openDiagram(target);
+  app.canvas.setStatusMessage(`已打开交互「${name}」`);
+});
+
 function closeDiagram(diagram) {
   const i = app.openDiagrams.indexOf(diagram);
   if (i < 0) return;
@@ -1251,7 +1273,7 @@ function boot() {
   canvas.showGrid = prefs.showGrid;
   canvas.snapToGrid = prefs.snapToGrid;
   canvas.autoResize = prefs.autoResize;
-  window.__internals = { createNodeView, createModel, createDiagram };
+  window.__internals = { createNodeView, createModel, createDiagram, app, openDiagram };
 
   app.explorer = new ModelExplorer(document.getElementById('model-explorer'), {
     onSelect: (node) => {

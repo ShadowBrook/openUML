@@ -41,9 +41,18 @@ export function createModel(type, name, extra = {}) {
   }
   if (type === 'UMLCollaborationUse') {
     el.typeName = extra.typeName ?? '';
+    // StarUML UMLRoleBinding: collaboration role → part binding
+    el.roleBindings = extra.roleBindings ?? [];
+    el.gates = extra.gates ?? [];
+  }
+  if (type === 'UMLInteraction' || type === 'UMLInteractionUse') {
+    el.gates = extra.gates ?? [];
   }
   if (type === 'UMLInformationFlow') {
     el.conveyed = extra.conveyed ?? [];
+    el.realizingConnectors = extra.realizingConnectors ?? [];
+    el.realizingActivityEdges = extra.realizingActivityEdges ?? [];
+    el.realizingMessages = extra.realizingMessages ?? [];
   }
   if (type === 'UMLCompositeConnector') {
     el.connectorKind = extra.connectorKind ?? 'assembly';

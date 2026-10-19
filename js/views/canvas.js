@@ -416,11 +416,18 @@ export class DiagramCanvas {
   /**
    * Timing diagram: consecutive state/condition bands on a lane are joined by
    * vertical value transitions at the x where the next band starts.
+   * Lanes with `advanceFromSegments` derive the value line from their time
+   * segments instead: each named segment holds one state level, and the value
+   * advances vertically at every segment boundary (StarUML state-advance).
    */
   _renderTimingTransitions(views) {
     if (!this.diagram || this.diagram.type !== 'UMLTimingDiagram') return;
     for (const lane of views) {
       if (lane.$type !== 'UMLTimingLifeline') continue;
+      if (lane.advanceFromSegments) {
+        this._renderTimingSegmentAdvance(lane, views);
+        continue;
+      }
       const states = views
         .filter((v) => !v.isEdge && v.$type === 'UMLTimingState' && v.container === lane._id)
         .sort((a, b) => a.x - b.x);
@@ -433,6 +440,40 @@ export class DiagramCanvas {
           x1: cur.x, y1, x2: cur.x, y2,
           stroke: cur.lineColor || prev.lineColor || '#353535', 'stroke-width': 1.4,
         }, this.contentLayer);
+      }
+    }
+  }
+
+  /** Value line derived from named time segments: one level per state name. */
+  _renderTimingSegmentAdvance(lane, views) {
+    const segs = views
+      .filter((v) => !v.isEdge && v.$type === 'UMLTimeSegment' && v.container === lane._id)
+      .sort((a, b) => a.x - b.x)
+      .filter((s) => {
+        const m = s.modelRef ? repository.lookup(s.modelRef) : null;
+        return m && m.name;
+      });
+    if (segs.length < 2) return;
+    const levels = [];
+    for (const s of segs) {
+      const name = repository.lookup(s.modelRef).name;
+      if (!levels.includes(name)) levels.push(name);
+    }
+    const laneMid = lane.y + viewH(lane) / 2;
+    const step = 9;
+    const levelY = (name) => laneMid - ((levels.length - 1) / 2 - levels.indexOf(name)) * step;
+    const stroke = lane.lineColor || '#353535';
+    for (let i = 0; i < segs.length; i++) {
+      const seg = segs[i];
+      const y = levelY(repository.lookup(seg.modelRef).name);
+      const x1 = i === 0 ? Math.max(lane.x + TIMING_LANE_LABEL_W + 6, seg.x - 24) : segs[i - 1].x + viewW(segs[i - 1]);
+      const x2 = i === segs.length - 1 ? seg.x + viewW(seg) + 24 : segs[i + 1].x;
+      svgEl('line', { x1, y1: y, x2, y2: y, stroke, 'stroke-width': 1.4 }, this.contentLayer);
+      if (i > 0) {
+        const py = levelY(repository.lookup(segs[i - 1].modelRef).name);
+        if (Math.abs(py - y) > 0.5) {
+          svgEl('line', { x1: seg.x, y1: py, x2: seg.x, y2: y, stroke, 'stroke-width': 1.4 }, this.contentLayer);
+        }
       }
     }
   }
@@ -918,6 +959,11 @@ export class DiagramCanvas {
           baseWidth: r.view.width, baseHeight: r.view.height,
           autoW: r.view.__autoW, autoH: r.view.__autoH,
         },
+        // duration constraints bracketing this segment (original positions
+        // captured here so undo restores them exactly)
+        followers: (this.diagram.elements || [])
+          .filter((f) => !f.isEdge && f.$type === 'UMLDurationConstraint' && f.targetRef === r.view._id)
+          .map((f) => ({ f, before: { x: f.x, width: f.width } })),
       };
       return;
     }
@@ -972,6 +1018,14 @@ export class DiagramCanvas {
         }
       }
     }
+    // duration constraints bracketing a moved segment travel with it
+    for (const v of this.diagram.elements || []) {
+      if (!v.isEdge && v.$type === 'UMLDurationConstraint' && v.targetRef
+        && !items.some((i) => i.view._id === v._id)
+        && items.some((i) => i.view._id === v.targetRef)) {
+        items.push({ view: v, orig: { x: v.x, y: v.y, points: [] } });
+      }
+    }
     this.drag = { kind: 'move', start: w, moved: false, items };
   }
 
@@ -1002,6 +1056,18 @@ export class DiagramCanvas {
         const first = d.items[0];
         const nx = snap(first.orig.x + dx, this.gridSize), ny = snap(first.orig.y + dy, this.gridSize);
         dx = nx - first.orig.x; dy = ny - first.orig.y;
+      }
+      // timing diagrams: lock time-axis elements to the lane's uniform tick grid
+      if (this.diagram && this.diagram.type === 'UMLTimingDiagram') {
+        const first = d.items[0].view;
+        const lockable = ['UMLTimingState', 'UMLTimeSegment', 'UMLTimeTick', 'UMLTimeConstraint', 'UMLDurationConstraint'];
+        if (d.items.length === 1 && lockable.includes(first.$type)) {
+          const lane = first.$type === 'UMLTimingLifeline' ? first
+            : repository.lookup(first.container);
+          const step = (lane && lane.tickInterval) || 20;
+          const base = (lane ? lane.x + TIMING_LANE_LABEL_W : 0);
+          dx = Math.round((d.items[0].orig.x + dx - base) / step) * step + base - d.items[0].orig.x;
+        }
       }
       if (Math.abs(dx) + Math.abs(dy) > 0) d.moved = true;
       const movedNodes = new Set();
@@ -1054,6 +1120,16 @@ export class DiagramCanvas {
         old.g.remove();
         this.renderers.delete(view._id);
         this._renderNodeView(view);
+      }
+      // duration constraints keep bracketing the resized segment (live preview;
+      // the commit below records explicit before/after so undo stays exact)
+      for (const f of this.diagram.elements || []) {
+        if (!f.isEdge && f.$type === 'UMLDurationConstraint' && f.targetRef === view._id) {
+          f.x = view.x;
+          f.width = view.width;
+          const rf = this.renderers.get(f._id);
+          if (rf) { rf.g.remove(); this.renderers.delete(f._id); this._renderNodeView(f); }
+        }
       }
       const edgeIds = new Set();
       for (const e of this.diagram.elements || []) {
@@ -1238,17 +1314,20 @@ export class DiagramCanvas {
         width: orig.baseWidth, height: orig.baseHeight,
         autoW: orig.autoW, autoH: orig.autoH,
       };
+      const followers = d.followers || [];
       commandStack.pushExecuted({
         label: 'resize',
         redo: () => {
           Object.assign(view, nw);
           delete view.__autoW; delete view.__autoH;
+          for (const { f } of followers) { f.x = nw.x; f.width = nw.width; }
           this.requestRender();
         },
         undo: () => {
           Object.assign(view, { x: before.x, y: before.y, width: before.width, height: before.height });
           if (before.autoW == null) delete view.__autoW; else view.__autoW = before.autoW;
           if (before.autoH == null) delete view.__autoH; else view.__autoH = before.autoH;
+          for (const { f, before: fb } of followers) { f.x = fb.x; f.width = fb.width; }
           this.requestRender();
         },
       });
@@ -1392,6 +1471,13 @@ export class DiagramCanvas {
     const hit = this.hitTest(w);
     if (!hit) { closeQuickEdit(); return; }
     const { view, meta } = hit;
+    // interaction overview: double-click opens the referenced interaction as an
+    // editable sequence-diagram tab (created on demand)
+    if (hit.kind === 'node' && ['UMLInteractionUse', 'UMLInteractionUseInOverview', 'UMLInteractionInOverview'].includes(view.$type)) {
+      const model = repository.lookup(view.modelRef);
+      document.dispatchEvent(new CustomEvent('open-interaction', { detail: { name: model?.name || '', parentId: view.modelRef } }));
+      return;
+    }
     // StarUML behavior: double-clicking an element opens its QuickEdit popup
     if (hit.kind === 'node') {
       const model = repository.lookup(view.modelRef);
@@ -1736,6 +1822,15 @@ export class DiagramCanvas {
       view = createNodeView('UMLTimeTick', '', x, lane.y + viewH(lane) - 11);
       view.text = 't';
       forcedContainer = lane._id;
+    } else if (nodeType === 'UMLDurationConstraint' && hit && hit.kind === 'node'
+        && hit.view.$type === 'UMLTimeSegment') {
+      // auto-bracket the duration constraint around the target segment
+      const seg = hit.view;
+      model = createModel('UMLDurationConstraint');
+      view = createNodeView('UMLDurationConstraint', model._id, seg.x, seg.y - 20);
+      view.width = viewW(seg);
+      view.height = 20;
+      view.targetRef = seg._id;
     } else if (nodeType === 'UMLNote') {
       model = createModel('UMLNote', 'Note');
       model.documentation = '';

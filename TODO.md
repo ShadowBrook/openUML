@@ -25,20 +25,25 @@
 ### 已实现图内的元素与编辑缺口
 
 - **复合结构图**
-  - [ ] 协作内部关系绑定（ConnectableElement 角色到部件的绑定）
+  - [x] 协作内部关系绑定：协作使用的 roleBindings（角色 → 部件）属性面板维护；
+        部件/端口间的连接线端点即角色绑定
   - [x] 连接线的 assembly / delegation 语义与端口 isConjugated 显示
-  - [ ] 协作使用绑定到具体协作（当前仅 `name: 协作类型` 文本）
+  - [x] 协作使用绑定到具体协作（`type` 引用 + roleBindings 列表）
 - **Timing 时序图**
-  - [ ] 时间轴锁定与统一刻度；状态带拖拽时保持时间对齐
-  - [ ] 基于 TimeSegment 的状态推进语义（当前为区间标记）
-  - [ ] 持续时间约束随状态段自动括住起止点
+  - [x] 时间轴锁定与统一刻度：时间类图元拖拽按生命线 `tickInterval` 网格吸附
+        （属性面板可调刻度间隔）
+  - [x] 基于 TimeSegment 的状态推进：开启「状态由时间段推进」后，值线由命名
+        时间段推导（每个状态名一个电平，边界处垂直跳变）
+  - [x] 持续时间约束自动括住：点击时间段创建时自动对齐其起止点，随段移动/缩放跟随
 - **交互概览图**
-  - [ ] 内联交互嵌入可编辑的完整序列图（当前为缩略生命线示意）
-  - [ ] 交互引用双击跳转到被引用交互；Gate 支持
+  - [x] 内联交互 / 交互引用双击打开同名序列图页签（不存在时自动创建），获得
+        完整可编辑的序列图
+  - [x] Gate 支持（frame 边缘信息出入口，名称/边/位置可编辑并渲染）
 - **信息流图**
   - [x] 信息流的 conveyed 信息项列表（属性面板维护并显示在标签）
-  - [ ] 信息流方向/传送语义与 realizing 关联
-  - [ ] realizingConnectors / realizingActivityEdges / realizingMessages 关联
+  - [x] 信息流方向语义（单向/双向/无方向，箭头随动）
+  - [x] realizingConnectors / realizingActivityEdges / realizingMessages 关联
+        （属性面板从项目元素中选取，转换器映射 `.mdj` 引用）
 - **Profile 图**
   - [x] 构造型图标（UMLStereotype 图标字符字段，装饰/图标显示时绘制）
   - [x] 扩展多重性与 Profile 包应用（`«profile»`）

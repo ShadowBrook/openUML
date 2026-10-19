@@ -144,8 +144,28 @@ function decorationShift(sd) {
   return sd === 'decoration' || sd === 'decoration-label' ? SD_ICON_SIZE + SD_ICON_PAD : 0;
 }
 
-function drawStereotypeIcon(g, r, stereo, line, fontColor) {
-  svgEl('rect', { x: r.x, y: r.y, width: r.w, height: r.h, fill: '#ffffff', stroke: line, 'stroke-width': 1 }, g);
+/** Interaction-frame gates: small squares on the frame border with name labels. */
+function drawGates(g, view, r, fs, line, fontColor) {
+  const gates = view.gates || [];
+  const size = 7;
+  for (const gate of gates) {
+    if (!gate || !gate.name) continue;
+    const ratio = Math.min(1, Math.max(0, gate.ratio ?? 0.5));
+    let gx, gy, lx, ly, anchor = 'middle';
+    if (gate.side === 'top') { gx = r.x + r.w * ratio; gy = r.y; lx = gx; ly = gy - fs - 2; }
+    else if (gate.side === 'bottom') { gx = r.x + r.w * ratio; gy = r.y + r.h; lx = gx; ly = gy + fs + 2; }
+    else if (gate.side === 'left') { gx = r.x; gy = r.y + r.h * ratio; lx = gx - 4; ly = gy + fs * 0.35; anchor = 'end'; }
+    else { gx = r.x + r.w; gy = r.y + r.h * ratio; lx = gx + 4; ly = gy + fs * 0.35; anchor = 'start'; }
+    svgEl('rect', {
+      x: gx - size / 2, y: gy - size / 2, width: size, height: size,
+      fill: fontColor, stroke: line, 'stroke-width': 0.8,
+    }, g);
+    const t = svgEl('text', { x: lx, y: ly, 'text-anchor': anchor, 'font-size': fs - 2, fill: fontColor }, g);
+    t.textContent = gate.name;
+  }
+}
+
+function drawStereotypeIcon(g, r, stereo, line, fontColor) {  svgEl('rect', { x: r.x, y: r.y, width: r.w, height: r.h, fill: '#ffffff', stroke: line, 'stroke-width': 1 }, g);
   if (stereo && stereo.icon) {
     const t = svgEl('text', {
       x: r.x + r.w / 2, y: r.y + r.h / 2 + Math.min(r.w, r.h) * 0.22,
@@ -968,6 +988,7 @@ export function renderNode(g, view, model, kind) {
         'font-size': fs, fill: fontColor,
       }, g);
       t.textContent = model.name;
+      drawGates(g, view, { x, y, w, h }, fs, line, fontColor);
       meta.textSlots.name = { box: new Rect(x, y + tabH, w, h - tabH), text: model.name, field: 'name', align: 'center' };
       break;
     }
@@ -1128,6 +1149,7 @@ export function renderNode(g, view, model, kind) {
           stroke: line, 'stroke-width': 0.8, 'stroke-dasharray': '4 3',
         }, g);
       }
+      drawGates(g, view, { x, y, w, h }, fs, line, fontColor);
       meta.textSlots.name = { box: new Rect(x + tw + 10, y, w - tw - 10, tabH), text: model.name, field: 'name', align: 'center' };
       break;
     }

@@ -475,6 +475,17 @@ class Converter:
                 if name:
                     conveyed.append({'_id': self.nid('c'), '$type': 'UMLClassifier', 'name': name})
             model['conveyed'] = conveyed
+            for field, src in (('realizingConnectors', 'realizingConnectors'),
+                               ('realizingActivityEdges', 'realizingActivityEdges'),
+                               ('realizingMessages', 'realizingMessages')):
+                refs = []
+                for item in sm.get(src) or []:
+                    rid = ref(item)
+                    mapped = self.model_map.get(rid)
+                    if mapped:
+                        refs.append(mapped['_id'])
+                if refs:
+                    model[field] = refs
         if our_type == 'UMLConnector':
             model['connectorKind'] = clean_text(sm.get('kind')) or 'assembly'
         if our_type == 'UMLExtension':

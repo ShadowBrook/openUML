@@ -422,8 +422,15 @@ export function renderEdge(g, edge, model, tailRect, headRect, opts = {}) {
       fill: 'none', stroke: line, 'stroke-width': 1.2, class: 'edge-head',
     }, g);
   } else {
-    drawArrow(headEnd.x, headEnd.y, headEnd.angle, edge.headArrow, 'edge-head');
-    drawArrow(tailEnd.x, tailEnd.y, tailEnd.angle, edge.tailArrow, 'edge-tail');
+    let headArrow = edge.headArrow, tailArrow = edge.tailArrow;
+    // information flow direction semantics: bidirectional/none override the arrowheads
+    if (model?.type === 'UMLInformationFlow') {
+      const dir = edge.direction || model.direction || 'unidirectional';
+      if (dir === 'bidirectional') tailArrow = 'open';
+      else if (dir === 'none') headArrow = 'none';
+    }
+    drawArrow(headEnd.x, headEnd.y, headEnd.angle, headArrow, 'edge-head');
+    drawArrow(tailEnd.x, tailEnd.y, tailEnd.angle, tailArrow, 'edge-tail');
   }
 
   // name label at middle of the polyline (draggable: edge.labelOffset)

@@ -381,14 +381,48 @@ export class PropertyEditor {
     if (model.type === 'UMLCollaborationUse') {
       const sec = this._section('协作使用 (Collaboration Use)');
       this._row(sec, 'type', model.typeName || '', (v) => this._set(model, 'typeName', v.trim()));
+      this._listEditor(sec, model, 'roleBindings',
+        () => ({ _id: 'rb-' + Math.random().toString(36).slice(2, 9), roleName: 'role', from: '', to: '' }),
+        (b) => ({ vis: '→', name: b.roleName, type: b.from ? `${b.from} → ${b.to}` : b.to }),
+        [
+          { key: 'roleName', label: '角色' },
+          { key: 'from', label: '角色 (协作者)' },
+          { key: 'to', label: '部件 (绑定到)' },
+        ]);
     }
 
     if (model.type === 'UMLInformationFlow') {
       const sec = this._section('信息流 (Conveyed)');
+      this._row(sec, '方向', model.direction || 'unidirectional',
+        (v) => this._set(model, 'direction', v), 'select',
+        [['unidirectional', '单向'], ['bidirectional', '双向'], ['none', '无方向']]);
       this._listEditor(sec, model, 'conveyed',
         () => ({ _id: 'c-' + Math.random().toString(36).slice(2, 9), $type: 'UMLClassifier', name: 'InformationItem' }),
         (c) => ({ vis: '•', name: c.name, type: '' }),
         [{ key: 'name', label: '信息项' }]);
+      this._refListEditor(sec, model, 'realizingConnectors', '实现连接线', ['UMLConnector', 'UMLCompositeConnector']);
+      this._refListEditor(sec, model, 'realizingActivityEdges', '实现活动边', ['UMLControlFlow', 'UMLObjectFlow']);
+      this._refListEditor(sec, model, 'realizingMessages', '实现消息', ['UMLMessage']);
+    }
+    // Interaction frames: gates on the frame border
+    if (['UMLInteractionUse', 'UMLInteractionUseInOverview', 'UMLInteractionInOverview'].includes(model.type)) {
+      const sec = this._section('Gate（信息出入口）');
+      this._listEditor(sec, model, 'gates',
+        () => ({ _id: 'g-' + Math.random().toString(36).slice(2, 9), name: 'gate', side: 'top', ratio: 0.5 }),
+        (gt) => ({ vis: '▪', name: gt.name, type: `${gt.side || 'top'} ${(Math.round((gt.ratio ?? 0.5) * 100))}%` }),
+        [
+          { key: 'name', label: '名称' },
+          { key: 'side', label: '边 (top/bottom/left/right)' },
+          { key: 'ratio', label: '位置 0~1' },
+        ]);
+    }
+    // Timing lane: unified tick grid and segment-derived state advancement
+    if (model.type === 'UMLTimingLifeline' && this.currentView) {
+      const sec = this._section('时间轴 (Timing)');
+      this._row(sec, '刻度间隔', String(this.currentView.tickInterval ?? 20),
+        (v) => this._setView(this.currentView, 'tickInterval', Math.max(4, parseInt(v, 10) || 20)));
+      this._checkRow(sec, '状态由时间段推进', this.currentView.advanceFromSegments === true,
+        (v) => this._setView(this.currentView, 'advanceFromSegments', v));
     }
     if (this.currentView && this.currentView.$type === 'UMLCompositeConnector') {
       const sec = this._section('连接线 (Connector)');
@@ -469,7 +503,7 @@ export class PropertyEditor {
     };
     addBtn.onclick = () => {
       const item = creator();
-      const old = model[listKey];
+      const old = model[listKey] || [];
       // update the remembered row before the synchronous stack-changed rebuild
       setSelection(old.length);
       commandStack.exec({
@@ -514,6 +548,81 @@ export class PropertyEditor {
     parent.appendChild(detail);
     this._renderListItems = renderItems;
     renderItems();
+  }
+
+  /** Reference list: ids of existing elements of the given types (realizing links). */
+  _refListEditor(parent, model, field, label, types) {
+    const wrap = document.createElement('div');
+    wrap.className = 'list-editor';
+    const render = () => {
+      wrap.innerHTML = '';
+      for (const id of model[field] || []) {
+        const el = repository.lookup(id);
+        const row = document.createElement('div');
+        row.className = 'prop-row';
+        const lab = document.createElement('label');
+        lab.textContent = el ? (el.name || `(${el.type || '元素'})`) : id;
+        const val = document.createElement('div');
+        val.className = 'prop-value';
+        const btn = document.createElement('button');
+        btn.textContent = '✕';
+        btn.onclick = () => {
+          const old = model[field];
+          commandStack.exec({
+            label: 'remove ' + field,
+            redo: () => { model[field] = old.filter((x) => x !== id); },
+            undo: () => { model[field] = old; },
+          });
+          render();
+        };
+        val.appendChild(btn);
+        row.appendChild(lab);
+        row.appendChild(val);
+        wrap.appendChild(row);
+      }
+      // pick an existing element of a matching type in this project
+      let root = model;
+      while (root.__parent) root = root.__parent;
+      const candidates = [];
+      const seen = new Set();
+      (function dfs(n) {
+        if (!n || typeof n !== 'object' || seen.has(n)) return;
+        seen.add(n);
+        if (types.includes(n.type) && n._id && n._id !== model._id && !(model[field] || []).includes(n._id)) {
+          candidates.push(n);
+        }
+        for (const c of n.ownedElements || []) dfs(c);
+      })(root);
+      const row = document.createElement('div');
+      row.className = 'prop-row';
+      const lab = document.createElement('label');
+      lab.textContent = label;
+      const val = document.createElement('div');
+      val.className = 'prop-value';
+      const sel = document.createElement('select');
+      sel.appendChild(new Option('选择元素…', ''));
+      for (const c of candidates) sel.appendChild(new Option(`${c.name || c.type}`, c._id));
+      const btn = document.createElement('button');
+      btn.textContent = '＋ 添加';
+      btn.onclick = () => {
+        if (!sel.value) return;
+        const id = sel.value;
+        const old = model[field] || [];
+        commandStack.exec({
+          label: 'add ' + field,
+          redo: () => { model[field] = [...old, id]; },
+          undo: () => { model[field] = old; },
+        });
+        render();
+      };
+      val.appendChild(sel);
+      val.appendChild(btn);
+      row.appendChild(lab);
+      row.appendChild(val);
+      wrap.appendChild(row);
+    };
+    render();
+    parent.appendChild(wrap);
   }
 
   _itemDetail(item, editableFields, listKey = '', host = null) {
