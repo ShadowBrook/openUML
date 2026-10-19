@@ -1835,6 +1835,46 @@ function bindPanelUI() {
   // side panel resizers
   bindResizer('sidebar-resizer', 'sidebar', 'width', true);
   bindResizer('navigator-resizer', 'navigator', 'width', false);
+  // sidebar inner split: draggable height for 图表 vs 工具箱
+  bindSidebarSplit();
+  restoreSidebarSplit();
+}
+
+const SIDEBAR_SPLIT_KEY = 'openuml-sidebar-split';
+
+function bindSidebarSplit() {
+  const el = document.getElementById('sidebar-split');
+  const top = document.getElementById('working-diagrams');
+  if (!el || !top) return;
+  let startY = 0, startH = 0, dragging = false;
+  el.addEventListener('mousedown', (e) => {
+    dragging = true;
+    startY = e.clientY;
+    startH = top.getBoundingClientRect().height;
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const holder = document.getElementById('sidebar');
+    const maxH = (holder ? holder.getBoundingClientRect().height : 600) - 160;
+    const h = Math.max(60, Math.min(maxH, startH + (e.clientY - startY)));
+    top.style.flexBasis = h + 'px';
+    app.canvas.requestRender();
+  });
+  window.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    try { localStorage.setItem(SIDEBAR_SPLIT_KEY, top.style.flexBasis); } catch { /* private mode */ }
+  });
+}
+
+function restoreSidebarSplit() {
+  const top = document.getElementById('working-diagrams');
+  if (!top) return;
+  try {
+    const saved = localStorage.getItem(SIDEBAR_SPLIT_KEY);
+    if (saved) top.style.flexBasis = saved;
+  } catch { /* private mode */ }
 }
 
 function bindResizer(id, targetId, prop, growingLeft) {

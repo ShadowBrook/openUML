@@ -3,6 +3,18 @@
 import { ToolboxGroups, diagramIcon } from '../core/metamodel.js';
 import { t } from './i18n.js';
 
+// groups start collapsed; the set of open groups persists per browser
+const TOOLBOX_OPEN_KEY = 'openuml-toolbox-open';
+
+function openGroups() {
+  try { return new Set(JSON.parse(localStorage.getItem(TOOLBOX_OPEN_KEY) || '[]')); }
+  catch { return new Set(); }
+}
+
+function saveOpenGroups(set) {
+  try { localStorage.setItem(TOOLBOX_OPEN_KEY, JSON.stringify([...set])); } catch { /* private mode */ }
+}
+
 // Per-group header glyphs; the three diagram groups reuse their type icons
 const groupIcons = {
   common: `<svg viewBox="0 0 14 14"><path d="M3.5 1.8 L11.2 7.6 L7.6 8.2 L9.4 12.2 L7.8 12.9 L6.1 8.9 L3.5 11.6 Z" fill="#fff" stroke="#4a4f4f" stroke-width="0.9"/></svg>`,
@@ -267,20 +279,25 @@ export function initToolbox(canvas, getActiveToolboxGroup) {
 
   function render() {
     toolbox.innerHTML = '';
+    const open = openGroups();
     for (const group of ToolboxGroups) {
       const header = document.createElement('div');
       header.className = 'toolbox-group-header';
-      header.innerHTML = `<span class="arrow">▾</span><span class="gh-icon">${groupIcon(group.id)}</span><span>${t(group.name)}</span>`;
+      const isOpen = open.has(group.id);
+      header.innerHTML = `<span class="arrow">${isOpen ? '▾' : '▸'}</span><span class="gh-icon">${groupIcon(group.id)}</span><span>${t(group.name)}</span>`;
       header.onclick = () => {
         const body = header.nextElementSibling;
-        if (body) {
-          body.classList.toggle('hidden');
-          header.querySelector('.arrow').textContent = body.classList.contains('hidden') ? '▸' : '▾';
-        }
+        if (!body) return;
+        body.classList.toggle('hidden');
+        const nowOpen = !body.classList.contains('hidden');
+        header.querySelector('.arrow').textContent = nowOpen ? '▾' : '▸';
+        const set = openGroups();
+        if (nowOpen) set.add(group.id); else set.delete(group.id);
+        saveOpenGroups(set);
       };
       toolbox.appendChild(header);
       const body = document.createElement('div');
-      body.className = 'toolbox-group-body';
+      body.className = 'toolbox-group-body' + (open.has(group.id) ? '' : ' hidden');
       for (const item of group.items) {
         body.appendChild(makeItem(item));
       }

@@ -80,6 +80,14 @@ html, body {
   z-index: 50;
 }
 .v-resizer:hover { background: rgba(19, 144, 214, 0.35); }
+.h-resizer {
+  height: 4px;
+  cursor: row-resize;
+  background: transparent;
+  flex: 0 0 4px;
+  z-index: 50;
+}
+.h-resizer:hover { background: rgba(19, 144, 214, 0.35); }
 
 .content {
   flex: 1;
@@ -138,6 +146,7 @@ html, body {
 /* ============ Working Diagrams ============ */
 .working-diagrams {
   flex: 0 0 130px;
+  min-height: 60px;
   display: flex;
   flex-direction: column;
   border-bottom: 1px solid var(--panel-border);
