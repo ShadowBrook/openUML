@@ -348,6 +348,7 @@ html, body {
   -webkit-user-select: text;
 }
 .prop-row input:focus, .prop-row textarea:focus, .prop-row select:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+.prop-row input[type="checkbox"] { width: 14px; height: 14px; }
 .prop-row textarea { resize: vertical; min-height: 40px; font-family: var(--mono-font); font-size: 11px; }
 .prop-empty { padding: 14px 10px; color: var(--text-dim); text-align: center; }
 

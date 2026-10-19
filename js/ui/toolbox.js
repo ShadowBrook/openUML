@@ -100,6 +100,7 @@ const Icons = {
   structured: `<svg viewBox="0 0 30 26"><rect x="3" y="3" width="24" height="20" rx="4" fill="#e8f6f6" stroke="#4a4f4f"/><text x="15" y="9" text-anchor="middle" font-size="5" fill="#4a4f4f">struct</text><rect x="7" y="12" width="8" height="4" rx="2" fill="none" stroke="#4a4f4f"/><rect x="18" y="12" width="6" height="4" rx="2" fill="none" stroke="#4a4f4f"/></svg>`,
   interruptRegion: `<svg viewBox="0 0 30 26"><rect x="3" y="3" width="24" height="20" fill="none" stroke="#4a4f4f" stroke-dasharray="4 3"/><text x="5" y="10" font-size="5" fill="#4a4f4f">region</text></svg>`,
   timeEvent: `<svg viewBox="0 0 30 26"><path d="M10 5 h10 l-5 8 l5 8 h-10 l5 -8 Z" fill="#fff" stroke="#4a4f4f"/></svg>`,
+  nary: `<svg viewBox="0 0 30 26"><path d="M15 3 L26 13 L15 23 L4 13 Z" fill="#fff" stroke="#4a4f4f" stroke-width="1.2"/><line x1="4" y1="13" x2="1" y2="20" stroke="#4a4f4f"/><line x1="26" y1="13" x2="29" y2="20" stroke="#4a4f4f"/></svg>`,
 };
 
 // tool id -> canvas tool descriptor
@@ -126,6 +127,7 @@ export const ToolMap = {
   'tool-directed': { kind: 'edge', edgeType: 'UMLAssociation+directed' },
   'tool-aggregation': { kind: 'edge', edgeType: 'UMLAssociation+aggregation' },
   'tool-composition': { kind: 'edge', edgeType: 'UMLAssociation+composition' },
+  'tool-nary': { kind: 'node', nodeType: 'UMLNaryAssociation' },
   'tool-dependency': { kind: 'edge', edgeType: 'UMLDependency' },
   'tool-generalization': { kind: 'edge', edgeType: 'UMLGeneralization' },
   'tool-gen': { kind: 'edge', edgeType: 'UMLGeneralization' },

@@ -194,6 +194,7 @@ export class DiagramCanvas {
       : v.$type === 'UMLSignal' ? 'signal'
       : v.$type === 'UMLPrimitiveType' ? 'primitive'
       : v.$type === 'UMLFrame' ? 'frame'
+      : v.$type === 'UMLNaryAssociation' ? 'nary'
       : v.$type === 'UMLMetaClass' ? 'metaclass'
       : v.$type === 'UMLStereotype' ? 'stereotype'
       : v.$type === 'UMLCollaboration' ? 'collaboration'
@@ -1478,7 +1479,10 @@ export class DiagramCanvas {
     let model, view;
     let forcedContainer = null;
 
-    if (nodeType === 'UMLInputPin' || nodeType === 'UMLOutputPin') {
+    if (nodeType === 'UMLNaryAssociation') {
+      model = createModel('UMLAssociation', '');
+      view = createNodeView('UMLNaryAssociation', model._id, x, y);
+    } else if (nodeType === 'UMLInputPin' || nodeType === 'UMLOutputPin') {
       const target = (hit && hit.kind === 'node'
         && ['UMLAction', 'UMLStructuredActivityNode'].includes(hit.view.$type))
         ? hit.view : null;
@@ -1646,6 +1650,26 @@ export class DiagramCanvas {
       repository.select([view._id], model);
       this.setStatusMessage(`已添加时序消息 ${repository.lookup(tailLane.modelRef)?.name || ''} → ${repository.lookup(headLane.modelRef)?.name || ''}`);
       return;
+    }
+    // N-ary association: association edges from the diamond share its model.
+    const naryView = [tailV, headV].find((v) => v && v.$type === 'UMLNaryAssociation');
+    if (naryView && edgeType.startsWith('UMLAssociation')) {
+      const naryModel = repository.lookup(naryView.modelRef);
+      if (naryModel) {
+        const diagram = this.diagram;
+        const view = createEdgeView(edgeType, naryModel._id, tailId, headId);
+        compound('connect', [{
+          redo: () => { diagram.elements.push(view); view.__diagram = diagram; repository._reindex(); },
+          undo: () => {
+            const i = diagram.elements.indexOf(view);
+            if (i >= 0) diagram.elements.splice(i, 1);
+            repository._reindex();
+          },
+        }]);
+        repository.select([view._id], naryModel);
+        this.setStatusMessage('已连接到 N 元关联');
+        return;
+      }
     }
     // view-only connectors: note link, containment, communication links, object-diagram links
     if (edgeType === 'UMLNoteLink' || edgeType === 'UMLContainment' || edgeType === 'UMLConnector' || edgeType === 'UMLLinkMessage'

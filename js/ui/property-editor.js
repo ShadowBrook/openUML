@@ -120,6 +120,25 @@ export class PropertyEditor {
     return el;
   }
 
+  _checkRow(parent, label, checked, onChange) {
+    const row = document.createElement('div');
+    row.className = 'prop-row';
+    const l = document.createElement('label');
+    l.textContent = label;
+    row.appendChild(l);
+    const val = document.createElement('div');
+    val.className = 'prop-value';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = !!checked;
+    input.addEventListener('change', () => onChange(input.checked));
+    input.addEventListener('keydown', (e) => e.stopPropagation());
+    val.appendChild(input);
+    row.appendChild(val);
+    parent.appendChild(row);
+    return input;
+  }
+
   _renderProps(model) {
     const panel = this.propPanel;
     panel.innerHTML = '';
@@ -138,6 +157,30 @@ export class PropertyEditor {
     const docSec = this._section(model.type === 'UMLConstraint' ? '约束规范 (Specification)' : '文档');
     this._row(docSec, model.type === 'UMLConstraint' ? 'specification' : 'documentation',
       model.documentation || '', (v) => this._set(model, 'documentation', v), 'textarea');
+
+    // Display options for class-like nodes
+    if (this.currentView && ['UMLClass', 'UMLInterface', 'UMLDataType', 'UMLSignal',
+      'UMLStereotype', 'UMLInformationItem'].includes(model.type)) {
+      const sec = this._section('显示 (Display)');
+      this._row(sec, '构造型显示', this.currentView.stereotypeDisplay || 'label',
+        (v) => this._setView(this.currentView, 'stereotypeDisplay', v), 'select',
+        [['label', '标签'], ['none', '隐藏']]);
+      this._checkRow(sec, '显示可见性', this.currentView.showVisibility !== false,
+        (v) => this._setView(this.currentView, 'showVisibility', v));
+      this._checkRow(sec, '显示类型', this.currentView.showType !== false,
+        (v) => this._setView(this.currentView, 'showType', v));
+      this._checkRow(sec, '显示操作参数/返回类型', this.currentView.showOperationSignature !== false,
+        (v) => this._setView(this.currentView, 'showOperationSignature', v));
+      this._checkRow(sec, '抑制属性隔间', this.currentView.suppressAttributes === true,
+        (v) => this._setView(this.currentView, 'suppressAttributes', v));
+      this._checkRow(sec, '抑制操作隔间', this.currentView.suppressOperations === true,
+        (v) => this._setView(this.currentView, 'suppressOperations', v));
+    }
+    if (this.currentView && model.type === 'UMLEnumeration') {
+      const sec = this._section('显示 (Display)');
+      this._checkRow(sec, '抑制字面量隔间', this.currentView.suppressLiterals === true,
+        (v) => this._setView(this.currentView, 'suppressLiterals', v));
+    }
 
     // Template parameters (classifiers)
     if (Array.isArray(model.templateParameters)) {

@@ -762,6 +762,13 @@ class Converter:
                    'UMLInterruptibleActivityRegionView', 'UMLAcceptTimeEventView'):
             if view_model and not view_model.get('name') and label:
                 view_model['name'] = label
+        for flag in ('showVisibility', 'showType', 'showMultiplicity',
+                     'showOperationSignature', 'suppressAttributes',
+                     'suppressOperations', 'suppressLiterals'):
+            if flag in view:
+                v[flag] = bool(view[flag])
+        if 'stereotypeDisplay' in view:
+            v['stereotypeDisplay'] = 'none' if view.get('stereotypeDisplay') == 'none' else 'label'
         diagram['elements'].append(v)
         self.view_map[view.get('_id')] = v
         # explicit StarUML containment
@@ -1053,6 +1060,13 @@ class Converter:
         elif our_type == 'UMLTimeMessage':
             v['lineStyle'] = 'solid'
             v['headArrow'] = 'open'
+        for flag in ('showVisibility', 'showType', 'showMultiplicity',
+                     'showOperationSignature', 'suppressAttributes',
+                     'suppressOperations', 'suppressLiterals'):
+            if flag in view:
+                v[flag] = bool(view[flag])
+        if 'stereotypeDisplay' in view:
+            v['stereotypeDisplay'] = 'none' if view.get('stereotypeDisplay') == 'none' else 'label'
         diagram['elements'].append(v)
         self.view_map[view.get('_id')] = v
         if our_type == 'UMLConnector' and model:

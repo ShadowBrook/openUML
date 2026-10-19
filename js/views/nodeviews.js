@@ -43,18 +43,21 @@ export function instanceLabel(model) {
   return parts.length ? ` {${parts.join(', ')}}` : '';
 }
 
-export function fmtAttribute(a) {
-  const vis = VISIBILITY[a.visibility]?.symbol ?? '+';
+export function fmtAttribute(a, opts = {}) {
+  const vis = opts.showVisibility === false ? '' : (VISIBILITY[a.visibility]?.symbol ?? '+');
   const staticPrefix = a.isStatic ? 'underline' : '';
-  const typePart = a.type ? `: ${a.type}` : '';
+  const typePart = opts.showType === false || !a.type ? '' : `: ${a.type}`;
   const defPart = a.defaultValue ? ` = ${a.defaultValue}` : '';
   return { text: `${vis}${a.name}${typePart}${defPart}${fmtTags(a)}`, staticPrefix };
 }
 
-export function fmtOperation(op) {
-  const vis = VISIBILITY[op.visibility]?.symbol ?? '+';
-  const params = (op.parameters || []).map((p) => `${p.name}${p.type ? ': ' + p.type : ''}`).join(', ');
-  const ret = op.returnType ? `: ${op.returnType}` : '';
+export function fmtOperation(op, opts = {}) {
+  const vis = opts.showVisibility === false ? '' : (VISIBILITY[op.visibility]?.symbol ?? '+');
+  if (opts.showOperationSignature === false) {
+    return { text: `${vis}${op.name}${fmtTags(op)}`, staticPrefix: op.isStatic ? 'underline' : '' };
+  }
+  const params = (op.parameters || []).map((p) => `${p.name}${opts.showType === false || !p.type ? '' : ': ' + p.type}`).join(', ');
+  const ret = opts.showType === false || !op.returnType ? '' : `: ${op.returnType}`;
   return { text: `${vis}${op.name}(${params})${ret}${fmtTags(op)}`, staticPrefix: op.isStatic ? 'underline' : '' };
 }
 
@@ -121,8 +124,15 @@ export function renderNode(g, view, model, kind) {
     case 'metaclass':
     case 'stereotype':
     case 'signal': {
-      const attrs = (model.attributes || []).map(fmtAttribute);
-      const ops = (model.operations || []).map(fmtOperation);
+      const showAttrs = !view.suppressAttributes;
+      const showOps = !view.suppressOperations;
+      const memberOpts = {
+        showVisibility: view.showVisibility !== false,
+        showType: view.showType !== false,
+        showOperationSignature: view.showOperationSignature !== false,
+      };
+      const attrs = showAttrs ? (model.attributes || []).map((a) => fmtAttribute(a, memberOpts)) : [];
+      const ops = showOps ? (model.operations || []).map((o) => fmtOperation(o, memberOpts)) : [];
       const forced = {
         interface: '«interface»',
         information: '«information»',
@@ -130,10 +140,10 @@ export function renderNode(g, view, model, kind) {
         stereotype: '«stereotype»',
         signal: '«signal»',
       }[kind];
-      const stereotype = forced || (view.stereotypeShown ? model.stereotype || null : (model.stereotype || null));
+      const stereotype = forced || (view.stereotypeDisplay === 'none' ? null : (model.stereotype || null));
       const nameH = (stereotype ? fs + 2 : 0) + fs + 10;
-      const attrH = compartmentHeight(attrs, fs);
-      const opH = compartmentHeight(ops, fs);
+      const attrH = showAttrs ? compartmentHeight(attrs, fs) : 0;
+      const opH = showOps ? compartmentHeight(ops, fs) : 0;
       // template parameters sit in a compartment overlapping the top-right corner;
       // the name/attribute/operation area is shifted down by its height (StarUML layout)
       const tps = (model.templateParameters || []).filter((p) => p && p.name);
@@ -164,16 +174,38 @@ export function renderNode(g, view, model, kind) {
         }
       }
       let yy = y + tpShift + nameH;
-      svgEl('line', { x1: x, y1: yy, x2: x + w, y2: yy, stroke: line, 'stroke-width': 1 }, g);
-      meta.compartments.attributes = new Rect(x + 1, yy, w - 2, attrH);
-      drawCompartmentList(g, attrs, { x, y: yy, width: w }, fs, fontColor);
-      yy += attrH;
-      svgEl('line', { x1: x, y1: yy, x2: x + w, y2: yy, stroke: line, 'stroke-width': 1 }, g);
-      meta.compartments.operations = new Rect(x + 1, yy, w - 2, opH);
-      drawCompartmentList(g, ops, { x, y: yy, width: w }, fs, fontColor);
-      yy += opH;
-      if (yy < y + hEff - 1) svgEl('line', { x1: x, y1: y + hEff, x2: x + w, y2: y + hEff, stroke: line }, g);
+      if (showAttrs) {
+        svgEl('line', { x1: x, y1: yy, x2: x + w, y2: yy, stroke: line, 'stroke-width': 1 }, g);
+        meta.compartments.attributes = new Rect(x + 1, yy, w - 2, attrH);
+        drawCompartmentList(g, attrs, { x, y: yy, width: w }, fs, fontColor);
+        yy += attrH;
+      }
+      if (showOps) {
+        svgEl('line', { x1: x, y1: yy, x2: x + w, y2: yy, stroke: line, 'stroke-width': 1 }, g);
+        meta.compartments.operations = new Rect(x + 1, yy, w - 2, opH);
+        drawCompartmentList(g, ops, { x, y: yy, width: w }, fs, fontColor);
+        yy += opH;
+      }
+      if ((showAttrs || showOps) && yy < y + hEff - 1) {
+        svgEl('line', { x1: x, y1: y + hEff, x2: x + w, y2: y + hEff, stroke: line }, g);
+      }
       meta.textSlots.name = { box: new Rect(x, y + tpShift, w, nameH), text: model.name, field: 'name', align: 'center' };
+      break;
+    }
+    case 'nary': {
+      const cx = x + w / 2, cy = y + h / 2;
+      const hw = w / 2, hh = h / 2;
+      svgEl('path', {
+        d: `M ${cx} ${cy - hh} L ${cx + hw} ${cy} L ${cx} ${cy + hh} L ${cx - hw} ${cy} Z`,
+        fill: view.fillColor || '#ffffff', stroke: line, 'stroke-width': 1, class: 'node-frame',
+      }, g);
+      if (model.name) {
+        const t = svgEl('text', {
+          x: cx, y: y + h + fs + 2, 'text-anchor': 'middle', 'font-size': fs, fill: fontColor,
+        }, g);
+        t.textContent = model.name;
+      }
+      meta.textSlots.name = { box: new Rect(x, y + h + 2, w, fs + 4), text: model.name, field: 'name', align: 'center' };
       break;
     }
     case 'primitive': {
@@ -206,18 +238,21 @@ export function renderNode(g, view, model, kind) {
       break;
     }
     case 'enumeration': {
-      const lits = (model.literals || []).map((l) => ({ text: l.name }));
+      const showLits = !view.suppressLiterals;
+      const lits = showLits ? (model.literals || []).map((l) => ({ text: l.name })) : [];
       const nameH = fs + 10;
-      const litH = compartmentHeight(lits, fs);
+      const litH = showLits ? compartmentHeight(lits, fs) : 0;
       const requiredH = nameH + litH;
       const hEff = Math.max(h, requiredH);
       meta.autoHeight = requiredH;
       svgEl('rect', { x, y, width: w, height: hEff, fill, stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
       drawName(g, x, y + 4, w, model.name, { fontSize: fs, color: fontColor, stereotype: '«enumeration»' });
-      let yy = y + nameH;
-      svgEl('line', { x1: x, y1: yy, x2: x + w, y2: yy, stroke: line }, g);
-      meta.compartments.literals = new Rect(x + 1, yy, w - 2, litH);
-      drawCompartmentList(g, lits, { x, y: yy, width: w }, fs, fontColor);
+      if (showLits) {
+        const yy = y + nameH;
+        svgEl('line', { x1: x, y1: yy, x2: x + w, y2: yy, stroke: line }, g);
+        meta.compartments.literals = new Rect(x + 1, yy, w - 2, litH);
+        drawCompartmentList(g, lits, { x, y: yy, width: w }, fs, fontColor);
+      }
       meta.textSlots.name = { box: new Rect(x, y, w, nameH), text: model.name, field: 'name', align: 'center' };
       break;
     }
