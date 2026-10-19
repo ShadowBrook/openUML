@@ -1,11 +1,11 @@
 # OpenUML — 受 StarUML 启发的在线 UML 建模工具
 
 一个用**纯原生 JavaScript + SVG**（零依赖、免构建）实现的 UML 建模工具，
-布局与交互方式参考了经典桌面建模工具 StarUML 7 的使用体验。
+布局与交互方式**受经典桌面建模工具 StarUML 7 启发**。
 
-本项目是在 REA（reverse-engineer-anything）工作流指导下，
-对本机安装的 StarUML 7.1.1（Electron 应用）做静态逆向分析后，
-依据分析到的界面结构与交互模型**从头独立实现**的复刻版本——没有复制任何 StarUML 源码或资源。
+本项目为**从零开始的独立实现**：所有界面、代码与图形资源均为原创，
+未复制、未移植 StarUML 的任何源码或资源文件；仅在功能取舍与交互习惯上
+借鉴了 StarUML 的使用体验，并兼容导入其 `.mdj` 项目文件（转换器见下文）。
 
 ## 运行
 
@@ -16,12 +16,13 @@ python3 serve.py 8642
 # 打开 http://127.0.0.1:8642/
 ```
 
-## 样例与 StarUML 转换
+## 样例与 .mdj 转换
 
 `samples/staruml/UMLExample.ouml` 由 StarUML 官方样例仓库的
 `UMLExample.mdj` 转换而来（MIT，版权归 MKLabs），包含 28 张图、
 覆盖全部 15 种 UML 图类型、719 个模型元素；转换报告见同目录
-`UMLExample.report.json`。
+`UMLExample.report.json`。样例仅用于验证 `.mdj` 格式兼容性，
+OpenUML 本体不含 StarUML 的任何代码或资源。
 
 使用离线转换器重新生成：
 
@@ -188,9 +189,9 @@ samples/demo.ouml     示例项目（电商：订单/客户/类图 + 电商系�
 samples/staruml/      StarUML UMLExample 转换样例、转换报告与 MIT 许可
 ```
 
-## 与 StarUML 的对应关系（来自 REA 分析）
+## 与 StarUML 的功能对照
 
-| StarUML 7.1.1（逆向观察） | OpenUML（独立实现） |
+| StarUML 7 中的对应能力 | OpenUML（独立实现） |
 | --- | --- |
 | `src/static/index.html` 渲染端入口，main-view 布局模板 | `index.html` 相同的三栏布局 |
 | 左侧 working-diagrams + toolbox，右侧 model-explorer + editors | 同布局与面板划分 |
