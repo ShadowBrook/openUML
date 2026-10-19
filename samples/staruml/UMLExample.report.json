@@ -1,6 +1,6 @@
 {
   "source": "UMLExample.mdj",
-  "models": 719,
+  "models": 743,
   "diagrams": [
     {
       "id": "d-3",
@@ -54,125 +54,124 @@
       "id": "d-467",
       "type": "UMLActivityDiagram",
       "name": "Advanced Elements",
-      "elements": 17
+      "elements": 25
     },
     {
-      "id": "d-501",
+      "id": "d-517",
       "type": "UMLPackageDiagram",
       "name": "Multi-Layered Web Architecture",
       "elements": 48
     },
     {
-      "id": "d-614",
+      "id": "d-630",
       "type": "UMLCompositeStructureDiagram",
       "name": "Apache Tomcat 7 Server",
       "elements": 20
     },
     {
-      "id": "d-657",
+      "id": "d-673",
       "type": "UMLCompositeStructureDiagram",
       "name": "Observer Pattern",
       "elements": 5
     },
     {
-      "id": "d-675",
+      "id": "d-691",
       "type": "UMLUseCaseDiagram",
       "name": "Use Case Model",
       "elements": 27
     },
     {
-      "id": "d-731",
+      "id": "d-747",
       "type": "UMLClassDiagram",
       "name": "Domain Model",
       "elements": 20
     },
     {
-      "id": "d-810",
+      "id": "d-826",
       "type": "UMLComponentDiagram",
       "name": "Components",
       "elements": 70
     },
     {
-      "id": "d-959",
+      "id": "d-975",
       "type": "UMLObjectDiagram",
       "name": "Login Controller",
       "elements": 13
     },
     {
-      "id": "d-1006",
+      "id": "d-1022",
       "type": "UMLCommunicationDiagram",
       "name": "Online Bookshop",
       "elements": 11
     },
     {
-      "id": "d-1052",
+      "id": "d-1068",
       "type": "UMLSequenceDiagram",
       "name": "submit_comments",
       "elements": 33
     },
     {
-      "id": "d-1132",
+      "id": "d-1148",
       "type": "UMLActivityDiagram",
       "name": "Ticket Vending Machine",
       "elements": 46
     },
     {
-      "id": "d-1223",
+      "id": "d-1239",
       "type": "UMLActivityDiagram",
       "name": "Electronic Prescriptions",
-      "elements": 41
+      "elements": 57
     },
     {
-      "id": "d-1303",
+      "id": "d-1351",
       "type": "UMLCompositeStructureDiagram",
       "name": "Bank ATM Design Model",
       "elements": 27
     },
     {
-      "id": "d-1359",
+      "id": "d-1407",
       "type": "UMLStatechartDiagram",
       "name": "Bank ATM State Model",
       "elements": 30
     },
     {
-      "id": "d-1426",
+      "id": "d-1474",
       "type": "UMLTimingDiagram",
       "name": "Website Timing",
       "elements": 49
     },
     {
-      "id": "d-1529",
+      "id": "d-1577",
       "type": "UMLInteractionOverviewDiagram",
       "name": "Submit Comments",
       "elements": 21
     },
     {
-      "id": "d-1572",
+      "id": "d-1620",
       "type": "UMLSequenceDiagram",
       "name": "Post Comments",
       "elements": 16
     },
     {
-      "id": "d-1614",
+      "id": "d-1662",
       "type": "UMLInformationFlowDiagram",
       "name": "Information Flows",
       "elements": 13
     },
     {
-      "id": "d-1642",
+      "id": "d-1690",
       "type": "UMLDeploymentDiagram",
       "name": "Book Club Web Application",
       "elements": 6
     },
     {
-      "id": "d-1656",
+      "id": "d-1704",
       "type": "UMLClassDiagram",
       "name": "Annotations on Diagram",
       "elements": 3
     }
   ],
   "skipped": {
-    "view:UMLStructuredActivityNodeView": 1,
     "edge:UMLControlFlowView-endpoints": 3,
     "edge:UMLObjectFlowView-endpoints": 3
   }

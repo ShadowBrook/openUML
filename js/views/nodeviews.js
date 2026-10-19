@@ -493,6 +493,74 @@ export function renderNode(g, view, model, kind) {
       meta.textSlots.name = { box: new Rect(x, y, w, nameH), text: model.name, field: 'name', align: 'center' };
       break;
     }
+    case 'centralBuffer':
+    case 'dataStore':
+    case 'activityParam': {
+      const stereo = kind === 'centralBuffer' ? '«centralBuffer»'
+        : kind === 'dataStore' ? '«datastore»' : '«parameter»';
+      svgEl('rect', { x, y, width: w, height: h, fill, stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
+      const st = svgEl('text', {
+        x: x + 5, y: y + fs, 'font-size': fs - 2, 'font-style': 'italic', fill: fontColor,
+      }, g);
+      st.textContent = stereo;
+      const t = svgEl('text', {
+        x: x + w / 2, y: y + h / 2 + fs * 0.45, 'text-anchor': 'middle', 'font-size': fs, fill: fontColor,
+      }, g);
+      t.textContent = model.name;
+      meta.textSlots.name = { box: new Rect(x, y, w, h), text: model.name, field: 'name', align: 'center' };
+      break;
+    }
+    case 'pin': {
+      // input/output pin: small square attached to an action or structured node
+      svgEl('rect', { x, y, width: w, height: h, fill: view.fillColor || '#ffffff', stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
+      if (model.name) {
+        const t = svgEl('text', {
+          x: x + w + 4, y: y + h / 2 + fs * 0.35, 'font-size': fs - 1, fill: fontColor,
+        }, g);
+        t.textContent = model.name;
+      }
+      meta.textSlots.name = { box: new Rect(x, y, w, h), text: model.name, field: 'name', align: 'center' };
+      break;
+    }
+    case 'structured': {
+      svgEl('rect', {
+        x, y, width: w, height: h, rx: 7, ry: 7,
+        fill: view.fillColor || '#ffffff', stroke: line, 'stroke-width': 1.2, class: 'node-frame',
+      }, g);
+      const t = svgEl('text', {
+        x: x + w / 2, y: y + fs + 6, 'text-anchor': 'middle',
+        'font-size': fs, 'font-weight': 700, fill: fontColor,
+      }, g);
+      t.textContent = model.name;
+      meta.textSlots.name = { box: new Rect(x, y, w, fs + 12), text: model.name, field: 'name', align: 'center' };
+      break;
+    }
+    case 'interruptible': {
+      svgEl('rect', {
+        x, y, width: w, height: h,
+        fill: view.fillColor || 'none', stroke: line, 'stroke-width': 1,
+        'stroke-dasharray': '7 4', class: 'node-frame',
+      }, g);
+      const t = svgEl('text', {
+        x: x + 8, y: y + fs + 2, 'font-size': fs, fill: fontColor, 'font-style': 'italic',
+      }, g);
+      t.textContent = model.name;
+      meta.textSlots.name = { box: new Rect(x, y, Math.min(w, 180), fs + 8), text: model.name, field: 'name', align: 'left' };
+      break;
+    }
+    case 'timeEvent': {
+      const cx = x + w / 2;
+      svgEl('path', {
+        d: `M ${x + 6} ${y} L ${x + w - 6} ${y} L ${cx} ${y + h / 2} L ${x + w - 6} ${y + h} L ${x + 6} ${y + h} L ${cx} ${y + h / 2} Z`,
+        fill: view.fillColor || '#ffffff', stroke: line, 'stroke-width': 1.2, class: 'node-frame',
+      }, g);
+      const t = svgEl('text', {
+        x: cx, y: y + h + fs + 2, 'text-anchor': 'middle', 'font-size': fs - 1, fill: fontColor,
+      }, g);
+      t.textContent = model.name;
+      meta.textSlots.name = { box: new Rect(x, y, w, h + fs + 4), text: model.name, field: 'name', align: 'center' };
+      break;
+    }
     case 'objectnode': {
       // object flow node: rectangle with underlined name
       svgEl('rect', { x, y, width: w, height: h, fill, stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);

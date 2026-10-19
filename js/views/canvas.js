@@ -119,7 +119,7 @@ export class DiagramCanvas {
       if (!v.isEdge) rects.set(v._id, this.rectOf(v));
     }
     // draw nodes first (backdrops below their children), then edges on top.
-    const isBackdrop = (v) => v.$type === 'UMLSwimlaneVert' || v.$type === 'UMLSwimlaneHorz' || v.$type === 'UMLCompositeState' || v.$type === 'UMLCombinedFragment' || v.$type === 'UMLFrame';
+    const isBackdrop = (v) => v.$type === 'UMLSwimlaneVert' || v.$type === 'UMLSwimlaneHorz' || v.$type === 'UMLCompositeState' || v.$type === 'UMLCombinedFragment' || v.$type === 'UMLFrame' || v.$type === 'UMLStructuredActivityNode' || v.$type === 'UMLInterruptibleRegion';
     const nodes = views.filter((v) => !v.isEdge)
       .sort((a, b) => {
         const pa = isBackdrop(a) ? 0 : 1, pb = isBackdrop(b) ? 0 : 1;
@@ -151,6 +151,14 @@ export class DiagramCanvas {
       : v.$type === 'UMLLifeLine' ? 'lifeline'
       : v.$type === 'UMLState' ? 'state'
       : v.$type === 'UMLAction' ? 'action'
+      : v.$type === 'UMLCentralBufferNode' ? 'centralBuffer'
+      : v.$type === 'UMLDataStoreNode' ? 'dataStore'
+      : v.$type === 'UMLActivityParameterNode' ? 'activityParam'
+      : v.$type === 'UMLInputPin' ? 'pin'
+      : v.$type === 'UMLOutputPin' ? 'pin'
+      : v.$type === 'UMLStructuredActivityNode' ? 'structured'
+      : v.$type === 'UMLInterruptibleRegion' ? 'interruptible'
+      : v.$type === 'UMLAcceptTimeEvent' ? 'timeEvent'
       : v.$type === 'UMLInitialState' || v.$type === 'UMLInitialNode' ? 'initial'
       : v.$type === 'UMLFinalState' || v.$type === 'UMLActivityFinalNode' ? 'final'
       : v.$type === 'UMLFlowFinalNode' ? 'flowfinal'
@@ -460,7 +468,8 @@ export class DiagramCanvas {
     // resize handles for single selected node
     if (repository.selections.length === 1) {
       const r = this.renderers.get(repository.selections[0]);
-      if (r && r.kind === 'node' && r.view.$type !== 'UMLPort' && r.view.$type !== 'UMLTimeTick') {
+      if (r && r.kind === 'node' && r.view.$type !== 'UMLPort' && r.view.$type !== 'UMLTimeTick'
+        && r.view.$type !== 'UMLInputPin' && r.view.$type !== 'UMLOutputPin') {
         const v = r.view;
         const w = viewW(v), h = viewH(v);
         const hs = { nw: [v.x, v.y], n: [v.x + w / 2, v.y], ne: [v.x + w, v.y], w: [v.x, v.y + h / 2], e: [v.x + w, v.y + h / 2], sw: [v.x, v.y + h], s: [v.x + w / 2, v.y + h], se: [v.x + w, v.y + h] };
@@ -528,7 +537,8 @@ export class DiagramCanvas {
   }
 
   // ---------------- containment (swimlanes / composite states) ----------------
-  static CONTAINER_TYPES = ['UMLSwimlaneVert', 'UMLSwimlaneHorz', 'UMLCompositeState', 'UMLFrame'];
+  static CONTAINER_TYPES = ['UMLSwimlaneVert', 'UMLSwimlaneHorz', 'UMLCompositeState', 'UMLFrame',
+    'UMLStructuredActivityNode', 'UMLInterruptibleRegion'];
   // structural containers used by composite-structure / timing diagrams
   static STRUCTURAL_CONTAINERS = ['UMLClass', 'UMLInterface', 'UMLComponent', 'UMLCollaboration', 'UMLTimingLifeline'];
   isContainerView(v) {
@@ -556,6 +566,20 @@ export class DiagramCanvas {
         view.x + viewW(view) / 2, view.y + viewH(view) / 2)) {
         if (!best || viewW(v) * viewH(v) < viewW(best) * viewH(best)) best = v;
       }
+    }
+    return best;
+  }
+
+  /** action / structured node that hosts a pin (they are not generic containers). */
+  findPinHostFor(view) {
+    let best = null;
+    const cx = view.x + viewW(view) / 2;
+    const cy = view.y + viewH(view) / 2;
+    for (const v of this.diagram.elements || []) {
+      if (v.isEdge || v._id === view._id) continue;
+      if (v.$type !== 'UMLAction' && v.$type !== 'UMLStructuredActivityNode') continue;
+      if (!this.rectOf(v).contains(cx, cy)) continue;
+      if (!best || viewW(v) * viewH(v) < viewW(best) * viewH(best)) best = v;
     }
     return best;
   }
@@ -855,7 +879,7 @@ export class DiagramCanvas {
     const items = [];
     for (const r of selectedViews) {
       items.push({ view: r.view, orig: { x: r.view.x, y: r.view.y, points: (r.view.points || []).map((p) => ({ ...p })) } });
-      if (this.isContainerView(r.view) || r.view.$type === 'UMLCombinedFragment' || r.view.$type === 'UMLTimingState') {
+      if (this.isContainerView(r.view) || r.view.$type === 'UMLCombinedFragment' || r.view.$type === 'UMLTimingState' || r.view.$type === 'UMLAction') {
         for (const child of this.descendantsOf(r.view._id)) {
           if (sel.includes(child._id)) continue;
           items.push({ view: child, orig: { x: child.x, y: child.y, points: [] } });
@@ -1074,7 +1098,10 @@ export class DiagramCanvas {
           if (v.isEdge) continue;
           if (this.isContainerView(v) && v.$type !== 'UMLCombinedFragment') continue;
           let target;
-          if (v.$type === 'UMLPart' || v.$type === 'UMLPort') {
+          if (v.$type === 'UMLInputPin' || v.$type === 'UMLOutputPin') {
+            target = this.findPinHostFor(v);
+            if (target) this._snapPortToView(v, target);
+          } else if (v.$type === 'UMLPart' || v.$type === 'UMLPort') {
             target = this.findContainerFor(v, ['UMLClass', 'UMLInterface', 'UMLComponent', 'UMLCollaboration']);
           } else if (v.$type === 'UMLTimingState') {
             target = this.findTimingLaneFor(v);
@@ -1451,7 +1478,19 @@ export class DiagramCanvas {
     let model, view;
     let forcedContainer = null;
 
-    if (nodeType === 'UMLPort') {
+    if (nodeType === 'UMLInputPin' || nodeType === 'UMLOutputPin') {
+      const target = (hit && hit.kind === 'node'
+        && ['UMLAction', 'UMLStructuredActivityNode'].includes(hit.view.$type))
+        ? hit.view : null;
+      if (!target) {
+        this.setStatusMessage('请把引脚放到动作或结构化活动节点上');
+        return;
+      }
+      model = createModel(nodeType);
+      view = createNodeView(nodeType, model._id, x - 7, y - 7);
+      forcedContainer = target._id;
+      this._snapPortToView(view, target);
+    } else if (nodeType === 'UMLPort') {
       const target = (hit && hit.kind === 'node'
         && ['UMLClass', 'UMLInterface', 'UMLComponent', 'UMLCollaboration'].includes(hit.view.$type))
         ? hit.view : null;
@@ -1554,7 +1593,10 @@ export class DiagramCanvas {
     });
     compound('create', ops);
     repository.select([view._id], model);
-    this.setStatusMessage(`已创建 ${model ? model.name : (nodeType === 'UMLTimeTick' ? '时间刻度' : nodeType.replace(/^UML/, '').replace(/View$/, ''))}`);
+    const createdLabel = model?.name || {
+      UMLTimeTick: '时间刻度', UMLInputPin: '输入引脚', UMLOutputPin: '输出引脚',
+    }[nodeType] || nodeType.replace(/^UML/, '').replace(/View$/, '');
+    this.setStatusMessage(`已创建 ${createdLabel}`);
   }
 
   _defaultOwnerFor(model) {
@@ -1699,6 +1741,10 @@ export class DiagramCanvas {
       UMLAction: 'UMLAction', UMLComponent: 'UMLComponent', UMLArtifact: 'UMLArtifact',
       UMLNode: 'UMLNode', UMLObject: 'UMLObject', UMLSubsystem: 'UMLSubsystem',
       UMLSignal: 'UMLSignal', UMLPrimitiveType: 'UMLPrimitiveType', UMLFrame: 'UMLFrame',
+      UMLCentralBufferNode: 'UMLCentralBufferNode', UMLDataStoreNode: 'UMLDataStoreNode',
+      UMLActivityParameterNode: 'UMLActivityParameterNode', UMLInputPin: 'UMLInputPin',
+      UMLOutputPin: 'UMLOutputPin', UMLStructuredActivityNode: 'UMLStructuredActivityNode',
+      UMLInterruptibleRegion: 'UMLInterruptibleRegion', UMLAcceptTimeEvent: 'UMLAcceptTimeEvent',
       UMLObjectNode: 'UMLObjectNode', UMLSendSignal: 'UMLSendSignal', UMLAcceptSignal: 'UMLAcceptSignal',
       UMLLifeLine: 'UMLLifeLine', UMLNote: 'UMLNote', UMLConstraint: 'UMLConstraint',
       UMLArtifactInstance: 'UMLArtifactInstance', UMLComponentInstance: 'UMLComponentInstance',
@@ -1778,7 +1824,8 @@ export class DiagramCanvas {
     if (!removals.length) return;
     const released = [];
     for (const r of removals) {
-      if (!this.isContainerView(r.view) && r.view.$type !== 'UMLCombinedFragment' && r.view.$type !== 'UMLTimingState') continue;
+      if (!this.isContainerView(r.view) && r.view.$type !== 'UMLCombinedFragment'
+        && r.view.$type !== 'UMLTimingState' && r.view.$type !== 'UMLAction') continue;
       for (const ch of els) if (ch.container === r.view._id) released.push({ parent: r.view, child: ch });
     }
     removals.sort((a, b) => b.index - a.index);

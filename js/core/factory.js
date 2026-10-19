@@ -75,6 +75,9 @@ export function defaultName(type) {
     UMLClass: 'Class', UMLInterface: 'Interface', UMLEnumeration: 'Enumeration',
     UMLDataType: 'DataType', UMLPrimitiveType: 'PrimitiveType',
     UMLSignal: 'Signal', UMLFrame: 'Frame', UMLRealization: 'Realization',
+    UMLCentralBufferNode: 'CentralBuffer', UMLDataStoreNode: 'DataStore',
+    UMLActivityParameterNode: 'Parameter', UMLStructuredActivityNode: 'StructuredActivity',
+    UMLInterruptibleRegion: 'Region', UMLAcceptTimeEvent: 'TimeEvent',
     UMLTemplateBinding: 'TemplateBinding',
     UMLActor: 'Actor', UMLUseCase: 'UseCase',
     UMLPackage: 'Package', UMLNote: 'Note', Model: 'Model',
@@ -89,6 +92,7 @@ export function defaultName(type) {
     UMLTimeSegment: 'TimeSegment', UMLTimeTick: 'TimeTick',
     UMLTimeConstraint: 'TimeConstraint', UMLDurationConstraint: 'DurationConstraint',
   }[type] || type.replace(/^UML/, '');
+  if (type === 'UMLInputPin' || type === 'UMLOutputPin') return '';
   if (type === 'UMLTimeTick') return label;
   return `${label}${counters[type]}`;
 }

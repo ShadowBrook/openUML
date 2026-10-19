@@ -57,6 +57,14 @@ SIMPLE_MODEL_MAP = {
     'UMLFinalState': 'UMLFinalState',
     'UMLAction': 'UMLAction',
     'UMLObjectNode': 'UMLObjectNode',
+    'UMLCentralBufferNode': 'UMLCentralBufferNode',
+    'UMLDataStoreNode': 'UMLDataStoreNode',
+    'UMLActivityParameterNode': 'UMLActivityParameterNode',
+    'UMLInputPin': 'UMLInputPin',
+    'UMLOutputPin': 'UMLOutputPin',
+    'UMLStructuredActivityNode': 'UMLStructuredActivityNode',
+    'UMLInterruptibleActivityRegion': 'UMLInterruptibleRegion',
+    'UMLAcceptTimeEvent': 'UMLAcceptTimeEvent',
     'UMLSendSignal': 'UMLSendSignal',
     'UMLAcceptSignal': 'UMLAcceptSignal',
     'UMLInitialNode': 'UMLInitialNode',
@@ -107,6 +115,8 @@ NODE_VIEW_TYPES = {
     'UMLStateView', 'UMLPseudostateView', 'UMLFinalStateView',
     'UMLActionView', 'UMLControlNodeView', 'UMLObjectNodeView',
     'UMLCentralBufferNodeView', 'UMLDataStoreNodeView',
+    'UMLActivityParameterNodeView', 'UMLInputPinView', 'UMLOutputPinView',
+    'UMLAcceptTimeEventView', 'UMLInterruptibleActivityRegionView',
     'UMLSendSignalView', 'UMLAcceptSignalView', 'UMLSwimlaneView',
     'UMLSeqLifelineView', 'UMLCommLifelineView',
     'UMLTimingLifelineView', 'UMLTimingStateView', 'UMLTimeSegmentView',
@@ -283,8 +293,22 @@ class Converter:
             }.get(kind)
         if view_type == 'UMLControlNodeView':
             return SIMPLE_MODEL_MAP.get(t, t)
-        if view_type in ('UMLCentralBufferNodeView', 'UMLDataStoreNodeView'):
-            return 'UMLObjectNode'
+        if view_type == 'UMLCentralBufferNodeView':
+            return 'UMLCentralBufferNode'
+        if view_type == 'UMLDataStoreNodeView':
+            return 'UMLDataStoreNode'
+        if view_type == 'UMLActivityParameterNodeView':
+            return 'UMLActivityParameterNode'
+        if view_type == 'UMLInputPinView':
+            return 'UMLInputPin'
+        if view_type == 'UMLOutputPinView':
+            return 'UMLOutputPin'
+        if view_type == 'UMLStructuredActivityNodeView':
+            return 'UMLStructuredActivityNode'
+        if view_type == 'UMLInterruptibleActivityRegionView':
+            return 'UMLInterruptibleRegion'
+        if view_type == 'UMLAcceptTimeEventView':
+            return 'UMLAcceptTimeEvent'
         if view_type == 'UMLInteractionUseView':
             return 'UMLInteractionUse'
         if view_type == 'UMLInteractionInlineView':
@@ -598,8 +622,20 @@ class Converter:
             return SIMPLE_MODEL_MAP.get(mt)
         if t == 'UMLObjectNodeView':
             return 'UMLObjectNode'
-        if t in ('UMLCentralBufferNodeView', 'UMLDataStoreNodeView'):
-            return 'UMLObjectNode'
+        if t == 'UMLCentralBufferNodeView':
+            return 'UMLCentralBufferNode'
+        if t == 'UMLDataStoreNodeView':
+            return 'UMLDataStoreNode'
+        if t == 'UMLActivityParameterNodeView':
+            return 'UMLActivityParameterNode'
+        if t == 'UMLInputPinView':
+            return 'UMLInputPin'
+        if t == 'UMLOutputPinView':
+            return 'UMLOutputPin'
+        if t == 'UMLInterruptibleActivityRegionView':
+            return 'UMLInterruptibleRegion'
+        if t == 'UMLAcceptTimeEventView':
+            return 'UMLAcceptTimeEvent'
         if t == 'UMLSendSignalView':
             return 'UMLSendSignal'
         if t == 'UMLAcceptSignalView':
@@ -635,7 +671,7 @@ class Converter:
         if t in ('UMLTextView', 'UMLTextBoxView'):
             return 'UMLTextView'
         if t == 'UMLStructuredActivityNodeView':
-            return None
+            return 'UMLStructuredActivityNode'
         return None
 
     def convert_node_view(self, view, diagram):
@@ -720,7 +756,10 @@ class Converter:
         elif t in ('UMLStateView', 'UMLActionView', 'UMLNodeView', 'UMLComponentView',
                    'UMLArtifactView', 'UMLInformationItemView', 'UMLStereotypeView',
                    'UMLMetaClassView', 'UMLUseCaseView', 'UMLActorView',
-                   'UMLClassView', 'UMLInterfaceView', 'UMLEnumerationView'):
+                   'UMLClassView', 'UMLInterfaceView', 'UMLEnumerationView',
+                   'UMLCentralBufferNodeView', 'UMLDataStoreNodeView',
+                   'UMLActivityParameterNodeView', 'UMLStructuredActivityNodeView',
+                   'UMLInterruptibleActivityRegionView', 'UMLAcceptTimeEventView'):
             if view_model and not view_model.get('name') and label:
                 view_model['name'] = label
         diagram['elements'].append(v)
@@ -740,6 +779,8 @@ class Converter:
             'UMLTimingState': {'UMLTimingLifeline'},
             'UMLTimeSegment': {'UMLTimingState'},
             'UMLTimeTick': {'UMLTimingLifeline'},
+            'UMLInputPin': {'UMLAction', 'UMLStructuredActivityNode'},
+            'UMLOutputPin': {'UMLAction', 'UMLStructuredActivityNode'},
         }
         for v in nodes:
             if v.get('container'):
@@ -750,9 +791,13 @@ class Converter:
                                           'UMLAcceptSignal', 'UMLInitialNode',
                                           'UMLActivityFinalNode', 'UMLFlowFinalNode',
                                           'UMLDecisionNode', 'UMLMergeNode', 'UMLForkNode',
-                                          'UMLJoinNode'):
+                                          'UMLJoinNode', 'UMLCentralBufferNode',
+                                          'UMLDataStoreNode', 'UMLActivityParameterNode',
+                                          'UMLAcceptTimeEvent', 'UMLStructuredActivityNode',
+                                          'UMLInterruptibleRegion'):
                     continue
-                allowed = {'UMLSwimlaneVert', 'UMLSwimlaneHorz'}
+                allowed = {'UMLSwimlaneVert', 'UMLSwimlaneHorz',
+                           'UMLStructuredActivityNode', 'UMLInterruptibleRegion'}
             cx = v['x'] + v['width'] / 2
             cy = v['y'] + v['height'] / 2
             best = None

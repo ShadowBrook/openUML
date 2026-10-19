@@ -1022,7 +1022,10 @@ function showInDiagram(model, canvas) {
     return;
   }
   if (!['UMLClass', 'UMLInterface', 'UMLEnumeration', 'UMLDataType', 'UMLSignal',
-    'UMLPrimitiveType', 'UMLFrame', 'UMLActor', 'UMLUseCase', 'UMLPackage',
+    'UMLPrimitiveType', 'UMLFrame', 'UMLCentralBufferNode', 'UMLDataStoreNode',
+    'UMLActivityParameterNode', 'UMLInputPin', 'UMLOutputPin',
+    'UMLStructuredActivityNode', 'UMLInterruptibleRegion', 'UMLAcceptTimeEvent',
+    'UMLActor', 'UMLUseCase', 'UMLPackage',
     'UMLInformationItem', 'UMLCollaboration', 'UMLCollaborationUse', 'UMLStereotype', 'UMLMetaClass',
     'UMLInteractionUseInOverview', 'UMLInteractionInOverview', 'UMLTimingLifeline', 'UMLTimingState',
     'UMLTimeConstraint', 'UMLDurationConstraint'].includes(model.type)) return;
