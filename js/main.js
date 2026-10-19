@@ -5,14 +5,31 @@ import { commandStack, compound, serializeProject, deserializeProject } from './
 import {
   createProject, createDiagram, createModel, createNodeView,
 } from './core/factory.js';
-import { diagramIcon } from './core/metamodel.js';
+import { diagramIcon, ModelKinds } from './core/metamodel.js';
 import { DiagramCanvas } from './views/canvas.js';
 import { initToolbox } from './ui/toolbox.js';
 import { ModelExplorer } from './ui/model-explorer.js';
 import { PropertyEditor } from './ui/property-editor.js';
 import { buildMenu, showContextMenu } from './ui/menubar.js';
-import { showInputDialog, showConfirmDialog, showAboutDialog } from './ui/dialogs.js';
-import { downloadPNG, downloadSVG, printDiagram } from './exporter.js';
+import { showInputDialog, showConfirmDialog, showAboutDialog, showAlertDialog } from './ui/dialogs.js';
+import { showPalette, hidePalette, isPaletteOpen } from './ui/palette.js';
+import { showToast } from './ui/toast.js';
+import { loadPreferences, savePreferences, showPreferencesDialog } from './ui/preferences.js';
+import { downloadPNG, downloadSVG, downloadJPEG, copyDiagramPNG, printDiagram } from './exporter.js';
+
+const DIAGRAM_TYPE_LABELS = {
+  UMLClassDiagram: '类图', UMLUseCaseDiagram: '用例图', UMLSequenceDiagram: '序列图',
+  UMLStatechartDiagram: '状态机图', UMLActivityDiagram: '活动图',
+  UMLComponentDiagram: '组件图', UMLDeploymentDiagram: '部署图',
+  UMLPackageDiagram: '包图', UMLCommunicationDiagram: '通信图',
+  UMLObjectDiagram: '对象图', UMLCompositeStructureDiagram: '复合结构图',
+  UMLTimingDiagram: '时序图', UMLInteractionOverviewDiagram: '交互概览图',
+  UMLInformationFlowDiagram: '信息流图', UMLProfileDiagram: 'Profile 图',
+};
+
+function diagramTypeLabel(type) {
+  return DIAGRAM_TYPE_LABELS[type] || '';
+}
 
 const app = {
   canvas: null,
@@ -23,14 +40,131 @@ const app = {
   filePath: null,
   dirty: false,
   theme: 'light',
+  prefs: null,
+  suspendTabPersist: false,
+  lastAutosave: 0,
 };
+
+const PROJECT_KEY = 'openuml-project';
+const TABS_KEY = 'openuml-tabs';
+let autosaveTimer = null;
+let storageWarned = false;
+
+function storageErrorMessage(err) {
+  const quota = err && (err.name === 'QuotaExceededError'
+    || err.name === 'NS_ERROR_DOM_QUOTA_REACHED'
+    || err.code === 22 || err.code === 1014);
+  return {
+    quota,
+    message: quota
+      ? '浏览器本地存储已满（通常约 5MB）。请使用「文件 → 项目另存为…」导出 .ouml 文件，或清理站点数据后重试。'
+      : '浏览器本地存储不可用。请使用「文件 → 项目另存为…」导出 .ouml 文件，避免丢失更改。',
+  };
+}
+
+/** Persist the project, warning once if the browser refuses the write. */
+function storeProject(json, { quiet = false } = {}) {
+  try {
+    localStorage.setItem(PROJECT_KEY, json);
+    return true;
+  } catch (err) {
+    app.canvas?.setStatusMessage('本地暂存失败：请使用「项目另存为…」导出');
+    if (!storageWarned) {
+      storageWarned = true;
+      const info = storageErrorMessage(err);
+      showAlertDialog({ title: info.quota ? '本地暂存失败' : '本地暂存不可用', message: info.message });
+    } else if (!quiet) {
+      app.canvas?.setStatusMessage('保存失败：本地存储不可用');
+    }
+    return false;
+  }
+}
+
+function scheduleAutosave() {
+  if (autosaveTimer) clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(() => {
+    autosaveTimer = null;
+    if (!repository.root) return;
+    const json = serializeProject(repository.root);
+    if (storeProject(json, { quiet: true })) app.lastAutosave = Date.now();
+  }, 1000);
+}
+
+function persistTabs() {
+  if (app.suspendTabPersist) return;
+  try {
+    localStorage.setItem(TABS_KEY, JSON.stringify({
+      root: repository.root?._id || null,
+      open: app.openDiagrams.map((d) => d._id),
+      active: app.activeDiagram?._id || null,
+    }));
+  } catch { /* tab state is best-effort */ }
+}
+
+/** Restore the tab list if it belongs to the currently loaded project. */
+function restoreTabs() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(TABS_KEY) || 'null'); } catch { return false; }
+  if (!saved || saved.root !== repository.root?._id || !Array.isArray(saved.open)) return false;
+  const diagrams = saved.open
+    .map((id) => repository.lookup(id))
+    .filter((d) => d && d.type?.endsWith('Diagram') && d.__parent);
+  if (!diagrams.length) return false;
+  const active = diagrams.find((d) => d._id === saved.active) || diagrams[0];
+  app.suspendTabPersist = true;
+  app.openDiagrams = [];
+  for (const d of diagrams) openDiagram(d);
+  openDiagram(active);
+  app.suspendTabPersist = false;
+  persistTabs();
+  return true;
+}
 
 function setTheme(t) {
   app.theme = t === 'dark' ? 'dark' : 'light';
   if (app.theme === 'dark') document.documentElement.dataset.theme = 'dark';
   else delete document.documentElement.dataset.theme;
   localStorage.setItem('openuml-theme', app.theme);
+  if (app.prefs) { app.prefs.theme = app.theme; savePreferences(app.prefs); }
   buildMenus();
+}
+
+function toggleGrid() {
+  app.canvas.showGrid = !app.canvas.showGrid;
+  app.prefs.showGrid = app.canvas.showGrid;
+  savePreferences(app.prefs);
+  document.getElementById('tb-grid')?.classList.toggle('active', app.canvas.showGrid);
+  app.canvas.requestRender();
+  buildMenus();
+}
+
+function toggleSnap() {
+  app.canvas.snapToGrid = !app.canvas.snapToGrid;
+  app.prefs.snapToGrid = app.canvas.snapToGrid;
+  savePreferences(app.prefs);
+  document.getElementById('tb-snap')?.classList.toggle('active', app.canvas.snapToGrid);
+  buildMenus();
+}
+
+function applyPreferences(next) {
+  app.prefs = { ...app.prefs, ...next };
+  const c = app.canvas;
+  c.gridSize = app.prefs.gridSize;
+  c.showGrid = app.prefs.showGrid;
+  c.snapToGrid = app.prefs.snapToGrid;
+  c.autoResize = app.prefs.autoResize;
+  document.getElementById('tb-grid')?.classList.toggle('active', c.showGrid);
+  document.getElementById('tb-snap')?.classList.toggle('active', c.snapToGrid);
+  setTheme(app.prefs.theme);
+  savePreferences(app.prefs);
+  c.requestRender();
+}
+
+async function editPreferences() {
+  const next = await showPreferencesDialog(app.prefs);
+  if (!next) return;
+  applyPreferences(next);
+  showToast('偏好设置已应用');
 }
 
 // ---------------- project lifecycle ----------------
@@ -41,6 +175,7 @@ function newProject() {
   repository.walk((n) => repository._index.set(n._id, n));
   app.openDiagrams = [];
   app.filePath = null;
+  try { localStorage.removeItem(TABS_KEY); } catch { /* ignore */ }
   markDirty(false);
   commandStack.undoStack.length = 0;
   commandStack.redoStack.length = 0;
@@ -50,6 +185,8 @@ function newProject() {
   app.explorer.expanded.add(repository.root._id);
   app.explorer.render();
   repository.select([]);
+  // persist the empty project immediately so a refresh does not resurrect the old one
+  storeProject(serializeProject(repository.root), { quiet: true });
   app.canvas.setStatusMessage('已新建项目');
 }
 
@@ -77,6 +214,7 @@ function openDiagram(diagram) {
   renderTabs();
   app.explorer.render();
   repository.select([]);
+  persistTabs();
 }
 
 function closeDiagram(diagram) {
@@ -90,8 +228,38 @@ function closeDiagram(diagram) {
       app.activeDiagram = null;
       app.canvas.setDiagram(null);
       renderTabs();
+      persistTabs();
     }
-  } else renderTabs();
+  } else {
+    renderTabs();
+    persistTabs();
+  }
+}
+
+function closeCurrentDiagram() {
+  if (app.activeDiagram) closeDiagram(app.activeDiagram);
+}
+
+function closeOtherDiagrams() {
+  if (!app.activeDiagram) return;
+  app.openDiagrams = [app.activeDiagram];
+  renderTabs();
+  persistTabs();
+}
+
+function closeAllDiagrams() {
+  app.openDiagrams = [];
+  app.activeDiagram = null;
+  app.canvas.setDiagram(null);
+  renderTabs();
+  persistTabs();
+}
+
+function cycleDiagram(delta) {
+  if (app.openDiagrams.length < 2) return;
+  const i = app.openDiagrams.indexOf(app.activeDiagram);
+  const next = app.openDiagrams[(i + delta + app.openDiagrams.length) % app.openDiagrams.length];
+  if (next) openDiagram(next);
 }
 
 function renderTabs() {
@@ -118,7 +286,7 @@ function renderTabs() {
   for (const d of diagrams) {
     const row = document.createElement('div');
     row.className = 'diagram-tab' + (d === app.activeDiagram ? ' active' : '');
-    const typeName = { UMLClassDiagram: '类图', UMLUseCaseDiagram: '用例图', UMLSequenceDiagram: '序列图', UMLStatechartDiagram: '状态机图', UMLActivityDiagram: '活动图', UMLComponentDiagram: '组件图', UMLDeploymentDiagram: '部署图', UMLPackageDiagram: '包图', UMLCommunicationDiagram: '通信图', UMLObjectDiagram: '对象图' }[d.type] || '';
+    const typeName = diagramTypeLabel(d.type);
     row.innerHTML = `<span class="tab-icon">${diagramIcon(d.type)}</span><span>${esc(d.name)}</span>` + (typeName && d !== app.activeDiagram ? `<span class="tab-type">${typeName}</span>` : '');
     row.onclick = () => openDiagram(d);
     row.ondblclick = () => renameElement(d);
@@ -158,7 +326,24 @@ async function renameElement(node) {
 
 function addDiagram(type) {
   const owner = app.explorer && repository.selectedModel ? ownerFor(repository.selectedModel) : repository.root.ownedElements[0];
-  const d = createDiagram(type, type === 'UMLUseCaseDiagram' ? 'UseCaseDiagram' : 'Model');
+  const names = {
+    UMLClassDiagram: 'ClassDiagram',
+    UMLUseCaseDiagram: 'UseCaseDiagram',
+    UMLSequenceDiagram: 'SequenceDiagram',
+    UMLStatechartDiagram: 'StatechartDiagram',
+    UMLActivityDiagram: 'ActivityDiagram',
+    UMLComponentDiagram: 'ComponentDiagram',
+    UMLDeploymentDiagram: 'DeploymentDiagram',
+    UMLPackageDiagram: 'PackageDiagram',
+    UMLCommunicationDiagram: 'CommunicationDiagram',
+    UMLObjectDiagram: 'ObjectDiagram',
+    UMLCompositeStructureDiagram: 'CompositeStructure',
+    UMLTimingDiagram: 'TimingDiagram',
+    UMLInteractionOverviewDiagram: 'InteractionOverview',
+    UMLInformationFlowDiagram: 'InformationFlow',
+    UMLProfileDiagram: 'Profile',
+  };
+  const d = createDiagram(type, names[type] || 'Model');
   commandStack.exec({
     label: 'add diagram',
     redo: () => repository.addChild(owner, d),
@@ -256,7 +441,7 @@ function pickColor(title, cb) {
 
 let clipboard = null;   // { json, pasteCount }
 
-function copySelection() {
+function copySelection({ toast = true } = {}) {
   if (!app.canvas.diagram) return false;
   const views = app.canvas.diagram.elements.filter((v) => repository.selections.includes(v._id));
   if (!views.length) return false;
@@ -266,12 +451,13 @@ function copySelection() {
   const modelIds = [...new Set(clipViews.map((v) => v.modelRef).filter(Boolean))];
   const models = modelIds.map((id) => repository.lookup(id)).filter((m) => m && m.__parent);
   const container = { _id: '__clip__', type: '__Clip', ownedElements: models, elements: clipViews };
-  clipboard = { json: serializeProject(container), pasteCount: 0 };
+  clipboard = { json: serializeProject(container), pasteCount: 0, count: clipViews.length };
   app.canvas.setStatusMessage(`已复制 ${clipViews.length} 个元素`);
+  if (toast) showToast(`已复制 ${clipViews.length} 个元素`);
   return true;
 }
 
-function pasteClipboard() {
+function pasteClipboard({ toast = true } = {}) {
   if (!clipboard || !app.canvas.diagram) return;
   // rebuild a private copy with fresh ids, keeping cross-references intact
   const clone = deserializeProject(clipboard.json);
@@ -293,6 +479,7 @@ function pasteClipboard() {
     if (n.head && idMap.has(n.head)) n.head = idMap.get(n.head);
     if (n.end1ReferenceId && idMap.has(n.end1ReferenceId)) n.end1ReferenceId = idMap.get(n.end1ReferenceId);
     if (n.end2ReferenceId && idMap.has(n.end2ReferenceId)) n.end2ReferenceId = idMap.get(n.end2ReferenceId);
+    if (n.container && idMap.has(n.container)) n.container = idMap.get(n.container);
   };
   const newModels = (clone.ownedElements || []);
   for (const m of newModels) remap(m);
@@ -326,6 +513,7 @@ function pasteClipboard() {
   ]);
   repository.select(newViews.map((v) => v._id), null);
   app.canvas.setStatusMessage(`已粘贴 ${newViews.length} 个元素`);
+  if (toast) showToast(`已粘贴 ${newViews.length} 个元素`);
 }
 
 function model0() {
@@ -333,7 +521,18 @@ function model0() {
 }
 
 function duplicateSelection() {
-  if (copySelection()) pasteClipboard();
+  if (!copySelection({ toast: false })) return;
+  pasteClipboard({ toast: false });
+  showToast('已创建副本');
+}
+
+function cutSelection() {
+  if (!copySelection({ toast: false })) return false;
+  const count = clipboard ? clipboard.count : 0;
+  app.canvas.deleteSelection();
+  app.canvas.setStatusMessage(`已剪切 ${count} 个元素`);
+  showToast(`已剪切 ${count} 个元素`);
+  return true;
 }
 
 function addModelElement(type) {
@@ -351,7 +550,7 @@ function addModelElement(type) {
 
 function saveProject(download = true) {
   const json = serializeProject(repository.root);
-  localStorage.setItem('openuml-project', json);
+  const stored = storeProject(json);
   if (download) {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
@@ -359,8 +558,12 @@ function saveProject(download = true) {
     a.click();
     URL.revokeObjectURL(a.href);
   }
-  markDirty(false);
-  app.canvas.setStatusMessage('项目已保存');
+  if (download || stored) {
+    markDirty(false);
+    app.canvas.setStatusMessage(download ? '项目已保存' : '项目已暂存到浏览器');
+  } else {
+    app.canvas.setStatusMessage('保存失败：请使用「项目另存为…」导出文件');
+  }
 }
 
 function loadProjectJSON(json) {
@@ -379,7 +582,13 @@ function loadProjectJSON(json) {
     app.explorer.expanded.add(root._id);
     for (const top of root.ownedElements || []) app.explorer.expanded.add(top._id);
     app.explorer.render();
-    openDiagram(d);
+    // restore the previously open tabs for this project; fall back to its first diagram
+    app.suspendTabPersist = true;
+    let restored = false;
+    try { restored = restoreTabs(); } finally { app.suspendTabPersist = false; }
+    if (!restored) openDiagram(d);
+    persistTabs();
+    storeProject(serializeProject(repository.root), { quiet: true });
     app.canvas.setStatusMessage('项目已打开');
   } catch (err) {
     alert('无法解析项目文件: ' + err.message);
@@ -400,6 +609,230 @@ function openProjectFile() {
   input.click();
 }
 
+// ---------------- quick find / command palette ----------------
+
+async function requestNewProject() {
+  if (app.dirty) {
+    const ok = await showConfirmDialog({ title: '新建', message: '当前项目有未保存的更改，确定放弃并新建吗？' });
+    if (!ok) return;
+  }
+  newProject();
+}
+
+function exportCurrentSVG() {
+  if (!app.activeDiagram) return;
+  const ok = downloadSVG(app.canvas, app.activeDiagram.name + '.svg', {
+    transparent: app.prefs.transparentBackground,
+  });
+  showToast(ok ? '已导出 SVG' : '当前图表为空', ok ? 'success' : 'error');
+}
+
+async function exportCurrentPNG() {
+  if (!app.activeDiagram) return;
+  const ok = await downloadPNG(app.canvas, app.activeDiagram.name + '.png', app.prefs.exportScale, {
+    transparent: app.prefs.transparentBackground,
+  });
+  showToast(ok ? '已导出 PNG' : '导出失败：当前图表为空', ok ? 'success' : 'error');
+}
+
+async function exportCurrentJPEG() {
+  if (!app.activeDiagram) return;
+  const ok = await downloadJPEG(app.canvas, app.activeDiagram.name + '.jpg', app.prefs.exportScale);
+  showToast(ok ? '已导出 JPEG' : '导出失败：当前图表为空', ok ? 'success' : 'error');
+}
+
+async function copyCurrentDiagram() {
+  if (!app.activeDiagram) return;
+  const ok = await copyDiagramPNG(app.canvas, app.prefs.exportScale);
+  showToast(ok ? '图表已复制为图片' : '浏览器不允许复制图片，请使用导出', ok ? 'success' : 'error');
+}
+
+function printCurrentDiagram() {
+  if (app.activeDiagram) printDiagram(app.canvas, app.activeDiagram.name);
+}
+
+function findViewForModel(modelId) {
+  let found = null;
+  repository.walk((n) => {
+    if (found || !Array.isArray(n.elements)) return;
+    const view = n.elements.find((v) => !v.isEdge && v.modelRef === modelId);
+    if (view) found = { diagram: n, view };
+  });
+  return found;
+}
+
+function parentPath(node) {
+  const parts = [];
+  let p = node.__parent;
+  while (p && parts.length < 3) {
+    if (p.name && p.type !== 'Project') parts.unshift(p.name);
+    p = p.__parent;
+  }
+  return parts.join(' / ');
+}
+
+function quickFindItems(query) {
+  const q = query.trim().toLowerCase();
+  const items = [];
+  repository.walk((n) => {
+    if (!n.type || n.type === 'Project') return;
+    const isDiagram = n.type.endsWith('Diagram');
+    const isModel = !isDiagram && !n.$type && !n.isEdge;
+    if (!isDiagram && !isModel) return;
+    const name = n.name || '(unnamed)';
+    const parent = parentPath(n);
+    const typeLabel = isDiagram
+      ? (diagramTypeLabel(n.type) || '图表')
+      : (ModelKinds[n.type]?.name || n.type.replace(/^UML/, ''));
+    const haystack = `${name} ${typeLabel} ${parent}`.toLowerCase();
+    if (q && !haystack.includes(q)) return;
+    let score = 0;
+    if (q) {
+      const lower = name.toLowerCase();
+      if (lower === q) score = 0;
+      else if (lower.startsWith(q)) score = 1;
+      else score = 2 + haystack.indexOf(q) / 1000;
+    }
+    const meta = ModelKinds[n.type];
+    items.push({
+      label: name,
+      meta: [typeLabel, parent].filter(Boolean).join(' · '),
+      iconHtml: isDiagram
+        ? diagramIcon(n.type)
+        : `<span style="color:${meta?.iconColor || '#8a8f8f'}">${meta?.icon || '•'}</span>`,
+      data: { node: n, isDiagram },
+      score,
+      isDiagram,
+    });
+  });
+  items.sort((a, b) => {
+    if (a.score !== b.score) return a.score - b.score;
+    if (a.isDiagram !== b.isDiagram) return a.isDiagram ? -1 : 1;
+    return a.label.localeCompare(b.label);
+  });
+  return items.slice(0, 60);
+}
+
+function activateQuickFindItem(item) {
+  const { node, isDiagram } = item.data;
+  if (isDiagram) {
+    openDiagram(node);
+    return;
+  }
+  const found = findViewForModel(node._id);
+  if (found) {
+    openDiagram(found.diagram);
+    repository.select([found.view._id], node);
+    app.explorer.highlight(node._id);
+    return;
+  }
+  repository.select([], node);
+  app.explorer.highlight(node._id);
+  app.canvas.setStatusMessage(`${node.name || '元素'} 暂无视图，已定位到模型树`);
+}
+
+function openQuickFindPalette() {
+  showPalette({
+    placeholder: '查找图表或模型元素…',
+    hint: '↑↓ 选择 · Enter 定位 · Esc 关闭',
+    source: quickFindItems,
+    onPick: activateQuickFindItem,
+  });
+}
+
+function paletteCommands() {
+  const hasSel = () => repository.selections.length > 0;
+  const hasView = () => !!app.activeDiagram;
+  const addDiagramCommands = [
+    ['类图', 'UMLClassDiagram'], ['用例图', 'UMLUseCaseDiagram'],
+    ['序列图', 'UMLSequenceDiagram'], ['状态机图', 'UMLStatechartDiagram'],
+    ['活动图', 'UMLActivityDiagram'], ['组件图', 'UMLComponentDiagram'],
+    ['部署图', 'UMLDeploymentDiagram'], ['包图', 'UMLPackageDiagram'],
+    ['通信图', 'UMLCommunicationDiagram'], ['对象图', 'UMLObjectDiagram'],
+    ['复合结构图', 'UMLCompositeStructureDiagram'], ['时序图 (Timing)', 'UMLTimingDiagram'],
+    ['交互概览图', 'UMLInteractionOverviewDiagram'], ['信息流图', 'UMLInformationFlowDiagram'],
+    ['Profile 图', 'UMLProfileDiagram'],
+  ].map(([label, type]) => ({
+    label: `新建${label}`,
+    group: '新建图表',
+    shortcut: '',
+    run: () => addDiagram(type),
+  }));
+
+  return [
+    { label: '新建项目', group: '文件', shortcut: 'Ctrl+N', run: requestNewProject },
+    { label: '打开项目…', group: '文件', shortcut: 'Ctrl+O', run: openProjectFile },
+    { label: '保存项目', group: '文件', shortcut: 'Ctrl+S', run: () => saveProject(false) },
+    { label: '项目另存为…', group: '文件', shortcut: 'Ctrl+Shift+S', run: () => saveProject(true) },
+    { label: '导出为 SVG', group: '文件', enabled: hasView(), run: exportCurrentSVG },
+    { label: '导出为 PNG', group: '文件', enabled: hasView(), run: exportCurrentPNG },
+    { label: '导出为 JPEG', group: '文件', enabled: hasView(), run: exportCurrentJPEG },
+    { label: '复制图表为图片', group: '文件', enabled: hasView(), run: copyCurrentDiagram },
+    { label: '打印 / 导出 PDF…', group: '文件', shortcut: 'Ctrl+P', enabled: hasView(), run: printCurrentDiagram },
+
+    { label: '撤销', group: '编辑', shortcut: 'Ctrl+Z', run: () => commandStack.undo() },
+    { label: '重做', group: '编辑', shortcut: 'Ctrl+Y', run: () => commandStack.redo() },
+    { label: '剪切', group: '编辑', shortcut: 'Ctrl+X', enabled: hasSel(), run: cutSelection },
+    { label: '复制', group: '编辑', shortcut: 'Ctrl+C', enabled: hasSel(), run: () => copySelection() },
+    { label: '粘贴', group: '编辑', shortcut: 'Ctrl+V', enabled: !!clipboard, run: () => pasteClipboard() },
+    { label: '创建副本', group: '编辑', shortcut: 'Ctrl+D', enabled: hasSel(), run: duplicateSelection },
+    { label: '从图表删除', group: '编辑', shortcut: 'Del', enabled: hasSel(), run: () => app.canvas.deleteSelection() },
+    { label: '删除模型元素', group: '编辑', shortcut: 'Ctrl+Del', enabled: hasSel(), run: () => app.canvas.deleteSelectionDeep() },
+    { label: '全选', group: '编辑', shortcut: 'Ctrl+A', run: () => { if (app.activeDiagram) repository.select(app.activeDiagram.elements.map((v) => v._id)); } },
+    { label: '取消选择', group: '编辑', shortcut: 'Esc', run: () => repository.select([]) },
+    { label: '查找图表或元素…', group: '编辑', shortcut: 'Ctrl+F', run: openQuickFindPalette },
+    { label: '偏好设置…', group: '编辑', shortcut: 'Ctrl+,', run: editPreferences },
+
+    ...addDiagramCommands,
+
+    { label: '放大', group: '视图', shortcut: 'Ctrl++', run: () => app.canvas.zoomIn() },
+    { label: '缩小', group: '视图', shortcut: 'Ctrl+-', run: () => app.canvas.zoomOut() },
+    { label: '适应窗口', group: '视图', shortcut: 'Ctrl+Shift+F', run: () => app.canvas.zoomFit() },
+    { label: '实际大小 (100%)', group: '视图', run: () => { app.canvas.zoom = 1; app.canvas._zoomChanged(); } },
+    { label: app.canvas.showGrid ? '隐藏网格' : '显示网格', group: '视图', run: toggleGrid },
+    { label: app.canvas.snapToGrid ? '关闭吸附网格' : '开启吸附网格', group: '视图', run: toggleSnap },
+    { label: app.theme === 'dark' ? '切换浅色主题' : '切换深色主题', group: '视图', run: () => setTheme(app.theme === 'dark' ? 'light' : 'dark') },
+    { label: '上一图表', group: '视图', shortcut: 'Ctrl+Alt+PageUp', enabled: app.openDiagrams.length > 1, run: () => cycleDiagram(-1) },
+    { label: '下一图表', group: '视图', shortcut: 'Ctrl+Alt+PageDown', enabled: app.openDiagrams.length > 1, run: () => cycleDiagram(1) },
+    { label: '关闭当前图表', group: '视图', enabled: hasView(), run: closeCurrentDiagram },
+    { label: '关闭其他图表', group: '视图', enabled: hasView(), run: closeOtherDiagrams },
+    { label: '关闭全部图表', group: '视图', enabled: hasView(), run: closeAllDiagrams },
+
+    { label: '左对齐', group: '格式', enabled: repository.selections.length >= 2, run: () => alignSelected('left') },
+    { label: '水平居中', group: '格式', enabled: repository.selections.length >= 2, run: () => alignSelected('hcenter') },
+    { label: '右对齐', group: '格式', enabled: repository.selections.length >= 2, run: () => alignSelected('right') },
+    { label: '顶对齐', group: '格式', enabled: repository.selections.length >= 2, run: () => alignSelected('top') },
+    { label: '垂直居中', group: '格式', enabled: repository.selections.length >= 2, run: () => alignSelected('vcenter') },
+    { label: '底对齐', group: '格式', enabled: repository.selections.length >= 2, run: () => alignSelected('bottom') },
+    { label: '宽度相同', group: '格式', enabled: repository.selections.length >= 2, run: () => sameSizeMode('w') },
+    { label: '高度相同', group: '格式', enabled: repository.selections.length >= 2, run: () => sameSizeMode('h') },
+    { label: '宽高相同', group: '格式', enabled: repository.selections.length >= 2, run: () => sameSizeMode('wh') },
+    { label: '填充颜色…', group: '格式', enabled: hasSel(), run: () => pickColor('fill', (v) => applyColor('fillColor', v)) },
+    { label: '线条颜色…', group: '格式', enabled: hasSel(), run: () => pickColor('line', (v) => applyColor('lineColor', v)) },
+    { label: '字体颜色…', group: '格式', enabled: hasSel(), run: () => pickColor('font', (v) => applyColor('fontColor', v)) },
+    { label: '置于顶层', group: '格式', enabled: hasSel(), run: () => app.canvas.bringToFront() },
+    { label: '置于底层', group: '格式', enabled: hasSel(), run: () => app.canvas.sendToBack() },
+
+    { label: '重命名选中元素…', group: '模型', shortcut: 'F2', enabled: !!repository.selectedModel, run: () => renameElement(repository.selectedModel) },
+    { label: '关于 OpenUML', group: '帮助', run: showAboutDialog },
+  ];
+}
+
+function openCommandPalette() {
+  showPalette({
+    placeholder: '输入命令…',
+    hint: '↑↓ 选择 · Enter 执行 · Esc 关闭',
+    source: (query) => {
+      const q = query.trim().toLowerCase();
+      return paletteCommands()
+        .filter((c) => c.enabled !== false)
+        .filter((c) => !q || `${c.label} ${c.group}`.toLowerCase().includes(q))
+        .map((c) => ({ label: c.label, meta: c.group, shortcut: c.shortcut || '', data: c }));
+    },
+    onPick: (item) => { const result = item.data.run(); if (result && result.catch) result.catch(() => {}); },
+  });
+}
+
 // ---------------- menus ----------------
 
 function buildMenus() {
@@ -408,20 +841,16 @@ function buildMenus() {
   buildMenu([
     {
       label: '文件', submenu: [
-        { label: '新建', shortcut: 'Ctrl+N', action: async () => {
-          if (app.dirty) {
-            const ok = await showConfirmDialog({ title: '新建', message: '当前项目有未保存的更改，确定放弃并新建吗？' });
-            if (!ok) return;
-          }
-          newProject();
-        } },
+        { label: '新建', shortcut: 'Ctrl+N', action: requestNewProject },
         { label: '打开项目…', shortcut: 'Ctrl+O', action: openProjectFile },
         { label: '保存项目', shortcut: 'Ctrl+S', action: () => saveProject(false) },
         { label: '项目另存为…', shortcut: 'Ctrl+Shift+S', action: () => saveProject(true) },
         '---',
-        { label: '导出为 SVG', action: () => { if (app.activeDiagram) downloadSVG(app.canvas, app.activeDiagram.name + '.svg'); } },
-        { label: '导出为 PNG', action: () => { if (app.activeDiagram) downloadPNG(app.canvas, app.activeDiagram.name + '.png'); } },
-        { label: '打印 / 导出 PDF…', shortcut: 'Ctrl+P', action: () => { if (app.activeDiagram) printDiagram(app.canvas, app.activeDiagram.name); } },
+        { label: '导出为 SVG', action: exportCurrentSVG },
+        { label: '导出为 PNG', action: exportCurrentPNG },
+        { label: '导出为 JPEG', action: exportCurrentJPEG },
+        { label: '复制图表为图片', action: copyCurrentDiagram },
+        { label: '打印 / 导出 PDF…', shortcut: 'Ctrl+P', action: printCurrentDiagram },
       ],
     },
     {
@@ -434,12 +863,18 @@ function buildMenus() {
         } },
         { label: '取消选择', shortcut: 'Esc', action: () => repository.select([]) },
         '---',
+        { label: '剪切', shortcut: 'Ctrl+X', disabled: !hasSel(), action: cutSelection },
         { label: '复制', shortcut: 'Ctrl+C', disabled: !hasSel(), action: () => copySelection() },
         { label: '粘贴', shortcut: 'Ctrl+V', disabled: !clipboard, action: () => pasteClipboard() },
         { label: '创建副本', shortcut: 'Ctrl+D', disabled: !hasSel(), action: () => duplicateSelection() },
         '---',
         { label: '从图表删除', shortcut: 'Del', disabled: !hasSel(), action: () => app.canvas.deleteSelection() },
         { label: '删除模型元素', shortcut: 'Ctrl+Del', disabled: !hasSel(), action: () => app.canvas.deleteSelectionDeep() },
+        '---',
+        { label: '查找…', shortcut: 'Ctrl+F', action: openQuickFindPalette },
+        { label: '命令面板…', shortcut: 'Ctrl+Shift+P', action: openCommandPalette },
+        '---',
+        { label: '偏好设置…', shortcut: 'Ctrl+,', action: editPreferences },
       ],
     },
     {
@@ -456,6 +891,12 @@ function buildMenus() {
           { label: '包图 (Package Diagram)', action: () => addDiagram('UMLPackageDiagram') },
           { label: '通信图 (Communication Diagram)', action: () => addDiagram('UMLCommunicationDiagram') },
           { label: '对象图 (Object Diagram)', action: () => addDiagram('UMLObjectDiagram') },
+          '---',
+          { label: '复合结构图 (Composite Structure)', action: () => addDiagram('UMLCompositeStructureDiagram') },
+          { label: '时序图 (Timing Diagram)', action: () => addDiagram('UMLTimingDiagram') },
+          { label: '交互概览图 (Interaction Overview)', action: () => addDiagram('UMLInteractionOverviewDiagram') },
+          { label: '信息流图 (Information Flow)', action: () => addDiagram('UMLInformationFlowDiagram') },
+          { label: 'Profile 图 (Profile Diagram)', action: () => addDiagram('UMLProfileDiagram') },
         ] },
         '---',
         { label: '添加类', action: () => addModelElement('UMLClass') },
@@ -500,15 +941,14 @@ function buildMenus() {
         { label: '适应窗口', shortcut: 'Ctrl+Shift+F', action: () => app.canvas.zoomFit() },
         { label: '实际大小 (100%)', action: () => { app.canvas.zoom = 1; app.canvas._zoomChanged(); } },
         '---',
-        { label: '显示网格', checked: app.canvas.showGrid, action: () => {
-          app.canvas.showGrid = !app.canvas.showGrid;
-          document.getElementById('tb-grid').classList.toggle('active', app.canvas.showGrid);
-          app.canvas.requestRender();
-        } },
-        { label: '吸附网格', checked: app.canvas.snapToGrid, action: () => {
-          app.canvas.snapToGrid = !app.canvas.snapToGrid;
-          document.getElementById('tb-snap').classList.toggle('active', app.canvas.snapToGrid);
-        } },
+        { label: '上一图表', shortcut: 'Ctrl+Alt+PageUp', disabled: app.openDiagrams.length < 2, action: () => cycleDiagram(-1) },
+        { label: '下一图表', shortcut: 'Ctrl+Alt+PageDown', disabled: app.openDiagrams.length < 2, action: () => cycleDiagram(1) },
+        { label: '关闭当前图表', disabled: !app.activeDiagram, action: closeCurrentDiagram },
+        { label: '关闭其他图表', disabled: !app.activeDiagram, action: closeOtherDiagrams },
+        { label: '关闭全部图表', disabled: !app.activeDiagram, action: closeAllDiagrams },
+        '---',
+        { label: '显示网格', checked: app.canvas.showGrid, action: toggleGrid },
+        { label: '吸附网格', checked: app.canvas.snapToGrid, action: toggleSnap },
         '---',
         { label: '深色主题', checked: app.theme === 'dark', action: () => setTheme(app.theme === 'dark' ? 'light' : 'dark') },
       ],
@@ -534,7 +974,7 @@ function elementContextItems(node, canvas) {
     );
     return items;
   }
-  if (node.type === 'UMLClass' || node.type === 'UMLInterface' || node.type === 'UMLEnumeration' || node.type === 'UMLDataType') {
+  if (['UMLClass', 'UMLInterface', 'UMLEnumeration', 'UMLDataType', 'UMLInformationItem', 'UMLStereotype', 'UMLCollaboration'].includes(node.type)) {
     items.push(
       { label: '添加属性', action: () => addMember(node, 'attributes') },
       { label: '添加操作', action: () => addMember(node, 'operations') },
@@ -577,7 +1017,10 @@ function showInDiagram(model, canvas) {
     repository.select([v._id], model);
     return;
   }
-  if (!['UMLClass', 'UMLInterface', 'UMLEnumeration', 'UMLDataType', 'UMLActor', 'UMLUseCase', 'UMLPackage'].includes(model.type)) return;
+  if (!['UMLClass', 'UMLInterface', 'UMLEnumeration', 'UMLDataType', 'UMLActor', 'UMLUseCase', 'UMLPackage',
+    'UMLInformationItem', 'UMLCollaboration', 'UMLCollaborationUse', 'UMLStereotype', 'UMLMetaClass',
+    'UMLInteractionUseInOverview', 'UMLInteractionInOverview', 'UMLTimingLifeline', 'UMLTimingState',
+    'UMLTimeConstraint', 'UMLDurationConstraint'].includes(model.type)) return;
   const view = createNodeView(model.type, model._id,
     Math.round(80 + Math.random() * 200), Math.round(80 + Math.random() * 150));
   commandStack.exec({
@@ -595,21 +1038,32 @@ function showInDiagram(model, canvas) {
 
 function bindKeys() {
   window.addEventListener('keydown', (e) => {
+    if (isPaletteOpen()) {
+      // Escape closes the palette even if focus moved off its input.
+      if (e.key === 'Escape') { e.preventDefault(); hidePalette(); }
+      return;
+    }
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
     const ctrl = e.ctrlKey || e.metaKey;
     if (ctrl && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); commandStack.undo(); return; }
     if (ctrl && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) { e.preventDefault(); commandStack.redo(); return; }
     if (ctrl && e.key.toLowerCase() === 's') { e.preventDefault(); saveProject(e.shiftKey); return; }
     if (ctrl && e.key.toLowerCase() === 'o') { e.preventDefault(); openProjectFile(); return; }
-    if (ctrl && e.key.toLowerCase() === 'n') { e.preventDefault(); newProject(); return; }
+    if (ctrl && e.key.toLowerCase() === 'n') { e.preventDefault(); requestNewProject(); return; }
     if (ctrl && e.key.toLowerCase() === 'a') { e.preventDefault(); if (app.activeDiagram) repository.select(app.activeDiagram.elements.map((v) => v._id)); return; }
+    if (ctrl && e.key.toLowerCase() === 'x') { e.preventDefault(); cutSelection(); return; }
     if (ctrl && e.key.toLowerCase() === 'c') { e.preventDefault(); copySelection(); return; }
     if (ctrl && e.key.toLowerCase() === 'v') { e.preventDefault(); pasteClipboard(); return; }
     if (ctrl && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateSelection(); return; }
-    if (ctrl && e.key.toLowerCase() === 'p') { e.preventDefault(); if (app.activeDiagram) printDiagram(app.canvas, app.activeDiagram.name); return; }
+    if (ctrl && e.shiftKey && e.key.toLowerCase() === 'p') { e.preventDefault(); openCommandPalette(); return; }
+    if (ctrl && e.key === ',') { e.preventDefault(); editPreferences(); return; }
+    if (ctrl && e.key.toLowerCase() === 'p') { e.preventDefault(); printCurrentDiagram(); return; }
+    if (ctrl && e.key.toLowerCase() === 'f' && !e.shiftKey) { e.preventDefault(); openQuickFindPalette(); return; }
     if (ctrl && (e.key === '=' || e.key === '+')) { e.preventDefault(); app.canvas.zoomIn(); return; }
     if (ctrl && e.key === '-') { e.preventDefault(); app.canvas.zoomOut(); return; }
     if (ctrl && e.shiftKey && e.key.toLowerCase() === 'f') { e.preventDefault(); app.canvas.zoomFit(); return; }
+    if (ctrl && e.altKey && e.key === 'PageUp') { e.preventDefault(); cycleDiagram(-1); return; }
+    if (ctrl && e.altKey && e.key === 'PageDown') { e.preventDefault(); cycleDiagram(1); return; }
     if (e.key === 'Delete') {
       e.preventDefault();
       if (e.ctrlKey) app.canvas.deleteSelectionDeep();
@@ -652,15 +1106,8 @@ function bindPanelUI() {
   document.getElementById('tb-zoom-in').onclick = () => app.canvas.zoomIn();
   document.getElementById('tb-zoom-out').onclick = () => app.canvas.zoomOut();
   document.getElementById('tb-zoom-fit').onclick = () => app.canvas.zoomFit();
-  document.getElementById('tb-grid').onclick = () => {
-    app.canvas.showGrid = !app.canvas.showGrid;
-    document.getElementById('tb-grid').classList.toggle('active', app.canvas.showGrid);
-    app.canvas.requestRender();
-  };
-  document.getElementById('tb-snap').onclick = () => {
-    app.canvas.snapToGrid = !app.canvas.snapToGrid;
-    document.getElementById('tb-snap').classList.toggle('active', app.canvas.snapToGrid);
-  };
+  document.getElementById('tb-grid').onclick = toggleGrid;
+  document.getElementById('tb-snap').onclick = toggleSnap;
   document.getElementById('me-collapse').onclick = () => {
     app.explorer.expanded.clear();
     app.explorer.render();
@@ -695,6 +1142,12 @@ function bindResizer(id, targetId, prop, growingLeft) {
 function boot() {
   const canvas = new DiagramCanvas(document.getElementById('diagram-canvas'));
   app.canvas = canvas;
+  const prefs = loadPreferences();
+  app.prefs = prefs;
+  canvas.gridSize = prefs.gridSize;
+  canvas.showGrid = prefs.showGrid;
+  canvas.snapToGrid = prefs.snapToGrid;
+  canvas.autoResize = prefs.autoResize;
   window.__internals = { createNodeView, createModel, createDiagram };
 
   app.explorer = new ModelExplorer(document.getElementById('model-explorer'), {
@@ -719,8 +1172,10 @@ function boot() {
   initToolbox(canvas);
   bindPanelUI();
   bindKeys();
-  app.theme = localStorage.getItem('openuml-theme') === 'dark' ? 'dark' : 'light';
+  app.theme = prefs.theme === 'dark' ? 'dark' : 'light';
   if (app.theme === 'dark') document.documentElement.dataset.theme = 'dark';
+  document.getElementById('tb-grid').classList.toggle('active', prefs.showGrid);
+  document.getElementById('tb-snap').classList.toggle('active', prefs.snapToGrid);
   buildMenus();
 
   document.addEventListener('canvas-contextmenu', (e) => {
@@ -773,7 +1228,7 @@ function boot() {
     }
   });
 
-  document.addEventListener('stack-changed', () => markDirty(true));
+  document.addEventListener('stack-changed', () => { markDirty(true); scheduleAutosave(); });
 
   repository.on('change', () => renderTabs());
   repository.on('select', ({ ids }) => {
@@ -782,12 +1237,17 @@ function boot() {
   });
 
   // restore last session or start fresh
-  const saved = localStorage.getItem('openuml-project');
+  const saved = localStorage.getItem(PROJECT_KEY);
   if (saved) {
     try { loadProjectJSON(saved); } catch { newProject(); }
   } else {
     newProject();
   }
+  window.addEventListener('beforeunload', () => {
+    if (!app.dirty || !repository.root) return;
+    // flush the pending debounced autosave synchronously
+    try { localStorage.setItem(PROJECT_KEY, serializeProject(repository.root)); } catch { /* ignore */ }
+  });
   canvas.zoomFit();
 }
 

@@ -1,0 +1,179 @@
+{
+  "source": "UMLExample.mdj",
+  "models": 719,
+  "diagrams": [
+    {
+      "id": "d-3",
+      "type": "UMLClassDiagram",
+      "name": "Abstract Factory Design Pattern",
+      "elements": 23
+    },
+    {
+      "id": "d-57",
+      "type": "UMLClassDiagram",
+      "name": "Library Domain Model",
+      "elements": 26
+    },
+    {
+      "id": "d-137",
+      "type": "UMLProfileDiagram",
+      "name": "StandardProfileL2",
+      "elements": 74
+    },
+    {
+      "id": "d-288",
+      "type": "UMLProfileDiagram",
+      "name": "Robustness Stereotypes",
+      "elements": 7
+    },
+    {
+      "id": "d-301",
+      "type": "UMLProfileDiagram",
+      "name": "StandardProfileL3",
+      "elements": 8
+    },
+    {
+      "id": "d-318",
+      "type": "UMLClassDiagram",
+      "name": "Android Camera Implementation Classes",
+      "elements": 18
+    },
+    {
+      "id": "d-396",
+      "type": "UMLClassDiagram",
+      "name": "UML Property",
+      "elements": 16
+    },
+    {
+      "id": "d-439",
+      "type": "UMLClassDiagram",
+      "name": "UML Operation",
+      "elements": 4
+    },
+    {
+      "id": "d-464",
+      "type": "UMLActivityDiagram",
+      "name": "Advanced Elements",
+      "elements": 17
+    },
+    {
+      "id": "d-498",
+      "type": "UMLPackageDiagram",
+      "name": "Multi-Layered Web Architecture",
+      "elements": 48
+    },
+    {
+      "id": "d-611",
+      "type": "UMLCompositeStructureDiagram",
+      "name": "Apache Tomcat 7 Server",
+      "elements": 20
+    },
+    {
+      "id": "d-654",
+      "type": "UMLCompositeStructureDiagram",
+      "name": "Observer Pattern",
+      "elements": 5
+    },
+    {
+      "id": "d-672",
+      "type": "UMLUseCaseDiagram",
+      "name": "Use Case Model",
+      "elements": 27
+    },
+    {
+      "id": "d-728",
+      "type": "UMLClassDiagram",
+      "name": "Domain Model",
+      "elements": 20
+    },
+    {
+      "id": "d-807",
+      "type": "UMLComponentDiagram",
+      "name": "Components",
+      "elements": 70
+    },
+    {
+      "id": "d-956",
+      "type": "UMLObjectDiagram",
+      "name": "Login Controller",
+      "elements": 13
+    },
+    {
+      "id": "d-994",
+      "type": "UMLCommunicationDiagram",
+      "name": "Online Bookshop",
+      "elements": 11
+    },
+    {
+      "id": "d-1040",
+      "type": "UMLSequenceDiagram",
+      "name": "submit_comments",
+      "elements": 33
+    },
+    {
+      "id": "d-1120",
+      "type": "UMLActivityDiagram",
+      "name": "Ticket Vending Machine",
+      "elements": 46
+    },
+    {
+      "id": "d-1211",
+      "type": "UMLActivityDiagram",
+      "name": "Electronic Prescriptions",
+      "elements": 41
+    },
+    {
+      "id": "d-1291",
+      "type": "UMLCompositeStructureDiagram",
+      "name": "Bank ATM Design Model",
+      "elements": 27
+    },
+    {
+      "id": "d-1347",
+      "type": "UMLStatechartDiagram",
+      "name": "Bank ATM State Model",
+      "elements": 30
+    },
+    {
+      "id": "d-1414",
+      "type": "UMLTimingDiagram",
+      "name": "Website Timing",
+      "elements": 49
+    },
+    {
+      "id": "d-1517",
+      "type": "UMLInteractionOverviewDiagram",
+      "name": "Submit Comments",
+      "elements": 21
+    },
+    {
+      "id": "d-1560",
+      "type": "UMLSequenceDiagram",
+      "name": "Post Comments",
+      "elements": 16
+    },
+    {
+      "id": "d-1602",
+      "type": "UMLInformationFlowDiagram",
+      "name": "Information Flows",
+      "elements": 13
+    },
+    {
+      "id": "d-1630",
+      "type": "UMLDeploymentDiagram",
+      "name": "Book Club Web Application",
+      "elements": 6
+    },
+    {
+      "id": "d-1644",
+      "type": "UMLClassDiagram",
+      "name": "Annotations on Diagram",
+      "elements": 3
+    }
+  ],
+  "skipped": {
+    "view:UMLStructuredActivityNodeView": 1,
+    "edge:UMLControlFlowView-endpoints": 3,
+    "edge:UMLObjectFlowView-endpoints": 3
+  }
+}

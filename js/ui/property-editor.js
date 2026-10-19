@@ -11,6 +11,8 @@ export class PropertyEditor {
     this.stylePanel = document.getElementById('style-editor');
     this.currentModel = null;
     this.currentView = null;
+    // remember the selected member row per model/list across panel re-renders
+    this.listSelections = new Map();
     repository.on('select', ({ model }) => {
       this.show(model);
     });
@@ -219,11 +221,30 @@ export class PropertyEditor {
       this._row(sec, 'classifier', model.classifier || '', (v) => this._set(model, 'classifier', v.trim()));
     }
 
+    // Composite structure: port / part details
+    if (['UMLPort', 'UMLPart'].includes(model.type)) {
+      const sec = this._section('结构特征 (Structural Feature)');
+      this._row(sec, 'type', model.typeName || '', (v) => this._set(model, 'typeName', v.trim()));
+      this._row(sec, 'multiplicity', model.multiplicity || '', (v) => this._set(model, 'multiplicity', v.trim()));
+      if (model.type === 'UMLPart') {
+        this._row(sec, 'aggregation', model.aggregation || 'composite',
+          (v) => this._set(model, 'aggregation', v), 'select',
+          [['composite', '组合 (实线)'], ['shared', '共享 (虚线)']]);
+      }
+    }
+    if (model.type === 'UMLCollaborationUse') {
+      const sec = this._section('协作使用 (Collaboration Use)');
+      this._row(sec, 'type', model.typeName || '', (v) => this._set(model, 'typeName', v.trim()));
+    }
+
     // Edge naming
     if (this.currentView && this.currentView.isEdge) {
       const sec = this._section('连接');
       if (this.currentView.$type === 'UMLLinkObject') {
         this._row(sec, 'name', this.currentView.name || '', (val) => this._setView(this.currentView, 'name', val));
+      }
+      if (this.currentView.$type === 'UMLRoleBinding') {
+        this._row(sec, 'role name', this.currentView.roleName || '', (val) => this._setView(this.currentView, 'roleName', val));
       }
       this._row(sec, '显示名称', this.currentView.nameVisible !== false, (val) => this._setView(this.currentView, 'nameVisible', val === 'true'), 'select', [['true', '是'], ['false', '否']]);
       this._row(sec, '线型', this.currentView.lineStyle, (val) => this._setView(this.currentView, 'lineStyle', val), 'select', [['solid', '实线'], ['dashed', '虚线']]);
@@ -239,63 +260,98 @@ export class PropertyEditor {
     addBtn.textContent = '＋ 添加';
     const delBtn = document.createElement('button');
     delBtn.textContent = '－ 删除';
+    const upBtn = document.createElement('button');
+    upBtn.textContent = '↑';
+    upBtn.title = '上移';
+    const downBtn = document.createElement('button');
+    downBtn.textContent = '↓';
+    downBtn.title = '下移';
     toolbar.appendChild(addBtn);
     toolbar.appendChild(delBtn);
+    toolbar.appendChild(upBtn);
+    toolbar.appendChild(downBtn);
     wrap.appendChild(toolbar);
     const items = document.createElement('div');
     items.className = 'list-editor-items';
     wrap.appendChild(items);
+    const detail = document.createElement('div');
+    detail.className = 'item-detail';
 
-    let selectedIdx = -1;
+    const selKey = `${model._id}::${listKey}`;
+    let selectedIdx = this.listSelections.has(selKey) ? this.listSelections.get(selKey) : -1;
+    if (selectedIdx >= (model[listKey] || []).length) selectedIdx = -1;
+    const setSelection = (idx) => {
+      selectedIdx = idx;
+      if (idx < 0) this.listSelections.delete(selKey);
+      else this.listSelections.set(selKey, idx);
+    };
     const renderItems = () => {
       items.innerHTML = '';
       (model[listKey] || []).forEach((item, idx) => {
         const f = formatter(item);
         const row = document.createElement('div');
         row.className = 'list-editor-item' + (idx === selectedIdx ? ' selected' : '');
-        row.innerHTML = `<span class="li-vis">${f.vis}</span><span class="li-name">${esc(f.name)}</span><span class="li-type">${esc(f.type)}</span>`;
-        row.onclick = () => { selectedIdx = idx; renderItems(); this._itemDetail(item, editableFields); };
+        row.innerHTML = `<span class="li-vis">${esc(f.vis)}</span><span class="li-name">${esc(f.name)}</span><span class="li-type">${esc(f.type)}</span>`;
+        row.onclick = () => { setSelection(idx); renderItems(); };
         items.appendChild(row);
       });
       if (selectedIdx >= 0 && model[listKey][selectedIdx]) {
-        this._itemDetail(model[listKey][selectedIdx], editableFields);
+        this._itemDetail(model[listKey][selectedIdx], editableFields, listKey, detail);
       } else {
-        const detail = this.propPanel.querySelector('.item-detail');
-        if (detail) detail.remove();
+        detail.innerHTML = '';
       }
     };
     addBtn.onclick = () => {
       const item = creator();
       const old = model[listKey];
+      // update the remembered row before the synchronous stack-changed rebuild
+      setSelection(old.length);
       commandStack.exec({
         label: 'add member',
         redo: () => { model[listKey] = [...old, item]; },
         undo: () => { model[listKey] = old; },
       });
-      selectedIdx = (model[listKey] || []).length - 1;
       renderItems();
     };
     delBtn.onclick = () => {
       if (selectedIdx < 0) return;
       const old = model[listKey];
+      const removeIdx = selectedIdx;
+      setSelection(-1);
       commandStack.exec({
         label: 'remove member',
-        redo: () => { model[listKey] = old.filter((_, i) => i !== selectedIdx); },
+        redo: () => { model[listKey] = old.filter((_, i) => i !== removeIdx); },
         undo: () => { model[listKey] = old; },
       });
-      selectedIdx = -1;
       renderItems();
     };
+    const moveItem = (delta) => {
+      if (selectedIdx < 0) return;
+      const from = selectedIdx;
+      const to = from + delta;
+      if (to < 0 || to >= (model[listKey] || []).length) return;
+      const old = model[listKey];
+      const next = [...old];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      setSelection(to);
+      commandStack.exec({
+        label: 'reorder member',
+        redo: () => { model[listKey] = next; },
+        undo: () => { model[listKey] = old; },
+      });
+      renderItems();
+    };
+    upBtn.onclick = () => moveItem(-1);
+    downBtn.onclick = () => moveItem(1);
     parent.appendChild(wrap);
-    const detail = document.createElement('div');
-    detail.className = 'item-detail';
     parent.appendChild(detail);
     this._renderListItems = renderItems;
     renderItems();
   }
 
-  _itemDetail(item, editableFields) {
-    const old = this.propPanel.querySelector('.item-detail');
+  _itemDetail(item, editableFields, listKey = '', host = null) {
+    const old = host || this.propPanel.querySelector('.item-detail');
     if (old) old.innerHTML = '';
     if (!old) return;
     for (const f of editableFields) {
@@ -319,6 +375,82 @@ export class PropertyEditor {
       val.appendChild(input);
       row.appendChild(val);
       old.appendChild(row);
+    }
+    // operation signature: edit the parameter list in place
+    if (listKey === 'operations') {
+      if (!Array.isArray(item.parameters)) item.parameters = [];
+      const heading = document.createElement('div');
+      heading.className = 'item-detail-heading';
+      heading.textContent = '参数 (Parameters)';
+      old.appendChild(heading);
+      const renderParams = () => {
+        old.querySelectorAll('.param-row, .param-add').forEach((n) => n.remove());
+        item.parameters.forEach((p, i) => {
+          const row = document.createElement('div');
+          row.className = 'prop-row param-row';
+          row.innerHTML = `<label>param ${i + 1}</label>`;
+          const val = document.createElement('div');
+          val.className = 'prop-value';
+          const name = document.createElement('input');
+          name.type = 'text';
+          name.value = p.name ?? '';
+          name.placeholder = 'name';
+          const type = document.createElement('input');
+          type.type = 'text';
+          type.value = p.type ?? '';
+          type.placeholder = 'type';
+          const del = document.createElement('button');
+          del.className = 'btn';
+          del.textContent = '－';
+          const commit = () => {
+            const next = { ...p, name: name.value, type: type.value };
+            const oldParams = item.parameters;
+            const nextParams = oldParams.map((x, j) => (j === i ? next : x));
+            commandStack.exec({
+              label: 'edit parameter',
+              redo: () => { item.parameters = nextParams; },
+              undo: () => { item.parameters = oldParams; },
+            });
+          };
+          name.addEventListener('change', commit);
+          type.addEventListener('change', commit);
+          del.onclick = () => {
+            const oldParams = item.parameters;
+            const nextParams = oldParams.filter((_, j) => j !== i);
+            commandStack.exec({
+              label: 'remove parameter',
+              redo: () => { item.parameters = nextParams; },
+              undo: () => { item.parameters = oldParams; },
+            });
+            renderParams();
+          };
+          for (const el of [name, type]) {
+            el.addEventListener('keydown', (e) => e.stopPropagation());
+          }
+          val.style.display = 'flex';
+          val.style.gap = '4px';
+          val.appendChild(name);
+          val.appendChild(type);
+          val.appendChild(del);
+          row.appendChild(val);
+          old.appendChild(row);
+        });
+        const add = document.createElement('button');
+        add.className = 'btn param-add';
+        add.textContent = '＋ 参数';
+        add.onclick = () => {
+          const oldParams = item.parameters;
+          const nextParams = [...oldParams, { name: 'param' + (oldParams.length + 1), type: '' }];
+          commandStack.exec({
+            label: 'add parameter',
+            redo: () => { item.parameters = nextParams; },
+            undo: () => { item.parameters = oldParams; },
+          });
+          renderParams();
+        };
+        old.appendChild(add);
+      };
+      renderParams();
     }
   }
 

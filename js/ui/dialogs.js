@@ -65,6 +65,24 @@ export function showConfirmDialog({ title = '确认', message = '' } = {}) {
   });
 }
 
+export function showAlertDialog({ title = '提示', message = '' } = {}) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('dialog-overlay');
+    document.getElementById('dialog-title').textContent = title;
+    const body = document.getElementById('dialog-body');
+    body.innerHTML = `<div style="max-width:420px;line-height:1.6">${message}</div>`;
+    const buttons = document.getElementById('dialog-buttons');
+    buttons.innerHTML = '';
+    const ok = document.createElement('button');
+    ok.className = 'btn primary';
+    ok.textContent = '知道了';
+    ok.onclick = () => { overlay.classList.add('hidden'); resolve(); };
+    buttons.appendChild(ok);
+    overlay.classList.remove('hidden');
+    ok.focus();
+  });
+}
+
 export function showAboutDialog() {
   const overlay = document.getElementById('dialog-overlay');
   document.getElementById('dialog-title').textContent = '关于 OpenUML';

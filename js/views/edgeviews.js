@@ -1,7 +1,13 @@
 // edgeviews.js — SVG rendering for UML relationships with UML arrowheads
 
-import { svgEl } from './nodeviews.js';
+import { svgEl, TIMING_LANE_LABEL_W } from './nodeviews.js';
 import { borderIntersect, orthogonalRoute, Rect } from '../core/geometry.js';
+
+function dashArray(style) {
+  if (style === 'dashed') return '6 4';
+  if (style === 'dotted') return '2 3';
+  return 'none';
+}
 
 const ARROW = {
   none: null,
@@ -36,7 +42,7 @@ export function renderEndpointMessage(g, view, model, lifelineView) {
     : `M ${cx} ${y} L ${ex - 4.5} ${y}`;
   svgEl('path', {
     d, fill: 'none', stroke: line, 'stroke-width': 1,
-    'stroke-dasharray': view.lineStyle === 'dashed' ? '6 4' : 'none',
+    'stroke-dasharray': dashArray(view.lineStyle),
     class: 'edge-path',
   }, g);
   // arrowhead: found → open arrow at the lifeline; lost → open arrow at the circle
@@ -73,7 +79,7 @@ export function renderSelfLoop(g, edge, model, rect) {
   const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ');
   svgEl('path', {
     d, fill: 'none', stroke: line, 'stroke-width': 1,
-    'stroke-dasharray': edge.lineStyle === 'dashed' ? '6 4' : 'none',
+    'stroke-dasharray': dashArray(edge.lineStyle),
     class: 'edge-path',
   }, g);
   // arrowhead pointing back into the node's right edge (westward)
@@ -114,7 +120,7 @@ export function renderMessage(g, view, model, tailView, headView) {
     svgEl('path', {
       d: `M ${x} ${y} L ${x + loop} ${y} L ${x + loop} ${y - rise} L ${x + 8} ${y - rise}`,
       fill: 'none', stroke: line, 'stroke-width': 1,
-      'stroke-dasharray': view.lineStyle === 'dashed' ? '6 4' : 'none',
+      'stroke-dasharray': dashArray(view.lineStyle),
       class: 'edge-path',
     }, g);
     const def = ARROW[view.headArrow] || ARROW.open;
@@ -150,7 +156,7 @@ export function renderMessage(g, view, model, tailView, headView) {
   svgEl('path', {
     d: `M ${tailX} ${y} L ${headX} ${y}`,
     fill: 'none', stroke: line, 'stroke-width': 1,
-    'stroke-dasharray': view.lineStyle === 'dashed' ? '6 4' : 'none',
+    'stroke-dasharray': dashArray(view.lineStyle),
     class: 'edge-path',
   }, g);
   // arrowhead pointing into the head lifeline
@@ -179,6 +185,47 @@ export function renderMessage(g, view, model, tailView, headView) {
     t.textContent = labelParts.join(' ');
     const textW = Math.max(50, t.textContent.length * fs * 0.55);
     meta.labels.push({ el: t, kind: 'name', box: { x: mid.x - textW / 2, y: y - fs - 8, width: textW, height: fs + 4 } });
+  }
+  return meta;
+}
+
+/**
+ * Timing-diagram message: a vertical arrow between two horizontal lifelines.
+ * `view.x` is the shared time position; the ends sit on each lane's value line.
+ */
+export function renderTimingMessage(g, view, model, tailView, headView) {
+  const line = view.lineColor || '#353535';
+  const fs = view.fontSize || 11;
+  const y1 = tailView.y + tailView.height / 2;
+  const y2 = headView.y + headView.height / 2;
+  const minX = Math.max(tailView.x + TIMING_LANE_LABEL_W + 8, headView.x + TIMING_LANE_LABEL_W + 8);
+  const maxX = Math.min(tailView.x + tailView.width - 8, headView.x + headView.width - 8);
+  const wanted = view.x != null ? view.x : (tailView.x + tailView.width / 2);
+  const x = Math.max(minX, Math.min(maxX, wanted));
+  view.x = Math.round(x);
+  const meta = { labels: [], points: [{ x, y: y1 }, { x, y: y2 }] };
+
+  svgEl('line', {
+    x1: x, y1, x2: x, y2, stroke: line, 'stroke-width': 1,
+    'stroke-dasharray': dashArray(view.lineStyle), class: 'edge-path',
+  }, g);
+  const angle = Math.atan2(y2 - y1, 0);
+  const def = ARROW[view.headArrow] || ARROW.open;
+  svgEl('path', {
+    d: arrowPath(x, y2, angle, def), fill: 'none', stroke: line,
+    'stroke-width': def.stroke || 1.3, class: 'edge-head',
+  }, g);
+  const name = model?.name || '';
+  if (name) {
+    const midY = (y1 + y2) / 2;
+    const t = svgEl('text', {
+      x: x + 7, y: midY + fs * 0.35, 'font-size': fs, fill: view.fontColor || '#353535',
+    }, g);
+    t.textContent = name;
+    meta.labels.push({
+      el: t, kind: 'name',
+      box: { x: x + 4, y: midY - fs, width: Math.max(40, name.length * fs * 0.58), height: fs + 4 },
+    });
   }
   return meta;
 }
@@ -256,7 +303,7 @@ export function renderEdge(g, edge, model, tailRect, headRect, opts = {}) {
   svgEl('path', {
     d, fill: 'none', stroke: line,
     'stroke-width': opts.selected ? 1.6 : 1,
-    'stroke-dasharray': edge.lineStyle === 'dashed' ? '6 4' : 'none',
+    'stroke-dasharray': dashArray(edge.lineStyle),
     class: 'edge-path',
   }, g);
 
@@ -341,6 +388,17 @@ export function renderEdge(g, edge, model, tailRect, headRect, opts = {}) {
     if (edge.tailMultiplicity) {
       const t = svgEl('text', { x: tailEnd.x, y: tailEnd.y - 6 - fs, 'font-size': fs, fill: fontColor, 'text-anchor': 'middle' }, g);
       t.textContent = edge.tailMultiplicity;
+    }
+  }
+  // role binding: the bound role name sits next to the head end
+  if (edge.$type === 'UMLRoleBinding') {
+    const roleName = edge.roleName || model?.roleName || '';
+    if (roleName) {
+      const t = svgEl('text', {
+        x: headEnd.x, y: headEnd.y + fs + 10, 'text-anchor': 'middle',
+        'font-size': fs, fill: fontColor, 'font-style': 'italic',
+      }, g);
+      t.textContent = roleName;
     }
   }
   return meta;

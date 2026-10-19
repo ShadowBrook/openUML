@@ -8,6 +8,11 @@ const groupIcons = {
   class: diagramIcon('UMLClassDiagram'),
   usecase: diagramIcon('UMLUseCaseDiagram'),
   sequence: diagramIcon('UMLSequenceDiagram'),
+  compositestructure: diagramIcon('UMLCompositeStructureDiagram'),
+  informationflow: diagramIcon('UMLInformationFlowDiagram'),
+  profile: diagramIcon('UMLProfileDiagram'),
+  interactionoverview: diagramIcon('UMLInteractionOverviewDiagram'),
+  timing: diagramIcon('UMLTimingDiagram'),
 };
 
 function groupIcon(id) {
@@ -70,6 +75,20 @@ const Icons = {
   acceptSignal: `<svg viewBox="0 0 30 26"><path d="M8 6 h18 v14 h-18 l-4 -7 Z" fill="#e8f6f6" stroke="#4a4f4f"/></svg>`,
   swimlaneV: `<svg viewBox="0 0 30 26"><rect x="3" y="3" width="24" height="20" fill="#fafbfb" stroke="#4a4f4f"/><rect x="3" y="3" width="7" height="20" fill="#f0f2f2" stroke="#4a4f4f"/><line x1="14" y1="3" x2="14" y2="23" stroke="#b6bdbd"/><line x1="20" y1="3" x2="20" y2="23" stroke="#b6bdbd"/></svg>`,
   swimlaneH: `<svg viewBox="0 0 30 26"><rect x="3" y="3" width="24" height="20" fill="#fafbfb" stroke="#4a4f4f"/><rect x="3" y="3" width="24" height="7" fill="#f0f2f2" stroke="#4a4f4f"/><line x1="3" y1="15" x2="27" y2="15" stroke="#b6bdbd"/></svg>`,
+  collaboration: `<svg viewBox="0 0 30 26"><ellipse cx="15" cy="13" rx="11" ry="7" fill="#f7f1fb" stroke="#4a4f4f" stroke-dasharray="4 3"/><text x="15" y="16" text-anchor="middle" font-size="7" fill="#4a4f4f">collab</text></svg>`,
+  collaborationUse: `<svg viewBox="0 0 30 26"><ellipse cx="15" cy="13" rx="11" ry="7" fill="#f7f1fb" stroke="#4a4f4f" stroke-dasharray="4 3"/><text x="15" y="16" text-anchor="middle" font-size="7" fill="#4a4f4f">use</text></svg>`,
+  port: `<svg viewBox="0 0 30 26"><rect x="4" y="6" width="22" height="14" fill="#eef4fb" stroke="#4a4f4f"/><rect x="1.6" y="11" width="6" height="6" fill="#fff" stroke="#4a4f4f"/></svg>`,
+  part: `<svg viewBox="0 0 30 26"><rect x="4" y="6" width="22" height="14" rx="3" fill="#eef4fb" stroke="#4a4f4f"/><text x="15" y="15.5" text-anchor="middle" font-size="6" fill="#4a4f4f">part</text></svg>`,
+  infoItem: `<svg viewBox="0 0 30 26"><rect x="4" y="3" width="22" height="20" fill="#eef4fb" stroke="#4a4f4f"/><text x="15" y="8.5" text-anchor="middle" font-size="4" font-style="italic" fill="#4a4f4f">«info»</text><line x1="4" y1="11" x2="26" y2="11" stroke="#4a4f4f"/><line x1="4" y1="17" x2="26" y2="17" stroke="#4a4f4f"/></svg>`,
+  infoFlow: `<svg viewBox="0 0 30 26"><rect x="2" y="3" width="8" height="6" fill="#eef4fb" stroke="#4a4f4f"/><rect x="20" y="17" width="8" height="6" fill="#eef4fb" stroke="#4a4f4f"/><line x1="10" y1="9" x2="20" y2="17" stroke="#4a4f4f" stroke-dasharray="2 2"/><path d="M21 18 l-4 -1 M21 18 l0 -3" stroke="#4a4f4f" fill="none"/><text x="15" y="10" text-anchor="middle" font-size="4" font-style="italic" fill="#4a4f4f">«flow»</text></svg>`,
+  metaclass: `<svg viewBox="0 0 30 26"><rect x="4" y="4" width="22" height="18" fill="#eef4fb" stroke="#4a4f4f"/><text x="15" y="9.5" text-anchor="middle" font-size="4" font-style="italic" fill="#4a4f4f">«meta»</text><text x="15" y="17" text-anchor="middle" font-size="6" fill="#4a4f4f">Class</text></svg>`,
+  stereotype: `<svg viewBox="0 0 30 26"><rect x="4" y="4" width="22" height="18" fill="#fdf3e7" stroke="#4a4f4f"/><text x="15" y="9.5" text-anchor="middle" font-size="4" font-style="italic" fill="#4a4f4f">«st»</text><text x="15" y="17" text-anchor="middle" font-size="6" fill="#4a4f4f">S</text></svg>`,
+  extension: `<svg viewBox="0 0 30 26"><line x1="3" y1="13" x2="22" y2="13" stroke="#4a4f4f"/><path d="M27 13 l-6 -3.6 v7.2 Z" fill="#4a4f4f" stroke="#4a4f4f"/></svg>`,
+  timingLifeline: `<svg viewBox="0 0 30 26"><rect x="3" y="6" width="24" height="14" fill="#fcfdfd" stroke="#d8dede"/><line x1="10" y1="6" x2="10" y2="20" stroke="#4a4f4f"/><line x1="10" y1="13" x2="27" y2="13" stroke="#8a8f8f"/><text x="5" y="15" font-size="5" fill="#4a4f4f">L</text></svg>`,
+  timingState: `<svg viewBox="0 0 30 26"><line x1="3" y1="9" x2="15" y2="9" stroke="#4a4f4f" stroke-width="1.2"/><line x1="15" y1="9" x2="15" y2="17" stroke="#4a4f4f"/><line x1="15" y1="17" x2="27" y2="17" stroke="#4a4f4f" stroke-width="1.2"/><text x="4" y="6.5" font-size="5" fill="#4a4f4f">S</text></svg>`,
+  timeSegment: `<svg viewBox="0 0 30 26"><line x1="5" y1="13" x2="25" y2="13" stroke="#4a4f4f" stroke-width="1.2"/><line x1="5" y1="8" x2="5" y2="18" stroke="#4a4f4f"/><line x1="25" y1="8" x2="25" y2="18" stroke="#4a4f4f"/></svg>`,
+  timeTick: `<svg viewBox="0 0 30 26"><line x1="15" y1="5" x2="15" y2="18" stroke="#4a4f4f"/><text x="15" y="24" text-anchor="middle" font-size="6" fill="#4a4f4f">t</text></svg>`,
+  duration: `<svg viewBox="0 0 30 26"><line x1="5" y1="16" x2="25" y2="16" stroke="#4a4f4f"/><line x1="5" y1="11" x2="5" y2="21" stroke="#4a4f4f"/><line x1="25" y1="11" x2="25" y2="21" stroke="#4a4f4f"/><text x="15" y="10" text-anchor="middle" font-size="6" fill="#4a4f4f">&#123;d&#125;</text></svg>`,
 };
 
 // tool id -> canvas tool descriptor
@@ -159,6 +178,41 @@ export const ToolMap = {
   'tool-actor2': { kind: 'node', nodeType: 'UMLActor' },
   'tool-link': { kind: 'edge', edgeType: 'UMLConnector' },
   'tool-linkMessage': { kind: 'edge', edgeType: 'UMLLinkMessage' },
+  // composite structure
+  'tool-collaboration': { kind: 'node', nodeType: 'UMLCollaboration' },
+  'tool-port': { kind: 'node', nodeType: 'UMLPort' },
+  'tool-part': { kind: 'node', nodeType: 'UMLPart' },
+  'tool-compConnector': { kind: 'edge', edgeType: 'UMLCompositeConnector' },
+  'tool-collaborationUse': { kind: 'node', nodeType: 'UMLCollaborationUse' },
+  'tool-roleBinding': { kind: 'edge', edgeType: 'UMLRoleBinding' },
+  'tool-ifaceReal2': { kind: 'edge', edgeType: 'UMLInterfaceRealization' },
+  // information flow
+  'tool-infoItem': { kind: 'node', nodeType: 'UMLInformationItem' },
+  'tool-infoFlow': { kind: 'edge', edgeType: 'UMLInformationFlow' },
+  // profile
+  'tool-metaclass': { kind: 'node', nodeType: 'UMLMetaClass' },
+  'tool-stereotype': { kind: 'node', nodeType: 'UMLStereotype' },
+  'tool-enum2': { kind: 'node', nodeType: 'UMLEnumeration' },
+  'tool-extension': { kind: 'edge', edgeType: 'UMLExtension' },
+  'tool-gen2': { kind: 'edge', edgeType: 'UMLGeneralization' },
+  // interaction overview
+  'tool-ioInteractionUse': { kind: 'node', nodeType: 'UMLInteractionUseInOverview' },
+  'tool-ioInteraction': { kind: 'node', nodeType: 'UMLInteractionInOverview' },
+  'tool-ioInitial': { kind: 'node', nodeType: 'UMLInitialNode' },
+  'tool-ioFinal': { kind: 'node', nodeType: 'UMLActivityFinalNode' },
+  'tool-ioFork': { kind: 'node', nodeType: 'UMLForkNode' },
+  'tool-ioJoin': { kind: 'node', nodeType: 'UMLJoinNode' },
+  'tool-ioMerge': { kind: 'node', nodeType: 'UMLMergeNode' },
+  'tool-ioDecision': { kind: 'node', nodeType: 'UMLDecisionNode' },
+  'tool-ioControlFlow': { kind: 'edge', edgeType: 'UMLControlFlow' },
+  // timing
+  'tool-timingLifeline': { kind: 'node', nodeType: 'UMLTimingLifeline' },
+  'tool-timingState': { kind: 'node', nodeType: 'UMLTimingState' },
+  'tool-timeSegment': { kind: 'node', nodeType: 'UMLTimeSegment' },
+  'tool-timeTick': { kind: 'node', nodeType: 'UMLTimeTick' },
+  'tool-timeConstraint': { kind: 'node', nodeType: 'UMLTimeConstraint' },
+  'tool-durationConstraint': { kind: 'node', nodeType: 'UMLDurationConstraint' },
+  'tool-timeMessage': { kind: 'edge', edgeType: 'UMLTimeMessage' },
 };
 
 export function initToolbox(canvas, getActiveToolboxGroup) {

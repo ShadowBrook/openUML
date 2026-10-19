@@ -5,11 +5,11 @@ import { Rect, snap, resizeHandle, dist } from '../core/geometry.js';
 import { repository } from '../core/repository.js';
 import { commandStack, compound } from '../core/commands.js';
 import { createModel, createNodeView, createEdgeView, createAttribute } from '../core/factory.js';
-import { renderNode, svgEl } from './nodeviews.js';
-import { renderEdge, renderMessage, renderEndpointMessage, renderSelfLoop, distanceToPolyline, computeEdgeGeometry } from './edgeviews.js';
+import { renderNode, svgEl, TIMING_LANE_LABEL_W, viewW, viewH } from './nodeviews.js';
+import { renderEdge, renderMessage, renderEndpointMessage, renderSelfLoop, renderTimingMessage, distanceToPolyline, computeEdgeGeometry } from './edgeviews.js';
 import { openQuickEdit, openConnectorEdit, closeQuickEdit } from '../ui/quickedit.js';
 
-const GRID = 10;
+const DEFAULT_GRID = 10;
 const SNAP_TOL = 5;
 
 export class DiagramCanvas {
@@ -18,8 +18,10 @@ export class DiagramCanvas {
     this.diagram = null;          // active diagram (model node with .elements views)
     this.zoom = 1;
     this.panX = 0; this.panY = 0;
+    this.gridSize = DEFAULT_GRID;
     this.showGrid = true;
     this.snapToGrid = true;
+    this.autoResize = true;
 
     this.renderers = new Map();   // viewId -> {g, meta, view}
     this.tool = null;             // active toolbox tool {kind, nodeType, edgeType, ...}
@@ -28,6 +30,15 @@ export class DiagramCanvas {
 
     this.defs = svgEl('defs', {}, this.svg);
     this.gridLayer = svgEl('g', { id: 'grid-layer' }, this.svg);
+    // one pattern-filled rect instead of thousands of dots; pan/zoom only
+    // updates the pattern transform, so dragging nodes never rebuilds the grid
+    this.gridPattern = svgEl('pattern', {
+      id: 'grid-pattern', width: this.gridSize, height: this.gridSize, patternUnits: 'userSpaceOnUse',
+    }, this.defs);
+    svgEl('circle', { cx: 0.5, cy: 0.5, r: 1, class: 'svg-grid' }, this.gridPattern);
+    this.gridRect = svgEl('rect', {
+      x: 0, y: 0, width: '100%', height: '100%', fill: 'url(#grid-pattern)',
+    }, this.gridLayer);
     this.contentLayer = svgEl('g', { id: 'content-layer' }, this.svg);
     this.overlayLayer = svgEl('g', { id: 'overlay-layer' }, this.svg);
 
@@ -52,6 +63,11 @@ export class DiagramCanvas {
     this.render(true);
   }
 
+  /** Bounds of a node view including derived auto-fit sizes. */
+  rectOf(v) {
+    return new Rect(v.x, v.y, viewW(v), viewH(v));
+  }
+
   viewRect() {
     const w = this.svg.clientWidth || 800, h = this.svg.clientHeight || 600;
     return new Rect(-this.panX / this.zoom, -this.panY / this.zoom, w / this.zoom, h / this.zoom);
@@ -68,20 +84,16 @@ export class DiagramCanvas {
   render(full = false) {
     const w = this.svg.clientWidth, h = this.svg.clientHeight;
     this.svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-    // grid
-    this.gridLayer.innerHTML = '';
-    if (this.showGrid) {
-      const step = GRID * this.zoom;
-      if (step >= 7) {
-        const offX = ((this.panX % step) + step) % step;
-        const offY = ((this.panY % step) + step) % step;
-        for (let gx = offX; gx < w; gx += step) {
-          for (let gy = offY; gy < h; gy += step) {
-            svgEl('circle', { cx: gx, cy: gy, r: 1, class: 'svg-grid' }, this.gridLayer);
-          }
-        }
-      }
+    // grid (pattern-based; no per-dot DOM churn)
+    const step = this.gridSize * this.zoom;
+    if (step > 0) {
+      const offX = ((this.panX % step) + step) % step;
+      const offY = ((this.panY % step) + step) % step;
+      this.gridPattern.setAttribute('width', step);
+      this.gridPattern.setAttribute('height', step);
+      this.gridPattern.setAttribute('patternTransform', `translate(${offX},${offY})`);
     }
+    this.gridRect.style.display = (this.showGrid && step >= 7) ? '' : 'none';
     // content transform
     this.contentLayer.setAttribute('transform', `translate(${this.panX},${this.panY}) scale(${this.zoom})`);
     this.overlayLayer.setAttribute('transform', this.contentLayer.getAttribute('transform'));
@@ -94,7 +106,7 @@ export class DiagramCanvas {
     this._applySequenceLayout(views);
     const rects = new Map();
     for (const v of views) {
-      if (!v.isEdge) rects.set(v._id, new Rect(v.x, v.y, v.width, v.height));
+      if (!v.isEdge) rects.set(v._id, this.rectOf(v));
     }
     // draw nodes first (backdrops below their children), then edges on top.
     const isBackdrop = (v) => v.$type === 'UMLSwimlaneVert' || v.$type === 'UMLSwimlaneHorz' || v.$type === 'UMLCompositeState' || v.$type === 'UMLCombinedFragment';
@@ -102,13 +114,14 @@ export class DiagramCanvas {
       .sort((a, b) => {
         const pa = isBackdrop(a) ? 0 : 1, pb = isBackdrop(b) ? 0 : 1;
         if (pa !== pb) return pa - pb;
-        if (pa === 0) return (b.width * b.height) - (a.width * a.height); // bigger first → nested on top
+        if (pa === 0) return (viewW(b) * viewH(b)) - (viewW(a) * viewH(a)); // bigger first → nested on top
         return 0;
       });
     const edges = views.filter((v) => v.isEdge);
     this._renderFrame(nodes);
     for (const v of nodes) this._renderNodeView(v);
     this._renderActivations(views);
+    this._renderTimingTransitions(views);
     for (const e of edges) this._renderEdgeView(e, rects);
     this._updateSelectionClasses(repository.selections);
     this._updateOverlay();
@@ -156,20 +169,60 @@ export class DiagramCanvas {
       : v.$type === 'UMLAcceptSignal' ? 'acceptsignal'
       : v.$type === 'UMLCombinedFragment' ? 'fragment'
       : v.$type === 'UMLInteractionUse' ? 'ref'
+      : v.$type === 'UMLInteractionUseInOverview' ? 'ref'
+      : v.$type === 'UMLInteractionInOverview' ? 'interactionOverview'
       : v.$type === 'UMLConstraint' ? 'constraint'
+      : v.$type === 'UMLInformationItem' ? 'information'
+      : v.$type === 'UMLMetaClass' ? 'metaclass'
+      : v.$type === 'UMLStereotype' ? 'stereotype'
+      : v.$type === 'UMLCollaboration' ? 'collaboration'
+      : v.$type === 'UMLCollaborationUse' ? 'collaborationUse'
+      : v.$type === 'UMLPort' ? 'port'
+      : v.$type === 'UMLPart' ? 'part'
+      : v.$type === 'UMLTimingLifeline' ? 'timingLifeline'
+      : v.$type === 'UMLTimingState' ? 'timingState'
+      : v.$type === 'UMLTimeSegment' ? 'timeSegment'
+      : v.$type === 'UMLTimeTick' ? 'timeTick'
+      : v.$type === 'UMLTimeConstraint' ? 'timeConstraint'
+      : v.$type === 'UMLDurationConstraint' ? 'durationConstraint'
       : v.$type === 'UMLNote' ? 'note' : 'class';
     const meta = renderNode(g, v, model, kind);
     g.dataset.id = v._id;
     this.renderers.set(v._id, { g, meta, view: v, kind: 'node' });
-    // auto-fit: grow the view so its compartments are never clipped, then
-    // re-render once so edge attachment points use the new bounds
-    if (meta.autoHeight && meta.autoHeight > v.height + 0.5) {
-      v.height = Math.ceil(meta.autoHeight);
-      this.requestRender();
+    // Auto-fit is derived layout, not a model edit: it grows to fit content,
+    // shrinks back when content is removed, and never pollutes the undo stack.
+    this._applyAutoSize(v, meta);
+  }
+
+  _applyAutoSize(v, meta) {
+    if (!this.autoResize) return;
+    if (meta.autoHeight != null) {
+      const req = Math.ceil(meta.autoHeight);
+      if (req > viewH(v) + 0.5) {
+        v.__autoH = req;
+        this.requestRender();
+      } else if (v.__autoH != null) {
+        const target = Math.max(v.height || 0, req);
+        if (target < v.__autoH - 0.5) {
+          if (target <= (v.height || 0) + 0.5) delete v.__autoH;
+          else v.__autoH = target;
+          this.requestRender();
+        }
+      }
     }
-    if (meta.autoWidth && meta.autoWidth > v.width + 0.5) {
-      v.width = Math.ceil(meta.autoWidth);
-      this.requestRender();
+    if (meta.autoWidth != null) {
+      const req = Math.ceil(meta.autoWidth);
+      if (req > viewW(v) + 0.5) {
+        v.__autoW = req;
+        this.requestRender();
+      } else if (v.__autoW != null) {
+        const target = Math.max(v.width || 0, req);
+        if (target < v.__autoW - 0.5) {
+          if (target <= (v.width || 0) + 0.5) delete v.__autoW;
+          else v.__autoW = target;
+          this.requestRender();
+        }
+      }
     }
   }
 
@@ -184,14 +237,16 @@ export class DiagramCanvas {
       UMLStatechartDiagram: 'stm', UMLActivityDiagram: 'ad',
       UMLComponentDiagram: 'cp', UMLDeploymentDiagram: 'dp',
       UMLPackageDiagram: 'pkg', UMLCommunicationDiagram: 'comm',
-      UMLObjectDiagram: 'od',
+      UMLObjectDiagram: 'od', UMLCompositeStructureDiagram: 'cs',
+      UMLTimingDiagram: 'tm', UMLInteractionOverviewDiagram: 'iod',
+      UMLInformationFlowDiagram: 'if', UMLProfileDiagram: 'pf',
     };
     const prefix = prefixes[this.diagram.type];
     if (!prefix) return;
     let maxX = 600, maxY = 400;
     for (const v of nodes) {
-      const h = v.$type === 'UMLLifeLine' ? v.height + (v.lifeHeight || 400) : v.height;
-      maxX = Math.max(maxX, v.x + v.width);
+      const h = v.$type === 'UMLLifeLine' ? viewH(v) + (v.lifeHeight || 400) : viewH(v);
+      maxX = Math.max(maxX, v.x + viewW(v));
       maxY = Math.max(maxY, v.y + h);
     }
     const pad = 30;
@@ -216,7 +271,7 @@ export class DiagramCanvas {
       if (!e.isEdge || e.$type !== 'UMLMessage+create') continue;
       const head = heads.get(e.head);
       if (!head) continue;
-      const targetY = e.y - head.height / 2;
+      const targetY = e.y - viewH(head) / 2;
       if (Math.abs(head.y - targetY) > 0.5) head.y = targetY;
     }
   }
@@ -226,7 +281,7 @@ export class DiagramCanvas {
     const n = Math.max(1, (model.operands || []).length);
     const tabH = 22;
     const innerTop = view.y + tabH;
-    const innerH = Math.max(10, view.height - tabH);
+    const innerH = Math.max(10, viewH(view) - tabH);
     const fr = (Array.isArray(model.operandBoundaries) && model.operandBoundaries.length === n - 1)
       ? model.operandBoundaries
       : Array.from({ length: n - 1 }, (_, i) => (i + 1) / n);
@@ -260,7 +315,7 @@ export class DiagramCanvas {
     const merged = [];
     for (const ll of lifelines) {
       const ys = (ysByLifeline.get(ll._id) || []).sort((a, b) => a - b);
-      const headH = ll.height, lifeH = ll.lifeHeight || 400;
+      const headH = viewH(ll), lifeH = ll.lifeHeight || 400;
       const min = ll.y + headH, max = ll.y + headH + lifeH;
       const spans = [];
       for (const y of ys) {
@@ -273,7 +328,7 @@ export class DiagramCanvas {
       for (const s of spans) merged.push({ ll, s });
     }
     for (const { ll, s } of merged) {
-      const cx = ll.x + ll.width / 2;
+      const cx = ll.x + viewW(ll) / 2;
       const w = 10;
       svgEl('rect', {
         x: cx - w / 2, y: s.start, width: w, height: Math.max(8, s.end - s.start),
@@ -282,11 +337,40 @@ export class DiagramCanvas {
     }
   }
 
+  /**
+   * Timing diagram: consecutive state/condition bands on a lane are joined by
+   * vertical value transitions at the x where the next band starts.
+   */
+  _renderTimingTransitions(views) {
+    if (!this.diagram || this.diagram.type !== 'UMLTimingDiagram') return;
+    for (const lane of views) {
+      if (lane.$type !== 'UMLTimingLifeline') continue;
+      const states = views
+        .filter((v) => !v.isEdge && v.$type === 'UMLTimingState' && v.container === lane._id)
+        .sort((a, b) => a.x - b.x);
+      for (let i = 1; i < states.length; i++) {
+        const prev = states[i - 1], cur = states[i];
+        const y1 = prev.y + viewH(prev) / 2;
+        const y2 = cur.y + viewH(cur) / 2;
+        if (Math.abs(y1 - y2) < 0.5) continue;
+        svgEl('line', {
+          x1: cur.x, y1, x2: cur.x, y2,
+          stroke: cur.lineColor || prev.lineColor || '#353535', 'stroke-width': 1.4,
+        }, this.contentLayer);
+      }
+    }
+  }
+
   _renderEdgeView(e, rects) {
     const model = repository.lookup(e.modelRef);
     const g = svgEl('g', { class: 'edge-main' }, this.contentLayer);
     let meta;
-    if (e.isMessage) {
+    if (e.$type === 'UMLTimeMessage') {
+      const tailV = repository.lookup(e.tail);
+      const headV = repository.lookup(e.head);
+      if (!tailV || !headV) { g.remove(); return; }
+      meta = renderTimingMessage(g, e, model, tailV, headV);
+    } else if (e.isMessage) {
       if (e.$type === 'UMLMessage+found' || e.$type === 'UMLMessage+lost') {
         const ll = repository.lookup(e.$type === 'UMLMessage+found' ? e.head : e.tail);
         if (!ll) { g.remove(); return; }
@@ -337,9 +421,10 @@ export class DiagramCanvas {
     // resize handles for single selected node
     if (repository.selections.length === 1) {
       const r = this.renderers.get(repository.selections[0]);
-      if (r && r.kind === 'node') {
+      if (r && r.kind === 'node' && r.view.$type !== 'UMLPort' && r.view.$type !== 'UMLTimeTick') {
         const v = r.view;
-        const hs = { nw: [v.x, v.y], n: [v.x + v.width / 2, v.y], ne: [v.x + v.width, v.y], w: [v.x, v.y + v.height / 2], e: [v.x + v.width, v.y + v.height / 2], sw: [v.x, v.y + v.height], s: [v.x + v.width / 2, v.y + v.height], se: [v.x + v.width, v.y + v.height] };
+        const w = viewW(v), h = viewH(v);
+        const hs = { nw: [v.x, v.y], n: [v.x + w / 2, v.y], ne: [v.x + w, v.y], w: [v.x, v.y + h / 2], e: [v.x + w, v.y + h / 2], sw: [v.x, v.y + h], s: [v.x + w / 2, v.y + h], se: [v.x + w, v.y + h] };
         for (const [k, [hx, hy]] of Object.entries(hs)) {
           const c = svgEl('circle', { cx: hx, cy: hy, r: 4.5 / this.zoom, class: 'handle', 'data-handle': k, 'data-node': v._id, 'stroke-width': 1.2 / this.zoom }, this.overlayLayer);
           c.style.cursor = { n: 'ns-resize', s: 'ns-resize', e: 'ew-resize', w: 'ew-resize', nw: 'nwse-resize', se: 'nwse-resize', ne: 'nesw-resize', sw: 'nesw-resize' }[k];
@@ -352,7 +437,7 @@ export class DiagramCanvas {
           const { ys } = this.fragmentOperandYs(r.view, model);
           for (let i = 0; i < ys.length; i++) {
             const h = svgEl('rect', {
-              x: r.view.x + r.view.width / 2 - 16, y: ys[i] - 3, width: 32, height: 6,
+              x: r.view.x + viewW(r.view) / 2 - 16, y: ys[i] - 3, width: 32, height: 6,
               rx: 2, fill: '#fff', stroke: '#1390d6', 'stroke-width': 1 / this.zoom,
               class: 'op-handle', 'data-op-index': i, 'data-edge': r.view._id,
             }, this.overlayLayer);
@@ -405,21 +490,77 @@ export class DiagramCanvas {
 
   // ---------------- containment (swimlanes / composite states) ----------------
   static CONTAINER_TYPES = ['UMLSwimlaneVert', 'UMLSwimlaneHorz', 'UMLCompositeState'];
+  // structural containers used by composite-structure / timing diagrams
+  static STRUCTURAL_CONTAINERS = ['UMLClass', 'UMLInterface', 'UMLComponent', 'UMLCollaboration', 'UMLTimingLifeline'];
   isContainerView(v) {
-    return DiagramCanvas.CONTAINER_TYPES.includes(v.$type);
+    if (DiagramCanvas.CONTAINER_TYPES.includes(v.$type)) return true;
+    if (v.$type === 'UMLTimingLifeline') return true;
+    if (['UMLClass', 'UMLInterface', 'UMLComponent', 'UMLCollaboration'].includes(v.$type)) {
+      return ['UMLClassDiagram', 'UMLCompositeStructureDiagram', 'UMLComponentDiagram'].includes(this.diagram?.type);
+    }
+    return false;
   }
 
-  /** smallest container whose bounds contain the point (excluding self) */
-  findContainerFor(view) {
+  /**
+   * Smallest container whose bounds contain the point (excluding self).
+   * `types` restricts candidates to particular view types (used by parts,
+   * ports and timing elements). Without it, structural containers are skipped
+   * so ordinary nodes are not accidentally nested into a class.
+   */
+  findContainerFor(view, types = null) {
     let best = null;
     for (const v of this.diagram.elements || []) {
       if (v.isEdge || v._id === view._id || !this.isContainerView(v)) continue;
-      if (new Rect(v.x, v.y, v.width, v.height).contains(
-        view.x + view.width / 2, view.y + view.height / 2)) {
-        if (!best || v.width * v.height < best.width * best.height) best = v;
+      if (types && !types.includes(v.$type)) continue;
+      if (!types && DiagramCanvas.STRUCTURAL_CONTAINERS.includes(v.$type)) continue;
+      if (this.rectOf(v).contains(
+        view.x + viewW(view) / 2, view.y + viewH(view) / 2)) {
+        if (!best || viewW(v) * viewH(v) < viewW(best) * viewH(best)) best = v;
       }
     }
     return best;
+  }
+
+  /** timing lane containing the state view's center */
+  findTimingLaneFor(view) {
+    let best = null;
+    for (const v of this.diagram.elements || []) {
+      if (v.isEdge || v.$type !== 'UMLTimingLifeline' || v._id === view._id) continue;
+      if (this.rectOf(v).contains(
+        view.x + viewW(view) / 2, view.y + viewH(view) / 2)) {
+        if (!best || viewH(v) < viewH(best)) best = v;
+      }
+    }
+    return best;
+  }
+
+  /** Keep a port centered on the nearest edge of its classifier. */
+  _snapPortToView(port, target) {
+    if (!target) return;
+    const cx = port.x + port.width / 2;
+    const cy = port.y + port.height / 2;
+    const left = target.x, right = target.x + viewW(target);
+    const top = target.y, bottom = target.y + viewH(target);
+    const options = [
+      { d: Math.abs(cx - left), edge: 'left' },
+      { d: Math.abs(cx - right), edge: 'right' },
+      { d: Math.abs(cy - top), edge: 'top' },
+      { d: Math.abs(cy - bottom), edge: 'bottom' },
+    ].sort((a, b) => a.d - b.d);
+    const edge = options[0].edge;
+    if (edge === 'left') {
+      port.x = left - port.width / 2;
+      port.y = Math.max(top, Math.min(bottom - port.height, cy - port.height / 2));
+    } else if (edge === 'right') {
+      port.x = right - port.width / 2;
+      port.y = Math.max(top, Math.min(bottom - port.height, cy - port.height / 2));
+    } else if (edge === 'top') {
+      port.y = top - port.height / 2;
+      port.x = Math.max(left, Math.min(right - port.width, cx - port.width / 2));
+    } else {
+      port.y = bottom - port.height / 2;
+      port.x = Math.max(left, Math.min(right - port.width, cx - port.width / 2));
+    }
   }
 
   /** smallest other combined fragment that encloses the given view (nesting) */
@@ -429,10 +570,10 @@ export class DiagramCanvas {
       if (v.isEdge || v._id === view._id || v.$type !== 'UMLCombinedFragment') continue;
       // a fragment cannot be nested into its own descendant
       if (v.x >= view.x && v.y >= view.y &&
-          v.x + v.width <= view.x + view.width && v.y + v.height <= view.y + view.height) continue;
-      if (new Rect(v.x, v.y, v.width, v.height).contains(
-        view.x + view.width / 2, view.y + view.height / 2)) {
-        if (!best || v.width * v.height < best.width * best.height) best = v;
+          v.x + viewW(v) <= view.x + viewW(view) && v.y + viewH(v) <= view.y + viewH(view)) continue;
+      if (this.rectOf(v).contains(
+        view.x + viewW(view) / 2, view.y + viewH(view) / 2)) {
+        if (!best || viewW(v) * viewH(v) < viewW(best) * viewH(best)) best = v;
       }
     }
     return best;
@@ -470,14 +611,14 @@ export class DiagramCanvas {
       const v = views[i];
       if (v.isEdge) continue;
       if (v.$type === 'Subject' || v.$type === 'UMLNote' || this.isContainerView(v) || v.$type === 'UMLCombinedFragment') continue;
-      let rect = new Rect(v.x, v.y, v.width, v.height);
-      if (v.$type === 'UMLActor') rect = new Rect(v.x - 20, v.y, v.width + 40, v.height + 20);
+      let rect = this.rectOf(v);
+      if (v.$type === 'UMLActor') rect = new Rect(v.x - 20, v.y, viewW(v) + 40, viewH(v) + 20);
       if (v.$type === 'UMLLifeLine') {
         // head box, or a narrow strip along the center lifetime line
         const strip = 6 / this.zoom;
-        const cx = v.x + v.width / 2;
-        const head = new Rect(v.x, v.y, v.width, v.height);
-        const line = new Rect(cx - strip, v.y + v.height, strip * 2, v.lifeHeight || 400);
+        const cx = v.x + viewW(v) / 2;
+        const head = this.rectOf(v);
+        const line = new Rect(cx - strip, v.y + viewH(v), strip * 2, v.lifeHeight || 400);
         if (head.contains(w.x, w.y) || line.contains(w.x, w.y)) {
           const r = this.renderers.get(v._id);
           return r || { view: v, kind: 'node', meta: { textSlots: {}, compartments: {} }, g: null };
@@ -503,8 +644,8 @@ export class DiagramCanvas {
     for (const v of views) {
       if (v.isEdge) continue;
       if (v.$type !== 'Subject' && v.$type !== 'UMLNote' && v.$type !== 'UMLCombinedFragment' && !this.isContainerView(v)) continue;
-      if (!new Rect(v.x, v.y, v.width, v.height).contains(w.x, w.y)) continue;
-      if (!passive || v.width * v.height < passive.view.width * passive.view.height) {
+      if (!this.rectOf(v).contains(w.x, w.y)) continue;
+      if (!passive || viewW(v) * viewH(v) < viewW(passive.view) * viewH(passive.view)) {
         const r = this.renderers.get(v._id);
         passive = r || { view: v, kind: 'node', meta: { textSlots: {}, compartments: {} }, g: null };
       }
@@ -621,7 +762,15 @@ export class DiagramCanvas {
     }
     if (t.classList?.contains('handle')) {
       const r = this.renderers.get(t.dataset.node);
-      this.drag = { kind: 'resize', handle: t.dataset.handle, view: r.view, orig: { x: r.view.x, y: r.view.y, width: r.view.width, height: r.view.height } };
+      this.drag = {
+        kind: 'resize', handle: t.dataset.handle, view: r.view,
+        orig: {
+          x: r.view.x, y: r.view.y,
+          width: viewW(r.view), height: viewH(r.view),
+          baseWidth: r.view.width, baseHeight: r.view.height,
+          autoW: r.view.__autoW, autoH: r.view.__autoH,
+        },
+      };
       return;
     }
 
@@ -633,7 +782,7 @@ export class DiagramCanvas {
         if (!repository.selections.includes(r.view._id)) repository.select([r.view._id], repository.lookup(r.view.modelRef));
         this.drag = {
           kind: 'label', view: r.view, start: w, moved: false,
-          orig: { ...(r.view.labelOffset || { dx: 0, dy: 0 }) },
+          orig: r.view.labelOffset ? { ...r.view.labelOffset } : null,
         };
         return;
       }
@@ -667,7 +816,7 @@ export class DiagramCanvas {
     const items = [];
     for (const r of selectedViews) {
       items.push({ view: r.view, orig: { x: r.view.x, y: r.view.y, points: (r.view.points || []).map((p) => ({ ...p })) } });
-      if (this.isContainerView(r.view) || r.view.$type === 'UMLCombinedFragment') {
+      if (this.isContainerView(r.view) || r.view.$type === 'UMLCombinedFragment' || r.view.$type === 'UMLTimingState') {
         for (const child of this.descendantsOf(r.view._id)) {
           if (sel.includes(child._id)) continue;
           items.push({ view: child, orig: { x: child.x, y: child.y, points: [] } });
@@ -702,7 +851,7 @@ export class DiagramCanvas {
       let dx = w.x - d.start.x, dy = w.y - d.start.y;
       if (this.snapToGrid) {
         const first = d.items[0];
-        const nx = snap(first.orig.x + dx, GRID), ny = snap(first.orig.y + dy, GRID);
+        const nx = snap(first.orig.x + dx, this.gridSize), ny = snap(first.orig.y + dy, this.gridSize);
         dx = nx - first.orig.x; dy = ny - first.orig.y;
       }
       if (Math.abs(dx) + Math.abs(dy) > 0) d.moved = true;
@@ -725,12 +874,16 @@ export class DiagramCanvas {
       if (handle.includes('e')) x2 = w.x;
       if (handle.includes('n')) y1 = w.y;
       if (handle.includes('s')) y2 = w.y;
-      if (this.snapToGrid) { x1 = snap(x1, GRID); y1 = snap(y1, GRID); x2 = snap(x2, GRID); y2 = snap(y2, GRID); }
+      if (this.snapToGrid) { x1 = snap(x1, this.gridSize); y1 = snap(y1, this.gridSize); x2 = snap(x2, this.gridSize); y2 = snap(y2, this.gridSize); }
       const minW = 30, minH = 20;
       view.x = Math.min(x1, x2 - minW);
       view.y = Math.min(y1, y2 - minH);
       view.width = Math.max(minW, Math.abs(x2 - x1));
       view.height = Math.max(minH, Math.abs(y2 - y1));
+      // Manual sizing overrides the derived auto-fit cache; content that no
+      // longer fits will grow it again on the next render.
+      delete view.__autoW;
+      delete view.__autoH;
       this.requestRender();
       return;
     }
@@ -742,16 +895,17 @@ export class DiagramCanvas {
     if (d.kind === 'wp-move') {
       const pts = d.view.points || (d.view.points = []);
       if (!pts[d.index]) return;
-      pts[d.index] = this.snapToGrid ? { x: snap(w.x, GRID), y: snap(w.y, GRID) } : { x: w.x, y: w.y };
+      pts[d.index] = this.snapToGrid ? { x: snap(w.x, this.gridSize), y: snap(w.y, this.gridSize) } : { x: w.x, y: w.y };
       d.moved = true;
       this.requestRender();
       return;
     }
     if (d.kind === 'label') {
-      d.view.labelOffset = {
-        dx: Math.round(d.orig.dx + (w.x - d.start.x)),
-        dy: Math.round(d.orig.dy + (w.y - d.start.y)),
-      };
+      const base = d.orig || { dx: 0, dy: 0 };
+      const dx = Math.round(base.dx + (w.x - d.start.x));
+      const dy = Math.round(base.dy + (w.y - d.start.y));
+      // no offset is represented as null, so undo and serialization stay clean
+      d.view.labelOffset = (dx === 0 && dy === 0) ? null : { dx, dy };
       d.moved = true;
       this.requestRender();
       return;
@@ -792,11 +946,11 @@ export class DiagramCanvas {
       }, this.overlayLayer);
       return;
     }
-    const tailRect = new Rect(tailR.view.x, tailR.view.y, tailR.view.width, tailR.view.height);
+    const tailRect = this.rectOf(tailR.view);
     const hit = this.hitTest(d.cur);
     let headRect = null;
     if (hit && hit.kind === 'node' && hit.view._id !== d.tailId) {
-      headRect = new Rect(hit.view.x, hit.view.y, hit.view.width, hit.view.height);
+      headRect = this.rectOf(hit.view);
       d.hoverTarget = hit.view._id;
     } else {
       headRect = new Rect(d.cur.x - 1, d.cur.y - 1, 2, 2);
@@ -825,7 +979,7 @@ export class DiagramCanvas {
       for (const [, rr] of this.renderers) {
         const v = rr.view;
         const box = rr.kind === 'node'
-          ? new Rect(v.x, v.y, v.width, v.height)
+          ? this.rectOf(v)
           : Rect.fromPoints(rr.meta.points);
         if (r.intersect(box).width > 0 || r.intersect(box).height > 0 || r.contains(box.cx, box.cy)) {
           if (!ids.includes(v._id)) ids.push(v._id);
@@ -844,9 +998,22 @@ export class DiagramCanvas {
           const v = it.view;
           if (v.isEdge) continue;
           if (this.isContainerView(v) && v.$type !== 'UMLCombinedFragment') continue;
-          const target = v.$type === 'UMLCombinedFragment'
-            ? this.findEnclosingFragment(v)
-            : this.findContainerFor(v);
+          let target;
+          if (v.$type === 'UMLPart' || v.$type === 'UMLPort') {
+            target = this.findContainerFor(v, ['UMLClass', 'UMLInterface', 'UMLComponent', 'UMLCollaboration']);
+          } else if (v.$type === 'UMLTimingState') {
+            target = this.findTimingLaneFor(v);
+          } else if (v.$type === 'UMLTimeSegment') {
+            target = this.findContainerFor(v, ['UMLTimingState']);
+          } else if (v.$type === 'UMLTimeTick') {
+            target = this.findContainerFor(v, ['UMLTimingLifeline']);
+            if (target) v.y = target.y + viewH(target) - viewH(v);
+          } else if (v.$type === 'UMLCombinedFragment') {
+            target = this.findEnclosingFragment(v);
+          } else {
+            target = this.findContainerFor(v);
+          }
+          if (v.$type === 'UMLPort' && target) this._snapPortToView(v, target);
           const from = v.container || null;
           const to = target ? target._id : null;
           if (from !== to) containerChanges.push({ v, from, to });
@@ -875,10 +1042,24 @@ export class DiagramCanvas {
     if (d.kind === 'resize') {
       const { view, orig } = d;
       const nw = { x: view.x, y: view.y, width: view.width, height: view.height };
+      const before = {
+        x: orig.x, y: orig.y,
+        width: orig.baseWidth, height: orig.baseHeight,
+        autoW: orig.autoW, autoH: orig.autoH,
+      };
       commandStack.pushExecuted({
         label: 'resize',
-        redo: () => { Object.assign(view, nw); this.requestRender(); },
-        undo: () => { Object.assign(view, orig); this.requestRender(); },
+        redo: () => {
+          Object.assign(view, nw);
+          delete view.__autoW; delete view.__autoH;
+          this.requestRender();
+        },
+        undo: () => {
+          Object.assign(view, { x: before.x, y: before.y, width: before.width, height: before.height });
+          if (before.autoW == null) delete view.__autoW; else view.__autoW = before.autoW;
+          if (before.autoH == null) delete view.__autoH; else view.__autoH = before.autoH;
+          this.requestRender();
+        },
       });
       this.requestRender();
       return;
@@ -887,12 +1068,12 @@ export class DiagramCanvas {
     if (d.kind === 'label') {
       if (d.moved) {
         const view = d.view;
-        const after = { ...view.labelOffset };
-        const before = { ...d.orig };
+        const after = view.labelOffset || null;
+        const before = d.orig || null;
         commandStack.pushExecuted({
           label: 'move label',
-          redo: () => { view.labelOffset = { ...after }; this.requestRender(); },
-          undo: () => { view.labelOffset = { ...before }; this.requestRender(); },
+          redo: () => { view.labelOffset = after ? { ...after } : null; this.requestRender(); },
+          undo: () => { view.labelOffset = before ? { ...before } : null; this.requestRender(); },
         });
       }
       this.requestRender();
@@ -961,8 +1142,10 @@ export class DiagramCanvas {
 
   _wheel(e) {
     e.preventDefault();
-    const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
-    if (e.ctrlKey || e.metaKey || !e.shiftKey) {
+    // Ctrl/Cmd+wheel and trackpad pinch (which arrives with ctrlKey) zoom
+    // around the cursor.
+    if (e.ctrlKey || e.metaKey) {
+      const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
       const r = this.svg.getBoundingClientRect();
       const mx = e.clientX - r.left, my = e.clientY - r.top;
       const wx = (mx - this.panX) / this.zoom, wy = (my - this.panY) / this.zoom;
@@ -970,7 +1153,17 @@ export class DiagramCanvas {
       this.panX = mx - wx * this.zoom;
       this.panY = my - wy * this.zoom;
       this._zoomChanged();
+      return;
     }
+    // Plain two-finger scroll / wheel pans the canvas. Shift makes a vertical
+    // wheel pan horizontally, matching common diagram-editor behavior.
+    let dx = e.deltaX;
+    let dy = e.deltaY;
+    if (e.shiftKey && !dx) { dx = dy; dy = 0; }
+    const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? this.svg.clientHeight : 1;
+    this.panX -= dx * unit;
+    this.panY -= dy * unit;
+    this.requestRender();
   }
 
   _zoomChanged() {
@@ -987,8 +1180,8 @@ export class DiagramCanvas {
     const pts = [];
     for (const v of this.diagram.elements) {
       if (v.isEdge) continue;
-      const h = v.$type === 'UMLLifeLine' ? v.height + (v.lifeHeight || 400) : v.height;
-      pts.push({ x: v.x, y: v.y }, { x: v.x + v.width, y: v.y + h });
+      const h = v.$type === 'UMLLifeLine' ? viewH(v) + (v.lifeHeight || 400) : viewH(v);
+      pts.push({ x: v.x, y: v.y }, { x: v.x + viewW(v), y: v.y + h });
     }
     const r = Rect.fromPoints(pts);
     // account for the diagram frame margin drawn around the content
@@ -1096,7 +1289,7 @@ export class DiagramCanvas {
   _applyTool(w, hit, e) {
     const tool = this.tool;
     if (tool.kind === 'node') {
-      this.createNodeAt(tool.nodeType, w, e);
+      this.createNodeAt(tool.nodeType, w, e, hit);
       this.setTool(null); // StarUML keeps tool for repeat; single-shot is friendlier
     } else if (tool.kind === 'edge') {
       const isFound = tool.edgeType === 'UMLMessage+found';
@@ -1137,7 +1330,7 @@ export class DiagramCanvas {
       };
       this.drag = d;
     } else if (tool.id === 'tool-note') {
-      this.createNodeAt('UMLNote', w, e);
+      this.createNodeAt('UMLNote', w, e, hit);
       this.setTool(null);
     }
   }
@@ -1153,8 +1346,8 @@ export class DiagramCanvas {
     const tailId = isFound ? null : otherId;
     const headId = isFound ? otherId : null;
     const view = createEdgeView(isFound ? 'UMLMessage+found' : 'UMLMessage+lost', model._id, tailId, headId);
-    view.y = snap(yPoint.y, GRID);
-    view.endpointX = snap(point.x, GRID);
+    view.y = snap(yPoint.y, this.gridSize);
+    view.endpointX = snap(point.x, this.gridSize);
     const parentModel = this._defaultOwnerFor(model);
     const diagram = this.diagram;
     compound('connect', [
@@ -1174,12 +1367,71 @@ export class DiagramCanvas {
       : `已添加丢失消息 ← ${otherModel ? otherModel.name : ''}`);
   }
 
-  createNodeAt(nodeType, w, e) {
+  createNodeAt(nodeType, w, e, hit = null) {
     if (!this.diagram) return;
     let x = w.x, y = w.y;
-    if (this.snapToGrid) { x = snap(x, GRID); y = snap(y, GRID); }
+    if (this.snapToGrid) { x = snap(x, this.gridSize); y = snap(y, this.gridSize); }
     let model, view;
-    if (nodeType === 'UMLNote') {
+    let forcedContainer = null;
+
+    if (nodeType === 'UMLPort') {
+      const target = (hit && hit.kind === 'node'
+        && ['UMLClass', 'UMLInterface', 'UMLComponent', 'UMLCollaboration'].includes(hit.view.$type))
+        ? hit.view : null;
+      if (!target) {
+        this.setStatusMessage('请把端口放到类、接口、组件或协作上');
+        return;
+      }
+      model = createModel('UMLPort');
+      view = createNodeView('UMLPort', model._id, x - 6, y - 6);
+      forcedContainer = target._id;
+      this._snapPortToView(view, target);
+    } else if (nodeType === 'UMLTimingState') {
+      let lane = null;
+      if (hit && hit.kind === 'node') {
+        if (hit.view.$type === 'UMLTimingLifeline') lane = hit.view;
+        else if (hit.view.$type === 'UMLTimingState' && hit.view.container) lane = repository.lookup(hit.view.container);
+      }
+      if (!lane) {
+        this.setStatusMessage('请在时序图的生命线内放置状态/条件');
+        return;
+      }
+      model = createModel('UMLTimingState');
+      view = createNodeView('UMLTimingState', model._id,
+        lane.x + TIMING_LANE_LABEL_W + 8,
+        Math.max(lane.y + 4, Math.min(lane.y + viewH(lane) - 20, y)));
+      view.width = Math.max(60, viewW(lane) - TIMING_LANE_LABEL_W - 16);
+      view.height = 44;
+      forcedContainer = lane._id;
+    } else if (nodeType === 'UMLTimeSegment') {
+      const state = (hit && hit.kind === 'node' && hit.view.$type === 'UMLTimingState') ? hit.view : null;
+      if (!state) {
+        this.setStatusMessage('请在状态/条件上放置时间段');
+        return;
+      }
+      model = createModel('UMLTimeSegment');
+      model.name = '';   // unnamed interval marks until the user labels it
+      view = createNodeView('UMLTimeSegment', model._id, state.x, state.y + viewH(state) / 2 - 6);
+      view.width = Math.min(80, viewW(state));
+      forcedContainer = state._id;
+    } else if (nodeType === 'UMLTimeTick') {
+      let lane = null;
+      if (hit && hit.kind === 'node') {
+        if (hit.view.$type === 'UMLTimingLifeline') lane = hit.view;
+        else if (hit.view.container) {
+          const c = repository.lookup(hit.view.container);
+          if (c && c.$type === 'UMLTimingLifeline') lane = c;
+        }
+      }
+      if (!lane) {
+        this.setStatusMessage('请在时序图的生命线上放置时间刻度');
+        return;
+      }
+      model = null;
+      view = createNodeView('UMLTimeTick', '', x, lane.y + viewH(lane) - 11);
+      view.text = 't';
+      forcedContainer = lane._id;
+    } else if (nodeType === 'UMLNote') {
       model = createModel('UMLNote', 'Note');
       model.documentation = '';
       view = createNodeView('UMLNote', model._id, x, y);
@@ -1204,10 +1456,17 @@ export class DiagramCanvas {
     if (model) {
       ops.push({ redo: () => repository.addChild(parentModel, model), undo: () => repository.removeChild(model) });
     }
-    const target = nodeType === 'UMLCombinedFragment'
-      ? this.findEnclosingFragment(view)
-      : this.findContainerFor(view);
-    const toContainer = target ? target._id : null;
+    let target = null;
+    if (!forcedContainer) {
+      if (nodeType === 'UMLPart' || nodeType === 'UMLPort') {
+        target = this.findContainerFor(view, ['UMLClass', 'UMLInterface', 'UMLComponent', 'UMLCollaboration']);
+      } else if (nodeType === 'UMLCombinedFragment') {
+        target = this.findEnclosingFragment(view);
+      } else {
+        target = this.findContainerFor(view);
+      }
+    }
+    const toContainer = forcedContainer || (target ? target._id : null);
     ops.push({
       redo: () => { diagram.elements.push(view); view.__diagram = diagram; view.container = toContainer; repository._reindex(); },
       undo: () => {
@@ -1218,7 +1477,7 @@ export class DiagramCanvas {
     });
     compound('create', ops);
     repository.select([view._id], model);
-    this.setStatusMessage(`已创建 ${model ? model.name : nodeType.replace(/^UML/, '').replace(/View$/, '')}`);
+    this.setStatusMessage(`已创建 ${model ? model.name : (nodeType === 'UMLTimeTick' ? '时间刻度' : nodeType.replace(/^UML/, '').replace(/View$/, ''))}`);
   }
 
   _defaultOwnerFor(model) {
@@ -1234,6 +1493,41 @@ export class DiagramCanvas {
   createEdge(edgeType, tailId, headId, upPoint = null) {
     if (!this.diagram) return;
     const tailV = repository.lookup(tailId), headV = repository.lookup(headId);
+    if (edgeType === 'UMLTimeMessage') {
+      const laneOf = (v) => {
+        if (!v) return null;
+        if (v.$type === 'UMLTimingLifeline') return v;
+        if (v.$type === 'UMLTimingState' && v.container) {
+          const lane = repository.lookup(v.container);
+          return lane && lane.$type === 'UMLTimingLifeline' ? lane : null;
+        }
+        return null;
+      };
+      const tailLane = laneOf(tailV), headLane = laneOf(headV);
+      if (!tailLane || !headLane) {
+        this.setStatusMessage('时序图消息需要连接两条生命线');
+        return;
+      }
+      const diagram = this.diagram;
+      const model = createModel('UMLMessage');
+      const view = createEdgeView('UMLTimeMessage', model._id, tailLane._id, headLane._id);
+      view.x = snap(upPoint ? upPoint.x : tailLane.x + viewW(tailLane) / 2, this.gridSize);
+      const parentModel = this._defaultOwnerFor(model);
+      compound('connect', [
+        { redo: () => repository.addChild(parentModel, model), undo: () => repository.removeChild(model) },
+        {
+          redo: () => { diagram.elements.push(view); view.__diagram = diagram; repository._reindex(); },
+          undo: () => {
+            const i = diagram.elements.indexOf(view);
+            if (i >= 0) diagram.elements.splice(i, 1);
+            repository._reindex();
+          },
+        },
+      ]);
+      repository.select([view._id], model);
+      this.setStatusMessage(`已添加时序消息 ${repository.lookup(tailLane.modelRef)?.name || ''} → ${repository.lookup(headLane.modelRef)?.name || ''}`);
+      return;
+    }
     // view-only connectors: note link, containment, communication links, object-diagram links
     if (edgeType === 'UMLNoteLink' || edgeType === 'UMLContainment' || edgeType === 'UMLConnector' || edgeType === 'UMLLinkMessage'
         || edgeType === 'UMLLink' || edgeType === 'UMLDirectedLink' || edgeType === 'UMLLinkObject') {
@@ -1295,7 +1589,7 @@ export class DiagramCanvas {
     if (edgeType === 'UMLAssociation+directed') view.headArrow = 'open';
     if (modelType === 'UMLMessage') {
       // message arrow sits at the vertical position where the drag ended
-      view.y = upPoint ? (this.snapToGrid ? snap(upPoint.y, GRID) : upPoint.y) : tailV.y + tailV.height + 40;
+      view.y = upPoint ? (this.snapToGrid ? snap(upPoint.y, this.gridSize) : upPoint.y) : tailV.y + viewH(tailV) + 40;
       view.tailArrow = 'none';
     }
     const parentModel = this._defaultOwnerFor(model);
@@ -1331,19 +1625,38 @@ export class DiagramCanvas {
       UMLLifeLine: 'UMLLifeLine', UMLNote: 'UMLNote', UMLConstraint: 'UMLConstraint',
       UMLArtifactInstance: 'UMLArtifactInstance', UMLComponentInstance: 'UMLComponentInstance',
       UMLNodeInstance: 'UMLNodeInstance',
+      UMLCollaboration: 'UMLCollaboration', UMLPort: 'UMLPort', UMLPart: 'UMLPart',
+      UMLCollaborationUse: 'UMLCollaborationUse', UMLInformationItem: 'UMLInformationItem',
+      UMLMetaClass: 'UMLMetaClass', UMLStereotype: 'UMLStereotype',
+      UMLInteractionUseInOverview: 'UMLInteractionUseInOverview',
+      UMLInteractionInOverview: 'UMLInteractionInOverview',
+      UMLTimingLifeline: 'UMLTimingLifeline', UMLTimingState: 'UMLTimingState',
+      UMLTimeConstraint: 'UMLTimeConstraint', UMLDurationConstraint: 'UMLDurationConstraint',
     }[model.type];
     if (!viewType) {
       this.setStatusMessage(`${model.type} 不能放到图表中`);
       return;
     }
     let x = w.x, y = w.y;
-    if (this.snapToGrid) { x = snap(x, GRID); y = snap(y, GRID); }
+    if (this.snapToGrid) { x = snap(x, this.gridSize); y = snap(y, this.gridSize); }
     const extra = viewType === 'UMLLifeLine' ? { lifeHeight: 360 } : {};
     const view = createNodeView(viewType, model._id, x, y, extra);
     const diagram = this.diagram;
-    const target = viewType === 'UMLCombinedFragment'
-      ? this.findEnclosingFragment(view)
-      : this.findContainerFor(view);
+    let target;
+    if (viewType === 'UMLPart' || viewType === 'UMLPort') {
+      target = this.findContainerFor(view, ['UMLClass', 'UMLInterface', 'UMLComponent', 'UMLCollaboration']);
+    } else if (viewType === 'UMLTimingState') {
+      target = this.findTimingLaneFor(view);
+      if (target) {
+        view.x = target.x + TIMING_LANE_LABEL_W + 8;
+        view.width = Math.max(60, viewW(target) - TIMING_LANE_LABEL_W - 16);
+      }
+    } else if (viewType === 'UMLCombinedFragment') {
+      target = this.findEnclosingFragment(view);
+    } else {
+      target = this.findContainerFor(view);
+    }
+    if (viewType === 'UMLPort' && target) this._snapPortToView(view, target);
     const toContainer = target ? target._id : null;
     compound('drop view', [{
       redo: () => { diagram.elements.push(view); view.__diagram = diagram; view.container = toContainer; repository._reindex(); },
@@ -1387,7 +1700,7 @@ export class DiagramCanvas {
     if (!removals.length) return;
     const released = [];
     for (const r of removals) {
-      if (!this.isContainerView(r.view) && r.view.$type !== 'UMLCombinedFragment') continue;
+      if (!this.isContainerView(r.view) && r.view.$type !== 'UMLCombinedFragment' && r.view.$type !== 'UMLTimingState') continue;
       for (const ch of els) if (ch.container === r.view._id) released.push({ parent: r.view, child: ch });
     }
     removals.sort((a, b) => b.index - a.index);

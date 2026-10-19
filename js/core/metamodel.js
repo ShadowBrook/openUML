@@ -67,6 +67,31 @@ export const ModelKinds = {
   UMLSubsystem: { name: 'Subsystem', icon: '🗃', iconColor: '#c77d2e' },
   UMLModel: { name: 'Model', icon: '▦', iconColor: '#1390d6' },
   UMLConnector: { name: 'Link', icon: '─', iconColor: '#8a8f8f' },
+  // Composite structure
+  UMLCollaboration: { name: 'Collaboration', icon: '⬭', iconColor: '#7d5ba6', compartments: ['attributes'] },
+  UMLPort: { name: 'Port', icon: '□', iconColor: '#5c8ac7' },
+  UMLPart: { name: 'Part', icon: '▭', iconColor: '#5c8ac7', compartments: ['attributes'] },
+  UMLCollaborationUse: { name: 'Collaboration Use', icon: '⬭', iconColor: '#7d5ba6' },
+  UMLRoleBinding: { name: 'Role Binding', icon: '⇢', iconColor: '#8a8f8f' },
+  UMLCompositeConnector: { name: 'Connector', icon: '─', iconColor: '#8a8f8f' },
+  // Information flow
+  UMLInformationItem: { name: 'InformationItem', icon: '▤', iconColor: '#5c8ac7', compartments: ['attributes', 'operations'] },
+  UMLInformationFlow: { name: 'InformationFlow', icon: '⇢', iconColor: '#8a8f8f' },
+  // Profile
+  UMLMetaClass: { name: 'MetaClass', icon: '▣', iconColor: '#5c8ac7' },
+  UMLStereotype: { name: 'Stereotype', icon: '▣', iconColor: '#c77d2e', compartments: ['attributes', 'operations'] },
+  UMLExtension: { name: 'Extension', icon: '▷', iconColor: '#8a8f8f' },
+  // Interaction overview
+  UMLInteractionUseInOverview: { name: 'Interaction Use', icon: '▥', iconColor: '#b06ab3' },
+  UMLInteractionInOverview: { name: 'Interaction', icon: '▤', iconColor: '#b06ab3' },
+  // Timing
+  UMLTimingLifeline: { name: 'Timing Lifeline', icon: '⇉', iconColor: '#5c8ac7' },
+  UMLTimingState: { name: 'State/Condition', icon: '▭', iconColor: '#5c8ac7' },
+  UMLTimeSegment: { name: 'Time Segment', icon: '━', iconColor: '#8a8f8f' },
+  UMLTimeTick: { name: 'Time Tick', icon: '┃', iconColor: '#8a8f8f' },
+  UMLTimeConstraint: { name: 'Time Constraint', icon: '⏱', iconColor: '#b06ab3' },
+  UMLDurationConstraint: { name: 'Duration Constraint', icon: '↔', iconColor: '#b06ab3' },
+  UMLTimeMessage: { name: 'Message', icon: '↓', iconColor: '#8a8f8f' },
   UMLClassDiagram: { name: 'ClassDiagram', icon: '▦', iconColor: '#1390d6' },
   UMLUseCaseDiagram: { name: 'UseCaseDiagram', icon: '▦', iconColor: '#1390d6' },
   UMLSequenceDiagram: { name: 'SequenceDiagram', icon: '▦', iconColor: '#1390d6' },
@@ -77,6 +102,11 @@ export const ModelKinds = {
   UMLPackageDiagram: { name: 'PackageDiagram', icon: '▦', iconColor: '#1390d6' },
   UMLCommunicationDiagram: { name: 'CommunicationDiagram', icon: '▦', iconColor: '#1390d6' },
   UMLObjectDiagram: { name: 'ObjectDiagram', icon: '▦', iconColor: '#1390d6' },
+  UMLCompositeStructureDiagram: { name: 'CompositeStructureDiagram', icon: '▦', iconColor: '#1390d6' },
+  UMLTimingDiagram: { name: 'TimingDiagram', icon: '▦', iconColor: '#1390d6' },
+  UMLInteractionOverviewDiagram: { name: 'InteractionOverviewDiagram', icon: '▦', iconColor: '#1390d6' },
+  UMLInformationFlowDiagram: { name: 'InformationFlowDiagram', icon: '▦', iconColor: '#1390d6' },
+  UMLProfileDiagram: { name: 'ProfileDiagram', icon: '▦', iconColor: '#1390d6' },
   UMLNote: { name: 'Note', icon: '📄', iconColor: '#e8c860' },
 };
 
@@ -93,6 +123,11 @@ export const diagramSvgIcons = {
   UMLPackageDiagram: `<svg viewBox="0 0 14 14"><rect x="2" y="5" width="10" height="7" fill="#f7ead7" stroke="#c77d2e" stroke-width="1.1"/><rect x="2" y="2.5" width="5" height="2.8" fill="#f7ead7" stroke="#c77d2e" stroke-width="1.1"/></svg>`,
   UMLCommunicationDiagram: `<svg viewBox="0 0 14 14"><rect x="1.5" y="1.5" width="4" height="3" fill="#eef4fb" stroke="#5c8ac7" stroke-width="1"/><rect x="8.5" y="9.5" width="4" height="3" fill="#eef4fb" stroke="#5c8ac7" stroke-width="1"/><line x1="3.5" y1="4.5" x2="10.5" y2="9.5" stroke="#5c8ac7" stroke-width="1"/><text x="7.6" y="6.4" font-size="5" fill="#5c8ac7">1:</text></svg>`,
   UMLObjectDiagram: `<svg viewBox="0 0 14 14"><rect x="2" y="4" width="10" height="6" fill="#eef4fb" stroke="#5c8ac7" stroke-width="1.1"/><line x1="4" y1="7" x2="10" y2="7" stroke="#5c8ac7" stroke-width="0.9"/><line x1="9" y1="11.5" x2="12" y2="11.5" stroke="#5c8ac7" stroke-width="0.9"/></svg>`,
+  UMLCompositeStructureDiagram: `<svg viewBox="0 0 14 14"><ellipse cx="7" cy="7" rx="5.2" ry="4" fill="#f7f1fb" stroke="#7d5ba6" stroke-width="1.1" stroke-dasharray="2 1.5"/><rect x="0.8" y="5.6" width="2.4" height="2.4" fill="#fff" stroke="#7d5ba6"/><rect x="10.8" y="5.6" width="2.4" height="2.4" fill="#fff" stroke="#7d5ba6"/></svg>`,
+  UMLTimingDiagram: `<svg viewBox="0 0 14 14"><line x1="1.5" y1="4" x2="12.5" y2="4" stroke="#5c8ac7" stroke-width="1.1"/><path d="M1.5 9 h5 v3 h6" fill="none" stroke="#5c8ac7" stroke-width="1.1"/><line x1="1.5" y1="12.5" x2="12.5" y2="12.5" stroke="#b6bdbd"/></svg>`,
+  UMLInteractionOverviewDiagram: `<svg viewBox="0 0 14 14"><rect x="1.4" y="2" width="4.2" height="3.4" fill="#f1ecfa" stroke="#7d5ba6"/><rect x="8.4" y="8.6" width="4.2" height="3.4" fill="#f1ecfa" stroke="#7d5ba6"/><path d="M5.6 3.7 L8.4 10.3" stroke="#7d5ba6"/><path d="M8.4 10.3 l-1.8 -.3 M8.4 10.3 l-.3 -1.8" stroke="#7d5ba6" fill="none"/></svg>`,
+  UMLInformationFlowDiagram: `<svg viewBox="0 0 14 14"><rect x="1.4" y="2.4" width="4.2" height="4" fill="#eef4fb" stroke="#5c8ac7"/><rect x="8.4" y="7.6" width="4.2" height="4" fill="#eef4fb" stroke="#5c8ac7"/><path d="M5.6 4.4 L8.4 7.6" stroke="#5c8ac7" stroke-dasharray="1.4 1"/><path d="M8.4 7.6 l-1.6 -.2 M8.4 7.6 l-.3 -1.5" stroke="#5c8ac7" fill="none"/></svg>`,
+  UMLProfileDiagram: `<svg viewBox="0 0 14 14"><rect x="1.4" y="2.2" width="7.6" height="9.4" fill="#fdf3e7" stroke="#c77d2e"/><line x1="1.4" y1="5.2" x2="9" y2="5.2" stroke="#c77d2e"/><text x="2.4" y="4.6" font-size="2.4" fill="#c77d2e">«st»</text><path d="M9 8.5 L12.4 8.5" stroke="#c77d2e"/><path d="M12.4 8.5 l-1.4 -.7 v1.4 Z" fill="#c77d2e"/></svg>`,
 };
 
 export function diagramIcon(type) {
@@ -244,6 +279,61 @@ export const ToolboxGroups = [
       { id: 'tool-linkMessage', name: '消息', icon: 'msgSync' },
     ],
   },
+  {
+    id: 'compositestructure', name: '复合结构图',
+    items: [
+      { id: 'tool-collaboration', name: '协作', icon: 'collaboration' },
+      { id: 'tool-port', name: '端口', icon: 'port' },
+      { id: 'tool-part', name: '部件', icon: 'part' },
+      { id: 'tool-compConnector', name: '连接线', icon: 'assoc' },
+      { id: 'tool-collaborationUse', name: '协作使用', icon: 'collaborationUse' },
+      { id: 'tool-roleBinding', name: '角色绑定', icon: 'dep' },
+      { id: 'tool-ifaceReal2', name: '实现', icon: 'real' },
+    ],
+  },
+  {
+    id: 'informationflow', name: '信息流图',
+    items: [
+      { id: 'tool-infoItem', name: '信息项', icon: 'infoItem' },
+      { id: 'tool-infoFlow', name: '信息流', icon: 'infoFlow' },
+    ],
+  },
+  {
+    id: 'profile', name: 'Profile 图',
+    items: [
+      { id: 'tool-metaclass', name: '元类', icon: 'metaclass' },
+      { id: 'tool-stereotype', name: '构造型', icon: 'stereotype' },
+      { id: 'tool-enum2', name: '枚举', icon: 'enum' },
+      { id: 'tool-extension', name: '扩展', icon: 'extension' },
+      { id: 'tool-gen2', name: '泛化', icon: 'gen' },
+    ],
+  },
+  {
+    id: 'interactionoverview', name: '交互概览图',
+    items: [
+      { id: 'tool-ioInteractionUse', name: '交互引用', icon: 'refUse' },
+      { id: 'tool-ioInteraction', name: '内联交互', icon: 'fragment' },
+      { id: 'tool-ioInitial', name: '初始节点', icon: 'initial' },
+      { id: 'tool-ioFinal', name: '活动终点', icon: 'final' },
+      { id: 'tool-ioFork', name: '分叉', icon: 'fork' },
+      { id: 'tool-ioJoin', name: '汇合', icon: 'fork' },
+      { id: 'tool-ioMerge', name: '合并', icon: 'decision' },
+      { id: 'tool-ioDecision', name: '判定', icon: 'decision' },
+      { id: 'tool-ioControlFlow', name: '控制流', icon: 'assocDir' },
+    ],
+  },
+  {
+    id: 'timing', name: '时序图 (Timing)',
+    items: [
+      { id: 'tool-timingLifeline', name: '生命线', icon: 'timingLifeline' },
+      { id: 'tool-timingState', name: '状态/条件', icon: 'timingState' },
+      { id: 'tool-timeSegment', name: '时间段', icon: 'timeSegment' },
+      { id: 'tool-timeTick', name: '时间刻度', icon: 'timeTick' },
+      { id: 'tool-timeConstraint', name: '时间约束', icon: 'constraint' },
+      { id: 'tool-durationConstraint', name: '持续时间约束', icon: 'duration' },
+      { id: 'tool-timeMessage', name: '消息', icon: 'msgAsync' },
+    ],
+  },
 ];
 
 // Which edge tool maps to which model type + line style
@@ -277,6 +367,13 @@ export const EdgeDefs = {
   UMLLink: { lineStyle: 'solid', tailArrow: 'none', headArrow: 'none' },
   UMLDirectedLink: { lineStyle: 'solid', tailArrow: 'none', headArrow: 'open' },
   UMLLinkObject: { lineStyle: 'solid', tailArrow: 'none', headArrow: 'none' },
+  // Composite structure / information flow / profile
+  UMLCompositeConnector: { lineStyle: 'solid', tailArrow: 'none', headArrow: 'none' },
+  UMLRoleBinding: { lineStyle: 'dashed', tailArrow: 'none', headArrow: 'open' },
+  UMLInformationFlow: { lineStyle: 'dotted', tailArrow: 'none', headArrow: 'open', stereotype: '«flow»' },
+  UMLExtension: { lineStyle: 'solid', tailArrow: 'none', headArrow: 'filledTriangle' },
+  // Timing diagram message (vertical arrow between lanes)
+  UMLTimeMessage: { lineStyle: 'solid', tailArrow: 'none', headArrow: 'open' },
 };
 
 export const NodeDefaults = {
@@ -327,4 +424,24 @@ export const NodeDefaults = {
   UMLLinkObject: { width: 0, height: 0 },
   UMLSubsystem: { width: 110, height: 65 },
   UMLConnector: { width: 0, height: 0 },
+  // Composite structure
+  UMLCollaboration: { width: 150, height: 80 },
+  UMLPort: { width: 12, height: 12 },
+  UMLPart: { width: 110, height: 40 },
+  UMLCollaborationUse: { width: 150, height: 80 },
+  // Information flow
+  UMLInformationItem: { width: 140, height: 80 },
+  // Profile
+  UMLMetaClass: { width: 140, height: 70 },
+  UMLStereotype: { width: 140, height: 80 },
+  // Interaction overview
+  UMLInteractionUseInOverview: { width: 220, height: 90 },
+  UMLInteractionInOverview: { width: 240, height: 130 },
+  // Timing
+  UMLTimingLifeline: { width: 520, height: 64 },
+  UMLTimingState: { width: 380, height: 44 },
+  UMLTimeSegment: { width: 80, height: 12 },
+  UMLTimeTick: { width: 4, height: 11 },
+  UMLTimeConstraint: { width: 110, height: 26 },
+  UMLDurationConstraint: { width: 120, height: 28 },
 };

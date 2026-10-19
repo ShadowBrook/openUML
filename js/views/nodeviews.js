@@ -7,12 +7,24 @@ import { VISIBILITY } from '../core/metamodel.js';
 
 const SVGNS = 'http://www.w3.org/2000/svg';
 
+/** Width of the name gutter at the left of a timing-diagram lane. */
+export const TIMING_LANE_LABEL_W = 110;
+
 export function svgEl(tag, attrs = {}, parent = null) {
   const el = document.createElementNS(SVGNS, tag);
   for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
   if (parent) parent.appendChild(el);
   return el;
 }
+
+/**
+ * Effective node size: the persisted width/height is the user's minimum, while
+ * `__autoW` / `__autoH` cache the size required by the current content. They are
+ * derived layout values (not serialized), so adding/removing members can shrink
+ * a box without turning layout into an undoable model edit.
+ */
+export function viewW(v) { return Math.max(v.width || 0, v.__autoW || 0); }
+export function viewH(v) { return Math.max(v.height || 0, v.__autoH || 0); }
 
 /** Instance notation: `name : Classifier` (UML object/instance). */
 export function instanceLabel(model) {
@@ -93,7 +105,8 @@ function compartmentHeight(items, fontSize) {
  * model = the referenced model element.
  */
 export function renderNode(g, view, model, kind) {
-  const x = view.x, y = view.y, w = view.width, h = view.height;
+  model = model || {};   // view-only shapes (text, time ticks) have no model
+  const x = view.x, y = view.y, w = viewW(view), h = viewH(view);
   const fill = view.fillColor || '#ffffff';
   const line = view.lineColor || '#353535';
   const fontColor = view.fontColor || '#353535';
@@ -103,10 +116,20 @@ export function renderNode(g, view, model, kind) {
   switch (kind) {
     case 'class':
     case 'datatype':
-    case 'interface': {
+    case 'interface':
+    case 'information':
+    case 'metaclass':
+    case 'stereotype': {
       const attrs = (model.attributes || []).map(fmtAttribute);
       const ops = (model.operations || []).map(fmtOperation);
-      const nameH = (view.stereotypeShown ? fs + 2 : 0) + fs + 10;
+      const forced = {
+        interface: '«interface»',
+        information: '«information»',
+        metaclass: '«metaClass»',
+        stereotype: '«stereotype»',
+      }[kind];
+      const stereotype = forced || (view.stereotypeShown ? model.stereotype || null : (model.stereotype || null));
+      const nameH = (stereotype ? fs + 2 : 0) + fs + 10;
       const attrH = compartmentHeight(attrs, fs);
       const opH = compartmentHeight(ops, fs);
       // template parameters sit in a compartment overlapping the top-right corner;
@@ -117,9 +140,9 @@ export function renderNode(g, view, model, kind) {
       const tpBoxW = tpItems.length ? Math.min(w, Math.max(46, tpTextW)) : 0;
       const tpBoxH = tpItems.length ? tpItems.length * (fs + 3) + 8 : 0;
       const tpShift = tpBoxH ? Math.max(0, tpBoxH - 8) : 0;
-      const hEff = Math.max(h, tpShift + nameH + attrH + opH);
-      meta.autoHeight = hEff;
-      const stereotype = kind === 'interface' ? '«interface»' : (view.stereotypeShown ? model.stereotype || null : (model.stereotype || null));
+      const requiredH = tpShift + nameH + attrH + opH;
+      const hEff = Math.max(h, requiredH);
+      meta.autoHeight = requiredH;
       // frame
       svgEl('rect', { x, y, width: w, height: hEff, fill, stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
       // name compartment (tag values are appended like StarUML property strings)
@@ -155,8 +178,9 @@ export function renderNode(g, view, model, kind) {
       const lits = (model.literals || []).map((l) => ({ text: l.name }));
       const nameH = fs + 10;
       const litH = compartmentHeight(lits, fs);
-      const hEff = Math.max(h, nameH + litH);
-      meta.autoHeight = hEff;
+      const requiredH = nameH + litH;
+      const hEff = Math.max(h, requiredH);
+      meta.autoHeight = requiredH;
       svgEl('rect', { x, y, width: w, height: hEff, fill, stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
       drawName(g, x, y + 4, w, model.name, { fontSize: fs, color: fontColor, stereotype: '«enumeration»' });
       let yy = y + nameH;
@@ -225,7 +249,7 @@ export function renderNode(g, view, model, kind) {
     }
     case 'lifeline': {
       // head box + dashed lifetime line
-      const headH = view.height;
+      const headH = viewH(view);
       svgEl('rect', { x, y, width: w, height: headH, fill, stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
       const t = svgEl('text', { x: x + w / 2, y: y + headH / 2 + fs * 0.35, 'text-anchor': 'middle', 'font-size': fs, fill: fontColor }, g);
       t.textContent = model.name;
@@ -319,7 +343,7 @@ export function renderNode(g, view, model, kind) {
         'text-decoration': inst ? 'underline' : 'none',
       }, g);
       t.textContent = label;
-      if (inst) meta.autoWidth = Math.max(w, label.length * fs * 0.62 + 24);
+      if (inst) meta.autoWidth = label.length * fs * 0.62 + 24;
       meta.textSlots.name = { box: new Rect(x + 12, y, w - 12, h), text: model.name, field: 'name', align: 'center' };
       break;
     }
@@ -339,7 +363,7 @@ export function renderNode(g, view, model, kind) {
         'text-decoration': inst ? 'underline' : 'none',
       }, g);
       t.textContent = label;
-      if (inst) meta.autoWidth = Math.max(w, label.length * fs * 0.62 + 18);
+      if (inst) meta.autoWidth = label.length * fs * 0.62 + 18;
       meta.textSlots.name = { box: new Rect(x, y, w, h), text: model.name, field: 'name', align: 'center' };
       break;
     }
@@ -360,7 +384,7 @@ export function renderNode(g, view, model, kind) {
         'text-decoration': inst ? 'underline' : 'none',
       }, g);
       t.textContent = label;
-      if (inst) meta.autoWidth = Math.max(w, label.length * fs * 0.62 + 18);
+      if (inst) meta.autoWidth = label.length * fs * 0.62 + 18;
       meta.textSlots.name = { box: new Rect(x, y + d, w, h - d), text: model.name, field: 'name', align: 'center' };
       break;
     }
@@ -370,7 +394,7 @@ export function renderNode(g, view, model, kind) {
       svgEl('rect', { x, y, width: w, height: h, fill, stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
       const t = svgEl('text', { x: x + w / 2, y: y + h / 2 + fs * 0.35, 'text-anchor': 'middle', 'font-size': fs, fill: fontColor, 'text-decoration': 'underline' }, g);
       t.textContent = label;
-      meta.autoWidth = Math.max(w, label.length * fs * 0.62 + 18);
+      meta.autoWidth = label.length * fs * 0.62 + 18;
       meta.textSlots.name = { box: new Rect(x, y, w, h), text: model.name, field: 'name', align: 'center' };
       break;
     }
@@ -499,6 +523,166 @@ export function renderNode(g, view, model, kind) {
       }, g);
       t.textContent = model.name;
       meta.textSlots.name = { box: new Rect(x, y + tabH, w, h - tabH), text: model.name, field: 'name', align: 'center' };
+      break;
+    }
+    case 'collaboration':
+    case 'collaborationUse': {
+      // dashed ellipse (UML Collaboration / CollaborationUse)
+      const label = kind === 'collaborationUse'
+        ? `${model.name}${model.typeName ? ': ' + model.typeName : ''}`
+        : model.name + fmtTags(model);
+      svgEl('ellipse', {
+        cx: x + w / 2, cy: y + h / 2, rx: w / 2, ry: h / 2,
+        fill: view.fillColor || '#ffffff', stroke: line, 'stroke-width': 1,
+        'stroke-dasharray': '6 4', class: 'node-frame',
+      }, g);
+      drawName(g, x, y + h / 2 - fs * 0.7, w, label, { fontSize: fs, color: fontColor });
+      meta.autoWidth = label.length * fs * 0.62 + 26;
+      meta.textSlots.name = { box: new Rect(x, y + h / 2 - fs, w, fs + 6), text: model.name, field: 'name', align: 'center' };
+      break;
+    }
+    case 'port': {
+      // port: small square on the classifier boundary, label outside
+      const label = `${model.name}${model.typeName ? ': ' + model.typeName : ''}${model.multiplicity ? ` [${model.multiplicity}]` : ''}`;
+      svgEl('rect', {
+        x, y, width: w, height: h,
+        fill: view.fillColor || '#ffffff', stroke: line, 'stroke-width': 1, class: 'node-frame',
+      }, g);
+      const t = svgEl('text', { x: x + w + 5, y: y + h / 2 + fs * 0.35, 'font-size': fs, fill: fontColor }, g);
+      t.textContent = label;
+      meta.textSlots.name = { box: new Rect(x + w + 3, y + h / 2 - fs, 90, fs + 6), text: model.name, field: 'name', align: 'left' };
+      break;
+    }
+    case 'part': {
+      // part: rounded box; dashed when the role is a shared (non-composite) part
+      const label = `${model.name}${model.typeName ? ': ' + model.typeName : ''}${model.multiplicity ? ` [${model.multiplicity}]` : ''}`;
+      svgEl('rect', {
+        x, y, width: w, height: h, rx: 5, ry: 5,
+        fill: view.fillColor || '#ffffff', stroke: line, 'stroke-width': 1,
+        'stroke-dasharray': model.aggregation === 'composite' ? 'none' : '6 4',
+        class: 'node-frame',
+      }, g);
+      const t = svgEl('text', {
+        x: x + w / 2, y: y + h / 2 + fs * 0.35, 'text-anchor': 'middle',
+        'font-size': fs, fill: fontColor, 'text-decoration': model.isStatic ? 'underline' : 'none',
+      }, g);
+      t.textContent = label;
+      meta.autoWidth = label.length * fs * 0.62 + 20;
+      meta.textSlots.name = { box: new Rect(x, y, w, h), text: model.name, field: 'name', align: 'center' };
+      break;
+    }
+    case 'timingLifeline': {
+      // horizontal lane: name gutter on the left, value line in the middle
+      const labelW = TIMING_LANE_LABEL_W;
+      svgEl('rect', { x, y, width: w, height: h, fill: view.fillColor || '#fcfdfd', stroke: 'none' }, g);
+      svgEl('line', { x1: x, y1: y + h, x2: x + w, y2: y + h, stroke: line, 'stroke-width': 1 }, g);
+      svgEl('line', { x1: x + labelW, y1: y, x2: x + labelW, y2: y + h, stroke: '#d8dede', 'stroke-width': 1 }, g);
+      svgEl('line', { x1: x + labelW + 6, y1: y + h / 2, x2: x + w - 4, y2: y + h / 2, stroke: '#e3e8e8', 'stroke-width': 1 }, g);
+      const t = svgEl('text', {
+        x: x + 8, y: y + h / 2 + fs * 0.35, 'font-size': fs, 'font-weight': 700, fill: fontColor,
+      }, g);
+      t.textContent = model.name + fmtTags(model);
+      meta.textSlots.name = { box: new Rect(x, y, labelW, h), text: model.name, field: 'name', align: 'left' };
+      break;
+    }
+    case 'timingState': {
+      // state/condition band: name above a horizontal value line
+      const cy = y + h / 2;
+      svgEl('rect', { x, y, width: w, height: h, fill: view.fillColor || 'none', stroke: 'none' }, g);
+      svgEl('line', { x1: x, y1: cy, x2: x + w, y2: cy, stroke: line, 'stroke-width': 1.4 }, g);
+      const t = svgEl('text', {
+        x: x + 4, y: y + fs + 1, 'font-size': fs, fill: fontColor, 'font-style': 'italic',
+      }, g);
+      t.textContent = model.name + fmtTags(model);
+      meta.textSlots.name = { box: new Rect(x, y, Math.min(w, 120), h), text: model.name, field: 'name', align: 'left' };
+      break;
+    }
+    case 'timeSegment': {
+      // interval marker on a state band
+      const cy = y + h / 2;
+      svgEl('line', { x1: x, y1: cy, x2: x + w, y2: cy, stroke: line, 'stroke-width': 1.2 }, g);
+      svgEl('line', { x1: x, y1: cy - 5, x2: x, y2: cy + 5, stroke: line, 'stroke-width': 1 }, g);
+      svgEl('line', { x1: x + w, y1: cy - 5, x2: x + w, y2: cy + 5, stroke: line, 'stroke-width': 1 }, g);
+      if (model && model.name) {
+        const t = svgEl('text', {
+          x: x + w / 2, y: cy - 7, 'text-anchor': 'middle', 'font-size': fs - 1, fill: fontColor,
+        }, g);
+        t.textContent = model.name;
+        meta.textSlots.name = { box: new Rect(x, cy - fs - 8, w, fs + 4), text: model.name, field: 'name', align: 'center' };
+      }
+      break;
+    }
+    case 'timeTick': {
+      // vertical tick with a time label below the lane
+      const tx = x + w / 2;
+      svgEl('line', { x1: tx, y1: y, x2: tx, y2: y + h, stroke: line, 'stroke-width': 1 }, g);
+      const t = svgEl('text', {
+        x: tx, y: y + h + fs + 3, 'text-anchor': 'middle', 'font-size': fs - 1, fill: fontColor,
+      }, g);
+      t.textContent = view.text || model?.name || '';
+      meta.textSlots.body = { box: new Rect(tx - 24, y - 2, 48, h + fs + 8), text: view.text || '', field: 'text', align: 'center' };
+      meta.textSlots.name = meta.textSlots.body;
+      break;
+    }
+    case 'timeConstraint': {
+      const raw = (model?.name || '').trim();
+      const text = raw.startsWith('{') ? raw : `{${raw || 't=0'}}`;
+      const t = svgEl('text', {
+        x: x + 4, y: y + h / 2 + fs * 0.35, 'font-size': fs, fill: fontColor, 'font-style': 'italic',
+      }, g);
+      t.textContent = text;
+      meta.textSlots.name = { box: new Rect(x, y, Math.max(w, text.length * fs * 0.6 + 8), h), text: model.name, field: 'name', align: 'left' };
+      break;
+    }
+    case 'durationConstraint': {
+      const raw = (model?.name || '').trim();
+      const text = raw.startsWith('{') ? raw : `{${raw || 'd=0'}}`;
+      const cy = y + h / 2 + 4;
+      svgEl('line', { x1: x, y1: cy, x2: x + w, y2: cy, stroke: line, 'stroke-width': 1 }, g);
+      svgEl('line', { x1: x, y1: cy - 6, x2: x, y2: cy + 6, stroke: line, 'stroke-width': 1 }, g);
+      svgEl('line', { x1: x + w, y1: cy - 6, x2: x + w, y2: cy + 6, stroke: line, 'stroke-width': 1 }, g);
+      const t = svgEl('text', {
+        x: x + w / 2, y: cy - 8, 'text-anchor': 'middle', 'font-size': fs, fill: fontColor, 'font-style': 'italic',
+      }, g);
+      t.textContent = text;
+      meta.textSlots.name = { box: new Rect(x, y, w, h), text: model.name, field: 'name', align: 'center' };
+      break;
+    }
+    case 'interactionOverview': {
+      // inline interaction: sequence-diagram frame with miniature lifelines
+      const tabH = 22;
+      svgEl('rect', {
+        x, y, width: w, height: h, fill: view.fillColor || 'none',
+        stroke: line, 'stroke-width': 1.2, class: 'node-frame',
+      }, g);
+      const tw = 30;
+      svgEl('path', {
+        d: `M ${x} ${y} L ${x + tw} ${y} L ${x + tw + 8} ${y + tabH / 2} L ${x + tw} ${y + tabH} L ${x} ${y + tabH} Z`,
+        fill: '#ffffff', stroke: line, 'stroke-width': 1, class: 'node-frame',
+      }, g);
+      const rt = svgEl('text', {
+        x: x + tw / 2, y: y + tabH / 2 + fs * 0.36, 'text-anchor': 'middle',
+        'font-size': fs, 'font-weight': 700, fill: fontColor,
+      }, g);
+      rt.textContent = 'sd';
+      const nt = svgEl('text', {
+        x: x + w / 2 + 16, y: y + fs + 5, 'text-anchor': 'middle', 'font-size': fs, 'font-weight': 700, fill: fontColor,
+      }, g);
+      nt.textContent = model.name;
+      // miniature lifelines suggest the referenced interaction
+      const innerTop = y + tabH + 22, innerBot = y + h - 12;
+      for (let i = 1; i <= 3; i++) {
+        const lx = x + (w * i) / 4;
+        svgEl('rect', {
+          x: lx - 26, y: innerTop - 16, width: 52, height: 14,
+          fill: '#ffffff', stroke: line, 'stroke-width': 0.8,
+        }, g);
+        svgEl('line', {
+          x1: lx, y1: innerTop - 2, x2: lx, y2: innerBot,
+          stroke: line, 'stroke-width': 0.8, 'stroke-dasharray': '4 3',
+        }, g);
+      }
+      meta.textSlots.name = { box: new Rect(x + tw + 10, y, w - tw - 10, tabH), text: model.name, field: 'name', align: 'center' };
       break;
     }
     case 'note':

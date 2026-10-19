@@ -14,7 +14,8 @@ export function createModel(type, name, extra = {}) {
     ownedElements: [],
     ...extra,
   };
-  if (type === 'UMLClass' || type === 'UMLInterface' || type === 'UMLDataType') {
+  if (type === 'UMLClass' || type === 'UMLInterface' || type === 'UMLDataType'
+      || type === 'UMLInformationItem' || type === 'UMLCollaboration' || type === 'UMLStereotype') {
     el.attributes = [];
     el.operations = [];
     el.templateParameters = [];
@@ -24,6 +25,25 @@ export function createModel(type, name, extra = {}) {
   }
   if (type === 'UMLObject' || type === 'UMLArtifactInstance' || type === 'UMLComponentInstance' || type === 'UMLNodeInstance') {
     el.classifier = extra.classifier ?? '';
+  }
+  if (type === 'UMLPort') {
+    el.typeName = extra.typeName ?? '';
+    el.multiplicity = extra.multiplicity ?? '';
+    el.isStatic = false;
+  }
+  if (type === 'UMLPart') {
+    el.typeName = extra.typeName ?? '';
+    el.multiplicity = extra.multiplicity ?? '';
+    el.aggregation = extra.aggregation ?? 'composite';
+  }
+  if (type === 'UMLCollaborationUse') {
+    el.typeName = extra.typeName ?? '';
+  }
+  if (type === 'UMLTimeTick') {
+    el.text = extra.text ?? 't';
+  }
+  if (type === 'UMLTimeConstraint' || type === 'UMLDurationConstraint') {
+    el.name = extra.name ?? (type === 'UMLTimeConstraint' ? '{t=0}' : '{d=0}');
   }
   if (type === 'UMLCombinedFragment') {
     el.operator = 'alt';
@@ -51,7 +71,17 @@ export function defaultName(type) {
     UMLDataType: 'DataType', UMLActor: 'Actor', UMLUseCase: 'UseCase',
     UMLPackage: 'Package', UMLNote: 'Note', Model: 'Model',
     UMLClassDiagram: 'Main', UMLUseCaseDiagram: 'Main',
+    UMLInformationItem: 'InformationItem', UMLInformationFlow: 'InformationFlow',
+    UMLCollaboration: 'Collaboration', UMLPort: 'Port', UMLPart: 'Part',
+    UMLCollaborationUse: 'CollaborationUse', UMLRoleBinding: 'RoleBinding',
+    UMLCompositeConnector: 'Connector', UMLMetaClass: 'MetaClass',
+    UMLStereotype: 'Stereotype', UMLExtension: 'Extension',
+    UMLInteractionUseInOverview: 'InteractionUse', UMLInteractionInOverview: 'Interaction',
+    UMLTimingLifeline: 'Lifeline', UMLTimingState: 'State',
+    UMLTimeSegment: 'TimeSegment', UMLTimeTick: 'TimeTick',
+    UMLTimeConstraint: 'TimeConstraint', UMLDurationConstraint: 'DurationConstraint',
   }[type] || type.replace(/^UML/, '');
+  if (type === 'UMLTimeTick') return label;
   return `${label}${counters[type]}`;
 }
 export function resetNameCounters() { defaultName._c = {}; }
