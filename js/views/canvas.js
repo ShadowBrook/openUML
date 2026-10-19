@@ -993,6 +993,12 @@ export class DiagramCanvas {
         followers: (this.diagram.elements || [])
           .filter((f) => !f.isEdge && f.$type === 'UMLDurationConstraint' && f.targetRef === r.view._id)
           .map((f) => ({ f, before: { x: f.x, width: f.width } })),
+        // container resize pushes/tracks its children (snapshots for undo)
+        children: this.isContainerView(r.view)
+          ? this.descendantsOf(r.view._id).map((c) => ({
+              v: c, x: c.x, y: c.y, w: viewW(c), h: viewH(c), direct: c.container === r.view._id,
+            }))
+          : [],
       };
       return;
     }
@@ -1160,9 +1166,37 @@ export class DiagramCanvas {
           if (rf) { rf.g.remove(); this.renderers.delete(f._id); this._renderNodeView(f); }
         }
       }
+      // container resize: west/north edges carry children along, east/south
+      // edges push the ones that would stick out back inside
+      const movedKids = new Set();
+      if (d.children && d.children.length) {
+        const dxW = view.x - d.orig.x;
+        const dyN = view.y - d.orig.y;
+        const right = view.x + view.width, bottom = view.y + view.height;
+        for (const c of d.children) {
+          const v = c.v;
+          let nx = c.x, ny = c.y;
+          if (handle.includes('w')) nx = c.x + dxW;
+          if (handle.includes('n')) ny = c.y + dyN;
+          if (handle.includes('e') && c.direct && c.x + c.w > right - 2) {
+            nx = Math.max(view.x + 2, right - c.w - 2);
+          }
+          if (handle.includes('s') && c.direct && c.y + c.h > bottom - 2) {
+            ny = Math.max(view.y + 2, bottom - c.h - 2);
+          }
+          if (nx !== v.x || ny !== v.y) {
+            v.x = nx; v.y = ny;
+            movedKids.add(v._id);
+            const rg = this.renderers.get(v._id);
+            if (rg) { rg.g.remove(); this.renderers.delete(v._id); this._renderNodeView(v); }
+          }
+        }
+      }
       const edgeIds = new Set();
       for (const e of this.diagram.elements || []) {
-        if (e.isEdge && (e.tail === view._id || e.head === view._id)) edgeIds.add(e._id);
+        if (e.isEdge && (e.tail === view._id || e.head === view._id || movedKids.has(e.tail) || movedKids.has(e.head))) {
+          edgeIds.add(e._id);
+        }
       }
       this._rerenderEdges(edgeIds);
       this._updateSelectionClasses(repository.selections);
@@ -1344,12 +1378,17 @@ export class DiagramCanvas {
         autoW: orig.autoW, autoH: orig.autoH,
       };
       const followers = d.followers || [];
+      // children the container resize pushed/tracked (before = drag start)
+      const childEdits = (d.children || [])
+        .filter((c) => c.v.x !== c.x || c.v.y !== c.y)
+        .map((c) => ({ v: c.v, before: { x: c.x, y: c.y }, after: { x: c.v.x, y: c.v.y } }));
       commandStack.pushExecuted({
         label: 'resize',
         redo: () => {
           Object.assign(view, nw);
           delete view.__autoW; delete view.__autoH;
           for (const { f } of followers) { f.x = nw.x; f.width = nw.width; }
+          for (const ce of childEdits) { ce.v.x = ce.after.x; ce.v.y = ce.after.y; }
           this.requestRender();
         },
         undo: () => {
@@ -1357,6 +1396,7 @@ export class DiagramCanvas {
           if (before.autoW == null) delete view.__autoW; else view.__autoW = before.autoW;
           if (before.autoH == null) delete view.__autoH; else view.__autoH = before.autoH;
           for (const { f, before: fb } of followers) { f.x = fb.x; f.width = fb.width; }
+          for (const ce of childEdits) { ce.v.x = ce.before.x; ce.v.y = ce.before.y; }
           this.requestRender();
         },
       });
