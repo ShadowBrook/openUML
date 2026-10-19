@@ -827,7 +827,7 @@ class Converter:
             if view_model and not view_model.get('name') and label:
                 view_model['name'] = label
         for flag in ('showVisibility', 'showType', 'showMultiplicity',
-                     'showOperationSignature', 'suppressAttributes',
+                     'showOperationSignature', 'showProperty', 'suppressAttributes',
                      'suppressOperations', 'suppressLiterals', 'showNamespace',
                      'shadow', 'autoResize'):
             if flag in view:
@@ -1166,7 +1166,7 @@ class Converter:
             v['lineStyle'] = 'solid'
             v['headArrow'] = 'open'
         for flag in ('showVisibility', 'showType', 'showMultiplicity',
-                     'showOperationSignature', 'suppressAttributes',
+                     'showOperationSignature', 'showProperty', 'suppressAttributes',
                      'suppressOperations', 'suppressLiterals', 'showNamespace',
                      'shadow', 'autoResize'):
             if flag in view:

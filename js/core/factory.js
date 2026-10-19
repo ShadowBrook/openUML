@@ -51,6 +51,9 @@ export function createModel(type, name, extra = {}) {
   if (type === 'UMLExtension') {
     el.multiplicity = extra.multiplicity ?? '';
   }
+  if (type === 'UMLStereotype') {
+    el.icon = extra.icon ?? '';
+  }
   if (type === 'UMLTimeTick') {
     el.text = extra.text ?? 't';
   }

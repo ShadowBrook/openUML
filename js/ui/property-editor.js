@@ -5,6 +5,22 @@ import { commandStack } from '../core/commands.js';
 import { ModelKinds, VISIBILITY } from '../core/metamodel.js';
 import { createAttribute, createOperation, createLiteral, createSlot } from '../core/factory.js';
 
+/** Walk to the project root and find the UMLStereotype definition by applied name. */
+function findStereotypeModel(model) {
+  if (!model.stereotype) return null;
+  let root = model;
+  while (root.__parent) root = root.__parent;
+  const found = [];
+  const seen = new Set();
+  (function dfs(n) {
+    if (!n || typeof n !== 'object' || seen.has(n) || found.length) return;
+    seen.add(n);
+    if (n.type === 'UMLStereotype' && n.name === model.stereotype) { found.push(n); return; }
+    for (const c of n.ownedElements || []) dfs(c);
+  })(root);
+  return found[0] || null;
+}
+
 export class PropertyEditor {
   constructor() {
     this.propPanel = document.getElementById('property-editor');
@@ -166,7 +182,8 @@ export class PropertyEditor {
       const sec = this._section('显示 (Display)');
       this._row(sec, '构造型显示', this.currentView.stereotypeDisplay || 'label',
         (v) => this._setView(this.currentView, 'stereotypeDisplay', v), 'select',
-        [['label', '标签'], ['none', '隐藏']]);
+        [['label', '标签'], ['none', '隐藏'], ['decoration', '装饰'],
+         ['decoration-label', '装饰+标签'], ['icon', '图标'], ['icon-label', '图标+标签']]);
       this._checkRow(sec, '显示可见性', this.currentView.showVisibility !== false,
         (v) => this._setView(this.currentView, 'showVisibility', v));
       this._checkRow(sec, '显示类型', this.currentView.showType !== false,
@@ -175,6 +192,8 @@ export class PropertyEditor {
         (v) => this._setView(this.currentView, 'showOperationSignature', v));
       this._checkRow(sec, '显示属性多重性', this.currentView.showMultiplicity !== false,
         (v) => this._setView(this.currentView, 'showMultiplicity', v));
+      this._checkRow(sec, '显示标记值 (Property)', this.currentView.showProperty !== false,
+        (v) => this._setView(this.currentView, 'showProperty', v));
       this._checkRow(sec, '自动换行', this.currentView.autoWrap === true,
         (v) => this._setView(this.currentView, 'autoWrap', v));
       this._checkRow(sec, '显示命名空间 (from …)', this.currentView.showNamespace === true,
@@ -192,6 +211,29 @@ export class PropertyEditor {
         (v) => this._setView(this.currentView, 'autoWrap', v));
       this._checkRow(sec, '显示命名空间 (from …)', this.currentView.showNamespace === true,
         (v) => this._setView(this.currentView, 'showNamespace', v));
+    }
+
+    // Stereotype definition: display icon character used by decoration/icon views
+    if (model.type === 'UMLStereotype') {
+      const sec = this._section('构造型图标 (Icon)');
+      this._row(sec, '图标字符', model.icon || '', (v) => this._set(model, 'icon', v));
+    }
+    // Applied stereotype: its attributes become tagged values on this element
+    // (StarUML property string `{tag=value, …}`)
+    if (model.stereotype && model.type !== 'UMLStereotype') {
+      const stereo = findStereotypeModel(model);
+      if (stereo && (stereo.attributes || []).length) {
+        const sec = this._section(`构造型标记值 «${stereo.name}»`);
+        for (const attr of stereo.attributes) {
+          if (!attr || !attr.name) continue;
+          const tag = (model.tags || []).find((t) => t.name === attr.name);
+          this._row(sec, attr.name + (attr.type ? ` : ${attr.type}` : ''), tag ? tag.value : '', (v) => {
+            const tags = (model.tags || []).filter((t) => t.name !== attr.name);
+            if (v !== '') tags.push({ _id: 'tag-' + Math.random().toString(36).slice(2, 9), name: attr.name, value: v });
+            this._set(model, 'tags', tags);
+          });
+        }
+      }
     }
 
     // Template parameters (classifiers)

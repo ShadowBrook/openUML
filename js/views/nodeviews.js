@@ -116,9 +116,52 @@ function namespaceOf(model) {
   return '';
 }
 
+/** Find the UMLStereotype definition matching `model.stereotype` (project-wide DFS). */
+function stereotypeModel(model) {
+  if (!model || !model.stereotype) return null;
+  let root = model;
+  while (root.__parent) root = root.__parent;
+  const found = [];
+  const seen = new Set();
+  (function dfs(n) {
+    if (!n || typeof n !== 'object' || seen.has(n) || found.length) return;
+    seen.add(n);
+    if (n.type === 'UMLStereotype' && n.name === model.stereotype) { found.push(n); return; }
+    for (const c of n.ownedElements || []) dfs(c);
+  })(root);
+  return found[0] || null;
+}
+
+/**
+ * Stereotype display modes follow StarUML's UMLStereotypeDisplayKind:
+ * label shows «…», decoration adds a small icon at the top-right,
+ * icon replaces the top region with a large icon (…-label keeps the label).
+ */
+const SD_ICON_SIZE = 24;       // StarUML DECORATION_ICON_WIDTH/HEIGHT
+const SD_ICON_PAD = 4;         // StarUML compartment paddings
+
+function decorationShift(sd) {
+  return sd === 'decoration' || sd === 'decoration-label' ? SD_ICON_SIZE + SD_ICON_PAD : 0;
+}
+
+function drawStereotypeIcon(g, r, stereo, line, fontColor) {
+  svgEl('rect', { x: r.x, y: r.y, width: r.w, height: r.h, fill: '#ffffff', stroke: line, 'stroke-width': 1 }, g);
+  if (stereo && stereo.icon) {
+    const t = svgEl('text', {
+      x: r.x + r.w / 2, y: r.y + r.h / 2 + Math.min(r.w, r.h) * 0.22,
+      'text-anchor': 'middle', 'font-size': Math.min(r.w, r.h) * 0.62, fill: fontColor,
+    }, g);
+    t.textContent = stereo.icon;
+  } else {
+    // StarUML placeholder icon: rectangle with both diagonals
+    svgEl('line', { x1: r.x, y1: r.y, x2: r.x + r.w, y2: r.y + r.h, stroke: line, 'stroke-width': 1 }, g);
+    svgEl('line', { x1: r.x + r.w, y1: r.y, x2: r.x, y2: r.y + r.h, stroke: line, 'stroke-width': 1 }, g);
+  }
+}
+
 function drawNameBlock(g, x, y, w, {
   fontSize = 12, bold = true, italic = false, color = '#353535',
-  stereotype = null, nameLines = [''], namespace = '',
+  stereotype = null, nameLines = [''], namespace = '', property = '',
 } = {}) {
   let yy = y;
   if (stereotype) {
@@ -146,6 +189,15 @@ function drawNameBlock(g, x, y, w, {
     }, g);
     t.textContent = `(from ${namespace})`;
     yy += fontSize;
+  }
+  if (property) {
+    const t = svgEl('text', {
+      x: x + w / 2, y: yy + Math.max(9, fontSize - 2), 'text-anchor': 'middle',
+      'font-size': Math.max(9, fontSize - 2), 'font-weight': 400,
+      fill: color, 'font-family': 'inherit',
+    }, g);
+    t.textContent = property;
+    yy += Math.max(9, fontSize - 2) + 1;
   }
   return yy - y;
 }
@@ -213,12 +265,16 @@ export function renderNode(g, view, model, kind) {
         stereotype: '«stereotype»',
         signal: '«signal»',
       }[kind];
-      const stereotype = forced || (view.stereotypeDisplay === 'none' ? null : (model.stereotype || null));
+      const sd = view.stereotypeDisplay || 'label';
+      const labelShown = sd === 'label' || sd === 'decoration-label' || sd === 'icon-label';
+      const stereotype = (forced || model.stereotype) && labelShown ? (forced || model.stereotype) : null;
+      const stereo = !forced ? stereotypeModel(model) : null;
       const wrapChars = view.autoWrap ? Math.max(4, Math.floor((w - 10) / (fs * 0.62))) : 0;
-      const nameLines = wrapChars ? wrapText(model.name + fmtTags(model), wrapChars) : [model.name + fmtTags(model)];
+      const nameLines = wrapChars ? wrapText(model.name, wrapChars) : [model.name];
       const namespace = view.showNamespace ? namespaceOf(model) : '';
+      const property = view.showProperty !== false ? fmtTags(model) : '';
       const nameH = (stereotype ? fs + 2 : 0) + nameLines.length * (fs + 2)
-        + (namespace ? fs + 1 : 0) + 6;
+        + (namespace ? fs + 1 : 0) + (property ? Math.max(9, fs - 2) + 1 : 0) + 6;
       const attrH = showAttrs ? compartmentHeight(attrs, fs, wrapChars) : 0;
       const opH = showOps ? compartmentHeight(ops, fs, wrapChars) : 0;
       // template parameters sit in a compartment overlapping the top-right corner;
@@ -229,16 +285,35 @@ export function renderNode(g, view, model, kind) {
       const tpBoxW = tpItems.length ? Math.min(w, Math.max(46, tpTextW)) : 0;
       const tpBoxH = tpItems.length ? tpItems.length * (fs + 3) + 8 : 0;
       const tpShift = tpBoxH ? Math.max(0, tpBoxH - 8) : 0;
-      const requiredH = tpShift + nameH + attrH + opH;
+      const iconic = sd === 'icon' || sd === 'icon-label';
+      // icon form: StarUML reserves a square (min 24px) above the compartments
+      const iconH = iconic ? Math.max(SD_ICON_SIZE, Math.min(w - 4, SD_ICON_SIZE)) : 0;
+      const requiredH = tpShift + iconH + nameH + attrH + opH;
       const hEff = Math.max(h, requiredH);
       meta.autoHeight = requiredH;
       // frame
       svgEl('rect', { x, y, width: w, height: hEff, fill, stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
-      // name compartment (tag values are appended like StarUML property strings)
-      drawNameBlock(g, x, y + tpShift + 4, w, {
+      // icon form: large icon centered in the top region (StarUML arrangeAsIconicForm)
+      let contentTop = y + tpShift;
+      if (iconic) {
+        const regionH = hEff - tpShift - (nameH + attrH + opH);
+        const side = Math.min(w - 4, Math.max(SD_ICON_SIZE, regionH));
+        drawStereotypeIcon(g, { x: x + (w - side) / 2, y: contentTop + 2, w: side, h: side }, stereo, line, fontColor);
+        contentTop += side + 2;
+      }
+      // decoration form: small icon in the top-right corner (drawAsDecorationForm)
+      const nameW = w - (decorationShift(sd) ? SD_ICON_SIZE + SD_ICON_PAD * 2 : 0);
+      // name compartment (tag values are the property string on their own line)
+      drawNameBlock(g, x, contentTop + 4, nameW, {
         fontSize: fs, color: fontColor, stereotype, italic: kind === 'datatype',
-        nameLines, namespace,
+        nameLines, namespace, property,
       });
+      if (decorationShift(sd)) {
+        drawStereotypeIcon(g, {
+          x: x + w - SD_ICON_PAD - SD_ICON_SIZE, y: y + SD_ICON_PAD,
+          w: SD_ICON_SIZE, h: SD_ICON_SIZE,
+        }, stereo, line, fontColor);
+      }
       // template parameter compartment at the top-right corner
       if (tpItems.length) {
         const bx = x + w - tpBoxW, by = y;
@@ -253,7 +328,7 @@ export function renderNode(g, view, model, kind) {
           ty += fs + 3;
         }
       }
-      let yy = y + tpShift + nameH;
+      let yy = contentTop + nameH;
       if (showAttrs) {
         svgEl('line', { x1: x, y1: yy, x2: x + w, y2: yy, stroke: line, 'stroke-width': 1 }, g);
         meta.compartments.attributes = new Rect(x + 1, yy, w - 2, attrH);
@@ -269,7 +344,7 @@ export function renderNode(g, view, model, kind) {
       if ((showAttrs || showOps) && yy < y + hEff - 1) {
         svgEl('line', { x1: x, y1: y + hEff, x2: x + w, y2: y + hEff, stroke: line }, g);
       }
-      meta.textSlots.name = { box: new Rect(x, y + tpShift, w, nameH), text: model.name, field: 'name', align: 'center' };
+      meta.textSlots.name = { box: new Rect(x, contentTop, w, nameH + 4), text: model.name, field: 'name', align: 'center' };
       break;
     }
     case 'nary': {
@@ -320,25 +395,47 @@ export function renderNode(g, view, model, kind) {
     case 'enumeration': {
       const showLits = !view.suppressLiterals;
       const lits = showLits ? (model.literals || []).map((l) => ({ text: l.name })) : [];
+      const sd = view.stereotypeDisplay || 'label';
+      const labelShown = sd === 'label' || sd === 'decoration-label' || sd === 'icon-label';
+      const stereotype = labelShown ? '«enumeration»' : null;
+      const stereo = stereotypeModel(model);
       const wrapChars = view.autoWrap ? Math.max(4, Math.floor((w - 10) / (fs * 0.62))) : 0;
-      const nameLines = wrapChars ? wrapText(model.name + fmtTags(model), wrapChars) : [model.name + fmtTags(model)];
+      const nameLines = wrapChars ? wrapText(model.name, wrapChars) : [model.name];
       const namespace = view.showNamespace ? namespaceOf(model) : '';
-      const nameH = (fs + 2) + nameLines.length * (fs + 2) + (namespace ? fs + 1 : 0) + 6;
+      const property = view.showProperty !== false ? fmtTags(model) : '';
+      const nameH = (stereotype ? fs + 2 : 0) + nameLines.length * (fs + 2)
+        + (namespace ? fs + 1 : 0) + (property ? Math.max(9, fs - 2) + 1 : 0) + 6;
       const litH = showLits ? compartmentHeight(lits, fs, wrapChars) : 0;
-      const requiredH = nameH + litH;
+      const iconic = sd === 'icon' || sd === 'icon-label';
+      const iconH = iconic ? SD_ICON_SIZE : 0;
+      const requiredH = iconH + nameH + litH;
       const hEff = Math.max(h, requiredH);
       meta.autoHeight = requiredH;
       svgEl('rect', { x, y, width: w, height: hEff, fill, stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
-      drawNameBlock(g, x, y + 4, w, {
-        fontSize: fs, color: fontColor, stereotype: '«enumeration»', nameLines, namespace,
+      let contentTop = y;
+      if (iconic) {
+        const regionH = hEff - (nameH + litH);
+        const side = Math.min(w - 4, Math.max(SD_ICON_SIZE, regionH));
+        drawStereotypeIcon(g, { x: x + (w - side) / 2, y: contentTop + 2, w: side, h: side }, stereo, line, fontColor);
+        contentTop += side + 2;
+      }
+      const nameW = w - (decorationShift(sd) ? SD_ICON_SIZE + SD_ICON_PAD * 2 : 0);
+      drawNameBlock(g, x, contentTop + 4, nameW, {
+        fontSize: fs, color: fontColor, stereotype, nameLines, namespace, property,
       });
+      if (decorationShift(sd)) {
+        drawStereotypeIcon(g, {
+          x: x + w - SD_ICON_PAD - SD_ICON_SIZE, y: y + SD_ICON_PAD,
+          w: SD_ICON_SIZE, h: SD_ICON_SIZE,
+        }, stereo, line, fontColor);
+      }
       if (showLits) {
-        const yy = y + nameH;
+        const yy = contentTop + nameH;
         svgEl('line', { x1: x, y1: yy, x2: x + w, y2: yy, stroke: line }, g);
         meta.compartments.literals = new Rect(x + 1, yy, w - 2, litH);
         drawCompartmentList(g, lits, { x, y: yy, width: w }, fs, fontColor, wrapChars);
       }
-      meta.textSlots.name = { box: new Rect(x, y, w, nameH), text: model.name, field: 'name', align: 'center' };
+      meta.textSlots.name = { box: new Rect(x, contentTop, w, nameH + 4), text: model.name, field: 'name', align: 'center' };
       break;
     }
     case 'actor': {
