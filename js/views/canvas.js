@@ -47,7 +47,7 @@ export class DiagramCanvas {
     repository.on('change', () => this.requestRender());
     repository.on('select', ({ ids }) => this._updateSelectionClasses(ids));
     document.addEventListener('stack-changed', () => this.requestRender());
-    window.addEventListener('resize', () => this.requestRender());
+    window.addEventListener('resize', () => this._updateViewport());
   }
 
   // ---------------- rendering ----------------
@@ -81,10 +81,13 @@ export class DiagramCanvas {
     };
   }
 
-  render(full = false) {
-    const w = this.svg.clientWidth, h = this.svg.clientHeight;
+  /**
+   * Update only the viewport transform, grid and selection overlay. Panning and
+   * zooming do not change any node geometry, so they must not rebuild the SVG.
+   */
+  _updateViewport({ overlay = true } = {}) {
+    const w = this.svg.clientWidth || 800, h = this.svg.clientHeight || 600;
     this.svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-    // grid (pattern-based; no per-dot DOM churn)
     const step = this.gridSize * this.zoom;
     if (step > 0) {
       const offX = ((this.panX % step) + step) % step;
@@ -94,13 +97,20 @@ export class DiagramCanvas {
       this.gridPattern.setAttribute('patternTransform', `translate(${offX},${offY})`);
     }
     this.gridRect.style.display = (this.showGrid && step >= 7) ? '' : 'none';
-    // content transform
-    this.contentLayer.setAttribute('transform', `translate(${this.panX},${this.panY}) scale(${this.zoom})`);
-    this.overlayLayer.setAttribute('transform', this.contentLayer.getAttribute('transform'));
+    const t = `translate(${this.panX},${this.panY}) scale(${this.zoom})`;
+    this.contentLayer.setAttribute('transform', t);
+    this.overlayLayer.setAttribute('transform', t);
+    if (overlay) this._updateOverlay();
+  }
 
+  render(full = false) {
+    this._updateViewport({ overlay: false });
     this.contentLayer.innerHTML = '';
     this.renderers.clear();
-    if (!this.diagram) return;
+    if (!this.diagram) {
+      this.overlayLayer.innerHTML = '';
+      return;
+    }
 
     const views = this.diagram.elements || [];
     this._applySequenceLayout(views);
@@ -413,6 +423,31 @@ export class DiagramCanvas {
     for (const [, r] of this.renderers) {
       r.g.classList.toggle('selected', set.has(r.view._id));
     }
+  }
+
+  _currentRects() {
+    const rects = new Map();
+    for (const v of this.diagram?.elements || []) {
+      if (!v.isEdge) rects.set(v._id, this.rectOf(v));
+    }
+    return rects;
+  }
+
+  /** Rebuild only the listed edges; used by drag previews. */
+  _rerenderEdges(ids) {
+    if (!this.diagram || !ids.size) return;
+    const rects = this._currentRects();
+    for (const id of ids) {
+      const edge = repository.lookup(id);
+      if (!edge || !edge.isEdge) continue;
+      const old = this.renderers.get(id);
+      if (old) {
+        old.g.remove();
+        this.renderers.delete(id);
+      }
+      this._renderEdgeView(edge, rects);
+    }
+    this._updateSelectionClasses(repository.selections);
   }
 
   _updateOverlay() {
@@ -838,7 +873,7 @@ export class DiagramCanvas {
     if (d.kind === 'pan') {
       this.panX = d.panX + (e.clientX - d.startX);
       this.panY = d.panY + (e.clientY - d.startY);
-      this.requestRender();
+      this._updateViewport();
       return;
     }
     const w = this.clientToWorld(e);
@@ -855,16 +890,32 @@ export class DiagramCanvas {
         dx = nx - first.orig.x; dy = ny - first.orig.y;
       }
       if (Math.abs(dx) + Math.abs(dy) > 0) d.moved = true;
+      const movedNodes = new Set();
+      const edgeIds = new Set();
       for (const it of d.items) {
-        if (it.view.isMessage) {
+        const v = it.view;
+        if (v.isMessage) {
           // sequence messages only slide vertically along the lifelines
-          it.view.y = it.orig.y + dy;
+          v.y = it.orig.y + dy;
+          edgeIds.add(v._id);
+        } else if (v.isEdge) {
+          v.x = it.orig.x + dx;
+          v.y = it.orig.y + dy;
+          edgeIds.add(v._id);
         } else {
-          it.view.x = it.orig.x + dx;
-          it.view.y = it.orig.y + dy;
+          v.x = it.orig.x + dx;
+          v.y = it.orig.y + dy;
+          movedNodes.add(v._id);
+          const r = this.renderers.get(v._id);
+          if (r) r.g.setAttribute('transform', `translate(${v.x - it.orig.x},${v.y - it.orig.y})`);
         }
       }
-      this.requestRender();
+      // Only edges touching the moved nodes can have changed.
+      for (const e of this.diagram.elements || []) {
+        if (e.isEdge && (movedNodes.has(e.tail) || movedNodes.has(e.head))) edgeIds.add(e._id);
+      }
+      this._rerenderEdges(edgeIds);
+      this._updateOverlay();
       return;
     }
     if (d.kind === 'resize') {
@@ -884,7 +935,19 @@ export class DiagramCanvas {
       // longer fits will grow it again on the next render.
       delete view.__autoW;
       delete view.__autoH;
-      this.requestRender();
+      const old = this.renderers.get(view._id);
+      if (old) {
+        old.g.remove();
+        this.renderers.delete(view._id);
+        this._renderNodeView(view);
+      }
+      const edgeIds = new Set();
+      for (const e of this.diagram.elements || []) {
+        if (e.isEdge && (e.tail === view._id || e.head === view._id)) edgeIds.add(e._id);
+      }
+      this._rerenderEdges(edgeIds);
+      this._updateSelectionClasses(repository.selections);
+      this._updateOverlay();
       return;
     }
     if (d.kind === 'connect') {
@@ -897,7 +960,8 @@ export class DiagramCanvas {
       if (!pts[d.index]) return;
       pts[d.index] = this.snapToGrid ? { x: snap(w.x, this.gridSize), y: snap(w.y, this.gridSize) } : { x: w.x, y: w.y };
       d.moved = true;
-      this.requestRender();
+      this._rerenderEdges(new Set([d.view._id]));
+      this._updateOverlay();
       return;
     }
     if (d.kind === 'label') {
@@ -907,7 +971,7 @@ export class DiagramCanvas {
       // no offset is represented as null, so undo and serialization stay clean
       d.view.labelOffset = (dx === 0 && dy === 0) ? null : { dx, dy };
       d.moved = true;
-      this.requestRender();
+      this._rerenderEdges(new Set([d.view._id]));
       return;
     }
     if (d.kind === 'op-move') {
@@ -918,7 +982,14 @@ export class DiagramCanvas {
       next[d.index] = f;
       d.model.operandBoundaries = next;
       d.moved = true;
-      this.requestRender();
+      const r = this.renderers.get(d.view._id);
+      if (r) {
+        r.g.remove();
+        this.renderers.delete(d.view._id);
+        this._renderNodeView(d.view);
+        this._updateSelectionClasses(repository.selections);
+        this._updateOverlay();
+      }
       return;
     }
   }
@@ -1163,14 +1234,14 @@ export class DiagramCanvas {
     const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? this.svg.clientHeight : 1;
     this.panX -= dx * unit;
     this.panY -= dy * unit;
-    this.requestRender();
+    this._updateViewport();
   }
 
   _zoomChanged() {
     const pct = Math.round(this.zoom * 100) + '%';
     document.getElementById('tb-zoom-label').textContent = pct;
     document.getElementById('status-zoom').textContent = pct;
-    this.requestRender();
+    this._updateViewport();
   }
 
   zoomIn() { this.zoom = Math.min(4, this.zoom * 1.2); this._zoomChanged(); }
