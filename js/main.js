@@ -146,6 +146,15 @@ function toggleGrid() {
   buildMenus();
 }
 
+function toggleAutoRoute() {
+  app.canvas.autoRoute = !app.canvas.autoRoute;
+  app.prefs.autoRoute = app.canvas.autoRoute;
+  savePreferences(app.prefs);
+  const btn = document.getElementById('tb-route');
+  if (btn) btn.classList.toggle('active', app.canvas.autoRoute);
+  app.canvas.requestRender();
+}
+
 function toggleSnap() {
   app.canvas.snapToGrid = !app.canvas.snapToGrid;
   app.prefs.snapToGrid = app.canvas.snapToGrid;
@@ -195,6 +204,7 @@ function applyPreferences(next) {
   c.showGrid = app.prefs.showGrid;
   c.snapToGrid = app.prefs.snapToGrid;
   c.autoResize = app.prefs.autoResize;
+  c.autoRoute = app.prefs.autoRoute !== false;
   document.getElementById('tb-grid')?.classList.toggle('active', c.showGrid);
   document.getElementById('tb-snap')?.classList.toggle('active', c.snapToGrid);
   applyPanels();
@@ -1603,6 +1613,7 @@ async function buildMenus() {
         '---',
         { label: '显示网格', checked: app.canvas.showGrid, action: toggleGrid },
         { label: '吸附网格', checked: app.canvas.snapToGrid, action: toggleSnap },
+        { label: '连线自动避障', checked: app.canvas.autoRoute !== false, action: toggleAutoRoute },
         '---',
         { label: '深色主题', checked: app.theme === 'dark', action: () => setTheme(app.theme === 'dark' ? 'light' : 'dark') },
       ],
@@ -1809,6 +1820,7 @@ function boot() {
   canvas.showGrid = prefs.showGrid;
   canvas.snapToGrid = prefs.snapToGrid;
   canvas.autoResize = prefs.autoResize;
+  canvas.autoRoute = prefs.autoRoute !== false;
   window.__internals = { createNodeView, createModel, createDiagram, app, openDiagram };
 
   app.explorer = new ModelExplorer(document.getElementById('model-explorer'), {

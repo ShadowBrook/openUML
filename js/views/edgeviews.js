@@ -1,7 +1,7 @@
 // edgeviews.js — SVG rendering for UML relationships with UML arrowheads
 
 import { svgEl, TIMING_LANE_LABEL_W } from './nodeviews.js';
-import { borderIntersect, orthogonalRoute, Rect } from '../core/geometry.js';
+import { borderIntersect, orthogonalRoute, routeAvoiding, Rect } from '../core/geometry.js';
 
 function dashArray(style) {
   if (style === 'dashed') return '6 4';
@@ -324,7 +324,7 @@ function buildEdgePath(points, mode = 'orthogonal') {
  * Compute the full point list of an edge, given tail/head view rects and waypoints.
  * Returns {points, tailEnd, headEnd} where ends are {x,y,angle} for arrow drawing.
  */
-export function computeEdgeGeometry(edge, tailRect, headRect) {
+export function computeEdgeGeometry(edge, tailRect, headRect, opts = {}) {
   // start from center points, trim to borders
   const tailCenter = { x: tailRect.cx, y: tailRect.cy };
   const headCenter = { x: headRect.cx, y: headRect.cy };
@@ -347,7 +347,8 @@ export function computeEdgeGeometry(edge, tailRect, headRect) {
   } else {
     tailB = borderIntersect(tailRect, headCenter);
     headB = borderIntersect(headRect, tailCenter);
-    route = orthogonalRoute({ ...tailB, side: tailB.side }, { ...headB, side: headB.side });
+    // straight elbows by default; reroute around obstacles when they are given
+    route = routeAvoiding({ ...tailB, side: tailB.side }, { ...headB, side: headB.side }, opts.obstacles || null);
   }
 
   const headEnd = route[route.length - 1];
@@ -362,7 +363,7 @@ export function computeEdgeGeometry(edge, tailRect, headRect) {
 }
 
 export function renderEdge(g, edge, model, tailRect, headRect, opts = {}) {
-  const { points, tailEnd, headEnd } = computeEdgeGeometry(edge, tailRect, headRect);
+  const { points, tailEnd, headEnd } = computeEdgeGeometry(edge, tailRect, headRect, opts);
   const line = edge.lineColor || '#353535';
   const fontColor = edge.fontColor || '#353535';
   const fs = edge.fontSize || 11;

@@ -12,6 +12,7 @@ export const DEFAULT_PREFERENCES = {
   exportScale: 2,
   transparentBackground: false,
   autoResize: true,
+  autoRoute: true,
   lang: 'zh-CN',
   panels: { sidebar: true, navigator: true, toolbox: true, toolbar: true, statusbar: true },
 };
@@ -115,6 +116,8 @@ export function showPreferencesDialog(current = DEFAULT_PREFERENCES) {
     const editSec = section(body, '编辑器');
     const autoResize = checkbox(current.autoResize);
     row(editSec, '自动调整类/枚举框尺寸', autoResize);
+    const autoRoute = checkbox(current.autoRoute !== false);
+    row(editSec, '连线自动避障（正交布线绕开节点）', autoRoute);
     const hint = document.createElement('div');
     hint.className = 'pref-hint';
     hint.textContent = '关闭后，新增成员可能被现有尺寸裁切；手动调整尺寸始终可用。';
@@ -153,6 +156,7 @@ export function showPreferencesDialog(current = DEFAULT_PREFERENCES) {
       exportScale: parseInt(scale.value, 10),
       transparentBackground: transparent.checked,
       autoResize: autoResize.checked,
+      autoRoute: autoRoute.checked,
       panels: Object.fromEntries(Object.entries(panelChecks).map(([k, el]) => [k, el.checked])),
     });
     cancel.onclick = () => close(null);
@@ -166,6 +170,7 @@ export function showPreferencesDialog(current = DEFAULT_PREFERENCES) {
       scale.value = String(DEFAULT_PREFERENCES.exportScale);
       transparent.checked = DEFAULT_PREFERENCES.transparentBackground;
       autoResize.checked = DEFAULT_PREFERENCES.autoResize;
+      autoRoute.checked = DEFAULT_PREFERENCES.autoRoute;
       for (const [k, el] of Object.entries(panelChecks)) el.checked = DEFAULT_PREFERENCES.panels[k] !== false;
     };
     overlay.classList.remove('hidden');

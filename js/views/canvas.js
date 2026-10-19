@@ -22,6 +22,7 @@ export class DiagramCanvas {
     this.showGrid = true;
     this.snapToGrid = true;
     this.autoResize = true;
+    this.autoRoute = true;        // orthogonal edges reroute around obstacles
 
     this.renderers = new Map();   // viewId -> {g, meta, view}
     this.tool = null;             // active toolbox tool {kind, nodeType, edgeType, ...}
@@ -517,7 +518,11 @@ export class DiagramCanvas {
       const tailRect = rects.get(e.tail);
       const headRect = rects.get(e.head);
       if (!tailRect || !headRect) { g.remove(); return; }
-      meta = renderEdge(g, e, model, tailRect, headRect);
+      const opts = {};
+      if (this.autoRoute && !(e.points || []).length) {
+        opts.obstacles = this._edgeObstacles(e, rects);
+      }
+      meta = renderEdge(g, e, model, tailRect, headRect, opts);
     }
     // communication-diagram messages stack above the link midpoint
     if (e.$type === 'UMLConnector' && (e.messages || []).length) {
@@ -552,8 +557,32 @@ export class DiagramCanvas {
   }
 
   /** Rebuild only the listed edges; used by drag previews. */
-  _rerenderEdges(ids) {
-    if (!this.diagram || !ids.size) return;
+  /**
+   * Obstacle rects for avoidance routing: every node view except the two
+   * endpoints and their semantic containers (edges legitimately live inside
+   * their own package/state, so those must not force detours).
+   */
+  _edgeObstacles(e, rects) {
+    const excluded = new Set([e.tail, e.head]);
+    const addAncestors = (id) => {
+      let v = repository.lookup(id);
+      let guard = 0;
+      while (v && guard < 20) {
+        guard += 1;
+        if (v.container) excluded.add(v.container);
+        v = v.container ? repository.lookup(v.container) : null;
+      }
+    };
+    addAncestors(e.tail);
+    addAncestors(e.head);
+    const out = [];
+    for (const [id, r] of rects) {
+      if (!excluded.has(id)) out.push(r);
+    }
+    return out;
+  }
+
+  _rerenderEdges(ids) {    if (!this.diagram || !ids.size) return;
     const expanded = new Set(ids);
     for (const v of this.diagram.elements || []) {
       if (v.$type === 'UMLAssociationClassLink' && ids.has(v.anchorEdge)) expanded.add(v._id);
