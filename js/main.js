@@ -648,8 +648,16 @@ function saveProject(download = true) {
 }
 
 function loadProjectJSON(json) {
+  // parse errors and UI-restore errors mean different things to the user;
+  // only the former is "无法解析项目文件"
+  let root;
   try {
-    const root = deserializeProject(json);
+    root = deserializeProject(json);
+  } catch (err) {
+    alert('无法解析项目文件: ' + err.message);
+    return;
+  }
+  try {
     repository.root = root;
     // rebuild the lookup index over the new tree
     repository._index = new Map();
@@ -672,7 +680,9 @@ function loadProjectJSON(json) {
     storeProject(serializeProject(repository.root), { quiet: true });
     app.canvas.setStatusMessage('项目已打开');
   } catch (err) {
-    alert('无法解析项目文件: ' + err.message);
+    // the data is fine — a render-side failure shouldn't read as a bad file
+    console.error('项目界面刷新失败', err);
+    alert(`项目数据已加载，但界面刷新出错：${err.message}\n请刷新页面（Cmd/Ctrl+R）后重试。`);
   }
 }
 
