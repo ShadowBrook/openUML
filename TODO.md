@@ -82,7 +82,7 @@
       （全局自动调整尺寸开关已在偏好设置中）
 - [ ] 属性面板深化：每类元素的完整属性集（visibility / isStatic / isAbstract /
       isLeaf / isReadOnly / isOrdered / isUnique / isActive …）
-- [ ] 模型校验器 + 校验结果面板（重名、悬空引用、非法归属等）
+- [x] 模型校验器 + 校验结果面板（重名、空名、悬空引用/端点/容器，点击定位）
 - [ ] Markdown 文档编辑器（带预览）
 - [x] Toast 通知（复制 / 剪切 / 粘贴 / 导出）
 - [ ] 启动画面

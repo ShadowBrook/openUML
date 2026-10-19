@@ -612,6 +612,27 @@ html, body {
 .pref-row > select { width: 130px; }
 .pref-row > input[type="checkbox"] { width: 15px; height: 15px; }
 .pref-hint { color: var(--text-dim); font-size: 11px; line-height: 1.5; margin-top: 3px; }
+
+.validation-summary { display: flex; gap: 8px; margin-bottom: 9px; font-size: 11px; }
+.val-summary-item, .val-badge {
+  padding: 1px 6px; border-radius: 8px; font-size: 10.5px; white-space: nowrap;
+}
+.val-error { background: #fde8e8; color: #a33a3a; }
+.val-warning { background: #fff3d6; color: #8a6200; }
+.val-info { background: #e8f2fb; color: #38658a; }
+.validation-list { max-height: 340px; overflow-y: auto; border: 1px solid #e3e6e6; border-radius: 3px; }
+.validation-row {
+  display: flex; align-items: flex-start; gap: 7px;
+  padding: 6px 8px; border-bottom: 1px solid #f0f2f2;
+}
+.validation-row:last-child { border-bottom: none; }
+.validation-row .val-badge { margin-top: 1px; }
+.validation-message { flex: 1; min-width: 0; font-size: 12px; line-height: 1.45; }
+.validation-location { color: var(--text-dim); font-size: 10.5px; margin-top: 1px; }
+.validation-locate { flex: 0 0 auto; padding: 1px 7px !important; font-size: 11px !important; }
+.validation-empty { padding: 16px 8px; color: var(--text-dim); text-align: center; }
+:root[data-theme="dark"] .validation-list { border-color: #3a4246; }
+:root[data-theme="dark"] .validation-row { border-bottom-color: #323a3e; }
 .dialog-buttons {
   flex: 0 0 auto;
   display: flex;

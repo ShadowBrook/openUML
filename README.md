@@ -120,6 +120,8 @@ SysML 等非 UML 扩展样例不在映射范围内。
   并建议另存为文件）、**刷新后恢复打开的页签与当前图表**、
   导出 SVG / PNG / JPEG、**复制图表为图片**、**打印 / 导出 PDF**
   （Ctrl+P，打印对话框可选"另存为 PDF"）
+- **模型校验（模型 → 验证模型…）**：检查同级重名、空名称、悬空模型引用、
+  连线端点/容器引用与空图表；结果按错误/警告/提示分级，可一键定位到图表或模型树
 - **偏好设置（Ctrl+,）**：网格大小（5/10/20px）、显示/吸附网格、浅/深主题、
   PNG/JPEG 缩放（1×/2×/3×）、透明背景（PNG/SVG）、自动调整类/枚举框尺寸；
   设置持久化并立即生效
@@ -133,6 +135,7 @@ css/main.css          StarUML 风格浅色主题（#1390d6 强调色）
 js/core/
   geometry.js         矩形/点运算、边框吸附、正交布线
   repository.js       模型仓库（所有权树 + 事件 + 索引）
+  validator.js        模型一致性校验规则
   commands.js         撤销/重做命令栈、序列化
   metamodel.js        元类型注册表、工具箱与箭头定义
   factory.js          模型元素/视图/图表工厂
@@ -146,6 +149,7 @@ js/ui/
   property-editor.js  属性/样式编辑面板
   palette.js          快速查找 / 命令面板浮层
   preferences.js      偏好设置与持久化
+  validation-panel.js 模型校验结果面板
   toast.js            右下角 Toast 通知
   menubar.js          菜单栏 + 上下文菜单
   dialogs.js          模态对话框

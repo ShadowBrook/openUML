@@ -14,6 +14,8 @@ import { buildMenu, showContextMenu } from './ui/menubar.js';
 import { showInputDialog, showConfirmDialog, showAboutDialog, showAlertDialog } from './ui/dialogs.js';
 import { showPalette, hidePalette, isPaletteOpen } from './ui/palette.js';
 import { showToast } from './ui/toast.js';
+import { validateProject } from './core/validator.js';
+import { showValidationDialog } from './ui/validation-panel.js';
 import { loadPreferences, savePreferences, showPreferencesDialog } from './ui/preferences.js';
 import { downloadPNG, downloadSVG, downloadJPEG, copyDiagramPNG, printDiagram } from './exporter.js';
 
@@ -813,6 +815,7 @@ function paletteCommands() {
     { label: '置于顶层', group: '格式', enabled: hasSel(), run: () => app.canvas.bringToFront() },
     { label: '置于底层', group: '格式', enabled: hasSel(), run: () => app.canvas.sendToBack() },
 
+    { label: '验证模型…', group: '模型', run: runValidation },
     { label: '重命名选中元素…', group: '模型', shortcut: 'F2', enabled: !!repository.selectedModel, run: () => renameElement(repository.selectedModel) },
     { label: '关于 OpenUML', group: '帮助', run: showAboutDialog },
   ];
@@ -831,6 +834,46 @@ function openCommandPalette() {
     },
     onPick: (item) => { const result = item.data.run(); if (result && result.catch) result.catch(() => {}); },
   });
+}
+
+
+function locateIssue(issue) {
+  const diagram = issue.diagramId ? repository.lookup(issue.diagramId) : null;
+  const view = issue.viewId ? repository.lookup(issue.viewId) : null;
+  if (diagram && Array.isArray(diagram.elements)) {
+    openDiagram(diagram);
+    if (view) {
+      const model = repository.lookup(view.modelRef) || (issue.modelId ? repository.lookup(issue.modelId) : null);
+      repository.select([view._id], model);
+      if (model) app.explorer.highlight(model._id);
+      return;
+    }
+  }
+  if (issue.modelId) {
+    const model = repository.lookup(issue.modelId);
+    const found = findViewForModel(issue.modelId);
+    if (found) {
+      openDiagram(found.diagram);
+      repository.select([found.view._id], model);
+      app.explorer.highlight(issue.modelId);
+      return;
+    }
+    repository.select([], model);
+    if (model) app.explorer.highlight(model._id);
+    app.canvas.setStatusMessage(`${model?.name || '元素'} 已定位到模型树`);
+    return;
+  }
+  if (diagram) openDiagram(diagram);
+}
+
+function runValidation() {
+  const issues = validateProject(repository);
+  showValidationDialog({
+    issues,
+    onLocate: locateIssue,
+    onRevalidate: runValidation,
+  });
+  if (!issues.length) showToast('模型校验通过', 'success');
 }
 
 // ---------------- menus ----------------
@@ -908,6 +951,8 @@ function buildMenus() {
         { label: '添加参与者', action: () => addModelElement('UMLActor') },
         { label: '添加用例', action: () => addModelElement('UMLUseCase') },
         { label: '添加包', action: () => addModelElement('UMLPackage') },
+        '---',
+        { label: '验证模型…', action: runValidation },
         '---',
         { label: '重命名…', shortcut: 'F2', disabled: !sel(), action: () => sel() && renameElement(sel()) },
       ],
