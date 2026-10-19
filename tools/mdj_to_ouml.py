@@ -448,6 +448,7 @@ class Converter:
             model['typeName'] = self.resolve_name(sm.get('type'))
             model['multiplicity'] = clean_text(sm.get('multiplicity'))
             model['isStatic'] = bool(sm.get('isStatic'))
+            model['isConjugated'] = bool(sm.get('isConjugated'))
         if our_type == 'UMLCollaborationUse':
             model['typeName'] = self.resolve_name(sm.get('type'))
         if our_type == 'UMLAssociation':
@@ -466,6 +467,17 @@ class Converter:
             lo, hi = sm.get('min'), sm.get('max')
             if lo or hi:
                 model['name'] = f"{{{lo or '0'}..{hi or '∞'}}}"
+        if our_type == 'UMLInformationFlow':
+            conveyed = []
+            for item in sm.get('conveyed') or []:
+                name = self.resolve_name(item)
+                if name:
+                    conveyed.append({'_id': self.nid('c'), '$type': 'UMLClassifier', 'name': name})
+            model['conveyed'] = conveyed
+        if our_type == 'UMLConnector':
+            model['connectorKind'] = clean_text(sm.get('kind')) or 'assembly'
+        if our_type == 'UMLExtension':
+            model['multiplicity'] = clean_text(sm.get('multiplicity'))
         if our_type == 'UMLSubmachineState':
             target = self.by_id.get(ref(sm.get('submachine')))
             model['submachine'] = clean_text(target.get('name')) if target else ''

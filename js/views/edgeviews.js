@@ -94,6 +94,17 @@ export function renderSelfLoop(g, edge, model, rect) {
   const labelParts = [];
   if (edge.stereotype) labelParts.push(edge.stereotype);
   if (edge.nameVisible !== false && model?.name) labelParts.push(model.name);
+  if (model?.type === 'UMLInformationFlow' && (model.conveyed || []).length) {
+    const conveyed = model.conveyed.map((c) => c.name).filter(Boolean);
+    if (conveyed.length) labelParts.push(conveyed.join(', '));
+  }
+  if (edge.$type === 'UMLExtension' && model?.multiplicity) {
+    const mt = svgEl('text', {
+      x: headEnd.x, y: headEnd.y - fs - 6, 'text-anchor': 'middle',
+      'font-size': fs, fill: fontColor,
+    }, g);
+    mt.textContent = model.multiplicity;
+  }
   if (labelParts.length) {
     const t = svgEl('text', { x: x2 + out + 6, y: ym - 28, 'font-size': fs, fill: edge.fontColor || '#353535' }, g);
     t.textContent = labelParts.join(' ');
@@ -356,12 +367,14 @@ export function renderEdge(g, edge, model, tailRect, headRect, opts = {}) {
   const fontColor = edge.fontColor || '#353535';
   const fs = edge.fontSize || 11;
   const meta = { labels: [], points };
+  const connectorKind = edge.$type === 'UMLCompositeConnector'
+    ? (model?.connectorKind || edge.connectorKind || 'assembly') : null;
 
   const d = buildEdgePath(points, edge.lineMode);
   svgEl('path', {
     d, fill: 'none', stroke: line,
     'stroke-width': opts.selected ? 1.6 : 1,
-    'stroke-dasharray': dashArray(edge.lineStyle),
+    'stroke-dasharray': connectorKind === 'delegation' ? '6 4' : dashArray(edge.lineStyle),
     class: 'edge-path',
   }, g);
 
@@ -393,8 +406,25 @@ export function renderEdge(g, edge, model, tailRect, headRect, opts = {}) {
     }
   };
 
-  drawArrow(headEnd.x, headEnd.y, headEnd.angle, edge.headArrow, 'edge-head');
-  drawArrow(tailEnd.x, tailEnd.y, tailEnd.angle, edge.tailArrow, 'edge-tail');
+  if (connectorKind === 'delegation') {
+    drawArrow(headEnd.x, headEnd.y, headEnd.angle, 'open', 'edge-head');
+  } else if (connectorKind === 'assembly') {
+    // ball at the tail, socket at the head
+    svgEl('circle', {
+      cx: tailEnd.x, cy: tailEnd.y, r: 5,
+      fill: '#fff', stroke: line, 'stroke-width': 1, class: 'edge-tail',
+    }, g);
+    const r = 5, a = headEnd.angle;
+    const p1 = { x: headEnd.x + Math.cos(a + Math.PI / 2) * r, y: headEnd.y + Math.sin(a + Math.PI / 2) * r };
+    const p2 = { x: headEnd.x + Math.cos(a - Math.PI / 2) * r, y: headEnd.y + Math.sin(a - Math.PI / 2) * r };
+    svgEl('path', {
+      d: `M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} A ${r} ${r} 0 0 1 ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`,
+      fill: 'none', stroke: line, 'stroke-width': 1.2, class: 'edge-head',
+    }, g);
+  } else {
+    drawArrow(headEnd.x, headEnd.y, headEnd.angle, edge.headArrow, 'edge-head');
+    drawArrow(tailEnd.x, tailEnd.y, tailEnd.angle, edge.tailArrow, 'edge-tail');
+  }
 
   // name label at middle of the polyline (draggable: edge.labelOffset)
   const baseMid = midPoint(points);
@@ -403,6 +433,17 @@ export function renderEdge(g, edge, model, tailRect, headRect, opts = {}) {
   const labelParts = [];
   if (edge.stereotype) labelParts.push(edge.stereotype);
   if (edge.nameVisible !== false && model?.name) labelParts.push(model.name);
+  if (model?.type === 'UMLInformationFlow' && (model.conveyed || []).length) {
+    const conveyed = model.conveyed.map((c) => c.name).filter(Boolean);
+    if (conveyed.length) labelParts.push(conveyed.join(', '));
+  }
+  if (edge.$type === 'UMLExtension' && model?.multiplicity) {
+    const mt = svgEl('text', {
+      x: headEnd.x, y: headEnd.y - fs - 6, 'text-anchor': 'middle',
+      'font-size': fs, fill: fontColor,
+    }, g);
+    mt.textContent = model.multiplicity;
+  }
   if (labelParts.length) {
     const t = svgEl('text', {
       x: mid.x, y: mid.y - 5, 'text-anchor': 'middle', 'font-size': fs, fill: fontColor, 'font-style': 'italic',

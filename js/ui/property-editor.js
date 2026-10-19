@@ -320,10 +320,32 @@ export class PropertyEditor {
           (v) => this._set(model, 'aggregation', v), 'select',
           [['composite', '组合 (实线)'], ['shared', '共享 (虚线)']]);
       }
+      if (model.type === 'UMLPort') {
+        this._checkRow(sec, '共轭 (conjugated)', model.isConjugated === true,
+          (v) => this._set(model, 'isConjugated', v));
+      }
     }
     if (model.type === 'UMLCollaborationUse') {
       const sec = this._section('协作使用 (Collaboration Use)');
       this._row(sec, 'type', model.typeName || '', (v) => this._set(model, 'typeName', v.trim()));
+    }
+
+    if (model.type === 'UMLInformationFlow') {
+      const sec = this._section('信息流 (Conveyed)');
+      this._listEditor(sec, model, 'conveyed',
+        () => ({ _id: 'c-' + Math.random().toString(36).slice(2, 9), $type: 'UMLClassifier', name: 'InformationItem' }),
+        (c) => ({ vis: '•', name: c.name, type: '' }),
+        [{ key: 'name', label: '信息项' }]);
+    }
+    if (this.currentView && this.currentView.$type === 'UMLCompositeConnector') {
+      const sec = this._section('连接线 (Connector)');
+      this._row(sec, '类型', model.connectorKind || 'assembly',
+        (v) => this._set(model, 'connectorKind', v), 'select',
+        [['assembly', '装配 (ball & socket)'], ['delegation', '委托 (虚线箭头)']]);
+    }
+    if (this.currentView && this.currentView.$type === 'UMLExtension') {
+      const sec = this._section('扩展 (Extension)');
+      this._row(sec, 'multiplicity', model.multiplicity || '', (v) => this._set(model, 'multiplicity', v.trim()));
     }
 
     // Edge naming

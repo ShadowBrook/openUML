@@ -3379,7 +3379,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-218",
@@ -3388,7 +3389,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-220",
@@ -3442,7 +3444,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-232",
@@ -3451,7 +3454,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-234",
@@ -3460,7 +3464,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-236",
@@ -3469,7 +3474,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-238",
@@ -3478,7 +3484,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-240",
@@ -3487,7 +3494,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-242",
@@ -3496,7 +3504,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-244",
@@ -3505,7 +3514,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-246",
@@ -3514,7 +3524,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-248",
@@ -3523,7 +3534,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-250",
@@ -3532,7 +3544,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-252",
@@ -3541,7 +3554,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-254",
@@ -3550,7 +3564,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-256",
@@ -3559,7 +3574,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-258",
@@ -3568,7 +3584,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-260",
@@ -3577,7 +3594,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-262",
@@ -3586,7 +3604,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-264",
@@ -3595,7 +3614,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-266",
@@ -3604,7 +3624,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-268",
@@ -3613,7 +3634,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-270",
@@ -3622,7 +3644,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-272",
@@ -3631,7 +3654,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-274",
@@ -3640,7 +3664,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-276",
@@ -3649,7 +3674,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-278",
@@ -3658,7 +3684,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-280",
@@ -3667,7 +3694,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-282",
@@ -3676,7 +3704,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-284",
@@ -3685,7 +3714,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-286",
@@ -3694,7 +3724,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-287",
@@ -3854,7 +3885,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-298",
@@ -3863,7 +3895,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-300",
@@ -3872,7 +3905,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "d-301",
@@ -4054,7 +4088,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-314",
@@ -4063,7 +4098,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         },
         {
           "_id": "m-316",
@@ -4072,7 +4108,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "multiplicity": ""
         }
       ]
     },
@@ -8634,7 +8671,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "connectorKind": "assembly"
         },
         {
           "_id": "m-670",
@@ -8643,7 +8681,8 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "connectorKind": "assembly"
         }
       ]
     },
@@ -11692,7 +11731,8 @@
               "ownedElements": [],
               "typeName": "",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-833",
@@ -11704,7 +11744,8 @@
               "ownedElements": [],
               "typeName": "",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-835",
@@ -11716,7 +11757,8 @@
               "ownedElements": [],
               "typeName": "",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-837",
@@ -11740,7 +11782,8 @@
               "ownedElements": [],
               "typeName": "Type",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-841",
@@ -11764,7 +11807,8 @@
               "ownedElements": [],
               "typeName": "",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-845",
@@ -11776,7 +11820,8 @@
               "ownedElements": [],
               "typeName": "",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-847",
@@ -11788,7 +11833,8 @@
               "ownedElements": [],
               "typeName": "",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-849",
@@ -11800,7 +11846,8 @@
               "ownedElements": [],
               "typeName": "Port1Type",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-851",
@@ -11812,7 +11859,8 @@
               "ownedElements": [],
               "typeName": "",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-853",
@@ -11836,7 +11884,8 @@
               "ownedElements": [],
               "typeName": "",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-857",
@@ -11848,7 +11897,8 @@
               "ownedElements": [],
               "typeName": "",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-859",
@@ -11860,7 +11910,8 @@
               "ownedElements": [],
               "typeName": "",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-861",
@@ -11872,7 +11923,8 @@
               "ownedElements": [],
               "typeName": "Port3Type",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-863",
@@ -11884,7 +11936,8 @@
               "ownedElements": [],
               "typeName": "",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-865",
@@ -11977,7 +12030,8 @@
               "ownedElements": [],
               "typeName": "",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-881",
@@ -11989,7 +12043,8 @@
               "ownedElements": [],
               "typeName": "",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-883",
@@ -12001,7 +12056,8 @@
               "ownedElements": [],
               "typeName": "Port1Type",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-885",
@@ -12013,7 +12069,8 @@
               "ownedElements": [],
               "typeName": "Type",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-887",
@@ -12070,7 +12127,8 @@
               "ownedElements": [],
               "typeName": "Type",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-897",
@@ -12082,7 +12140,8 @@
               "ownedElements": [],
               "typeName": "",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-899",
@@ -12094,7 +12153,8 @@
               "ownedElements": [],
               "typeName": "Type",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-901",
@@ -12106,7 +12166,8 @@
               "ownedElements": [],
               "typeName": "",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-903",
@@ -12118,7 +12179,8 @@
               "ownedElements": [],
               "typeName": "",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-905",
@@ -12130,7 +12192,8 @@
               "ownedElements": [],
               "typeName": "",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-907",
@@ -12142,7 +12205,8 @@
               "ownedElements": [],
               "typeName": "",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-909",
@@ -12154,7 +12218,8 @@
               "ownedElements": [],
               "typeName": "",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-911",
@@ -12166,7 +12231,8 @@
               "ownedElements": [],
               "typeName": "",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-913",
@@ -12178,7 +12244,8 @@
               "ownedElements": [],
               "typeName": "",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-915",
@@ -12208,7 +12275,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             },
             {
               "_id": "m-922",
@@ -12217,7 +12285,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             },
             {
               "_id": "m-924",
@@ -12226,7 +12295,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             },
             {
               "_id": "m-926",
@@ -12235,7 +12305,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             },
             {
               "_id": "m-928",
@@ -12244,7 +12315,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             },
             {
               "_id": "m-930",
@@ -12253,7 +12325,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             },
             {
               "_id": "m-932",
@@ -12262,7 +12335,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             },
             {
               "_id": "m-934",
@@ -12316,7 +12390,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             },
             {
               "_id": "m-946",
@@ -12325,7 +12400,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             },
             {
               "_id": "m-948",
@@ -12343,7 +12419,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             },
             {
               "_id": "m-952",
@@ -12352,7 +12429,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             },
             {
               "_id": "m-954",
@@ -12361,7 +12439,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             },
             {
               "_id": "m-956",
@@ -12370,7 +12449,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             },
             {
               "_id": "m-958",
@@ -12379,7 +12459,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             },
             {
               "_id": "m-960",
@@ -13332,7 +13413,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             },
             {
               "_id": "m-1038",
@@ -13341,7 +13423,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             },
             {
               "_id": "m-1040",
@@ -13350,7 +13433,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             },
             {
               "_id": "m-1042",
@@ -13359,7 +13443,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             },
             {
               "_id": "m-1044",
@@ -13368,7 +13453,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             },
             {
               "_id": "m-1045",
@@ -17680,7 +17766,8 @@
               "ownedElements": [],
               "typeName": "",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-1374",
@@ -17752,7 +17839,8 @@
               "ownedElements": [],
               "typeName": "",
               "multiplicity": "",
-              "isStatic": false
+              "isStatic": false,
+              "isConjugated": false
             },
             {
               "_id": "m-1387",
@@ -17761,7 +17849,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             },
             {
               "_id": "m-1389",
@@ -17770,7 +17859,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             },
             {
               "_id": "m-1391",
@@ -17779,7 +17869,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             },
             {
               "_id": "m-1393",
@@ -17788,7 +17879,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             },
             {
               "_id": "m-1395",
@@ -17797,7 +17889,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             },
             {
               "_id": "m-1397",
@@ -17806,7 +17899,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             },
             {
               "_id": "m-1399",
@@ -17815,7 +17909,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             },
             {
               "_id": "m-1401",
@@ -17824,7 +17919,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             },
             {
               "_id": "m-1403",
@@ -17842,7 +17938,8 @@
               "stereotype": "",
               "documentation": "",
               "tags": [],
-              "ownedElements": []
+              "ownedElements": [],
+              "connectorKind": "assembly"
             }
           ]
         },
@@ -21064,11 +21161,11 @@
               "showVisibility": true
             },
             {
-              "_id": "e-1683",
+              "_id": "e-1684",
               "$type": "UMLInformationFlow",
               "isEdge": true,
               "isMessage": false,
-              "modelRef": "m-1684",
+              "modelRef": "m-1685",
               "tail": "v-1670",
               "head": "v-1666",
               "points": [
@@ -21085,11 +21182,11 @@
               "showVisibility": true
             },
             {
-              "_id": "e-1685",
+              "_id": "e-1687",
               "$type": "UMLInformationFlow",
               "isEdge": true,
               "isMessage": false,
-              "modelRef": "m-1686",
+              "modelRef": "m-1688",
               "tail": "v-1668",
               "head": "v-1670",
               "points": [],
@@ -21101,11 +21198,11 @@
               "showVisibility": true
             },
             {
-              "_id": "e-1687",
+              "_id": "e-1690",
               "$type": "UMLInformationFlow",
               "isEdge": true,
               "isMessage": false,
-              "modelRef": "m-1688",
+              "modelRef": "m-1691",
               "tail": "v-1668",
               "head": "v-1672",
               "points": [],
@@ -21117,11 +21214,11 @@
               "showVisibility": true
             },
             {
-              "_id": "e-1689",
+              "_id": "e-1693",
               "$type": "UMLInformationFlow",
               "isEdge": true,
               "isMessage": false,
-              "modelRef": "m-1690",
+              "modelRef": "m-1694",
               "tail": "v-1672",
               "head": "v-1670",
               "points": [
@@ -21240,48 +21337,83 @@
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "conveyed": [
+            {
+              "_id": "c-1683",
+              "$type": "UMLClassifier",
+              "name": "sales order"
+            }
+          ]
         },
         {
-          "_id": "m-1684",
+          "_id": "m-1685",
           "type": "UMLInformationFlow",
           "name": "invoice",
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "conveyed": [
+            {
+              "_id": "c-1686",
+              "$type": "UMLClassifier",
+              "name": "invoice"
+            }
+          ]
         },
         {
-          "_id": "m-1686",
+          "_id": "m-1688",
           "type": "UMLInformationFlow",
           "name": "open order",
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "conveyed": [
+            {
+              "_id": "c-1689",
+              "$type": "UMLClassifier",
+              "name": "open order"
+            }
+          ]
         },
         {
-          "_id": "m-1688",
+          "_id": "m-1691",
           "type": "UMLInformationFlow",
           "name": "sales order",
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "conveyed": [
+            {
+              "_id": "c-1692",
+              "$type": "UMLClassifier",
+              "name": "sales order"
+            }
+          ]
         },
         {
-          "_id": "m-1690",
+          "_id": "m-1694",
           "type": "UMLInformationFlow",
           "name": "fulfilled order",
           "stereotype": "",
           "documentation": "",
           "tags": [],
-          "ownedElements": []
+          "ownedElements": [],
+          "conveyed": [
+            {
+              "_id": "c-1695",
+              "$type": "UMLClassifier",
+              "name": "fulfilled order"
+            }
+          ]
         }
       ]
     },
     {
-      "_id": "m-1691",
+      "_id": "m-1696",
       "type": "UMLModel",
       "name": "Deployment Diagram",
       "stereotype": "",
@@ -21289,15 +21421,15 @@
       "tags": [],
       "ownedElements": [
         {
-          "_id": "d-1692",
+          "_id": "d-1697",
           "type": "UMLDeploymentDiagram",
           "name": "Book Club Web Application",
           "ownedElements": [],
           "elements": [
             {
-              "_id": "v-1694",
+              "_id": "v-1699",
               "$type": "UMLNode",
-              "modelRef": "m-1693",
+              "modelRef": "m-1698",
               "x": 88.0,
               "y": 96.0,
               "width": 305.0,
@@ -21310,9 +21442,9 @@
               "suppressOperations": true
             },
             {
-              "_id": "v-1696",
+              "_id": "v-1701",
               "$type": "UMLNode",
-              "modelRef": "m-1695",
+              "modelRef": "m-1700",
               "x": 544.0,
               "y": 96.0,
               "width": 209.0,
@@ -21325,9 +21457,9 @@
               "suppressOperations": true
             },
             {
-              "_id": "v-1698",
+              "_id": "v-1703",
               "$type": "UMLNode",
-              "modelRef": "m-1697",
+              "modelRef": "m-1702",
               "x": 112.0,
               "y": 160.0,
               "width": 249.0,
@@ -21340,9 +21472,9 @@
               "suppressOperations": true
             },
             {
-              "_id": "v-1700",
+              "_id": "v-1705",
               "$type": "UMLNode",
-              "modelRef": "m-1699",
+              "modelRef": "m-1704",
               "x": 144.0,
               "y": 224.0,
               "width": 179.09,
@@ -21355,9 +21487,9 @@
               "suppressOperations": true
             },
             {
-              "_id": "v-1702",
+              "_id": "v-1707",
               "$type": "UMLNode",
-              "modelRef": "m-1701",
+              "modelRef": "m-1706",
               "x": 576.0,
               "y": 168.0,
               "width": 137.0,
@@ -21370,13 +21502,13 @@
               "suppressOperations": true
             },
             {
-              "_id": "e-1703",
+              "_id": "e-1708",
               "$type": "UMLCommunicationPath",
               "isEdge": true,
               "isMessage": false,
-              "modelRef": "m-1704",
-              "tail": "v-1694",
-              "head": "v-1696",
+              "modelRef": "m-1709",
+              "tail": "v-1699",
+              "head": "v-1701",
               "points": [],
               "lineStyle": "solid",
               "tailArrow": "none",
@@ -21389,7 +21521,7 @@
           "defaultDiagram": false
         },
         {
-          "_id": "m-1693",
+          "_id": "m-1698",
           "type": "UMLNode",
           "name": "Sun Fire X4150 Server",
           "stereotype": "device",
@@ -21398,7 +21530,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1695",
+          "_id": "m-1700",
           "type": "UMLNode",
           "name": "Sun SPARC Server",
           "stereotype": "device",
@@ -21407,7 +21539,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1697",
+          "_id": "m-1702",
           "type": "UMLNode",
           "name": "Tomcat 7",
           "stereotype": "JSP server",
@@ -21416,7 +21548,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1699",
+          "_id": "m-1704",
           "type": "UMLNode",
           "name": "Catalina Servlet Constainer",
           "stereotype": "executionEnvironment",
@@ -21425,7 +21557,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1701",
+          "_id": "m-1706",
           "type": "UMLNode",
           "name": "Oracle 10g",
           "stereotype": "database system",
@@ -21434,7 +21566,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1704",
+          "_id": "m-1709",
           "type": "UMLCommunicationPath",
           "name": "+TCP/IP",
           "stereotype": "protocol",
@@ -21445,7 +21577,7 @@
       ]
     },
     {
-      "_id": "m-1705",
+      "_id": "m-1710",
       "type": "UMLModel",
       "name": "Annotations",
       "stereotype": "",
@@ -21453,13 +21585,13 @@
       "tags": [],
       "ownedElements": [
         {
-          "_id": "d-1706",
+          "_id": "d-1711",
           "type": "UMLClassDiagram",
           "name": "Annotations on Diagram",
           "ownedElements": [],
           "elements": [
             {
-              "_id": "v-1707",
+              "_id": "v-1712",
               "$type": "UMLTextView",
               "modelRef": "",
               "x": 40.0,
@@ -21473,7 +21605,7 @@
               "text": "TextBox"
             },
             {
-              "_id": "v-1708",
+              "_id": "v-1713",
               "$type": "UMLTextView",
               "modelRef": "",
               "x": 40.0,
@@ -21487,7 +21619,7 @@
               "text": "Freelines"
             },
             {
-              "_id": "v-1709",
+              "_id": "v-1714",
               "$type": "UMLTextView",
               "modelRef": "",
               "x": 32.0,

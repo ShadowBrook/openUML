@@ -26,7 +26,7 @@
 
 - **复合结构图**
   - [ ] 协作内部关系绑定（ConnectableElement 角色到部件的绑定）
-  - [ ] 连接线的 assembly / delegation 语义与端口 isConjugated 显示
+  - [x] 连接线的 assembly / delegation 语义与端口 isConjugated 显示
   - [ ] 协作使用绑定到具体协作（当前仅 `name: 协作类型` 文本）
 - **Timing 时序图**
   - [ ] 时间轴锁定与统一刻度；状态带拖拽时保持时间对齐
@@ -36,10 +36,12 @@
   - [ ] 内联交互嵌入可编辑的完整序列图（当前为缩略生命线示意）
   - [ ] 交互引用双击跳转到被引用交互；Gate 支持
 - **信息流图**
-  - [ ] 信息流的 conveyed 信息项列表与方向/传送语义
+  - [x] 信息流的 conveyed 信息项列表（属性面板维护并显示在标签）
+  - [ ] 信息流方向/传送语义与 realizing 关联
   - [ ] realizingConnectors / realizingActivityEdges / realizingMessages 关联
 - **Profile 图**
-  - [ ] 构造型图标、扩展多重性与 Profile 包应用（`«profile»`）
+  - [ ] 构造型图标
+  - [x] 扩展多重性与 Profile 包应用（`«profile»`）
   - [ ] 构造型属性在类图元素上的标记值呈现
 - **类图**
   - [x] N 元关联（菱形节点与多条关联边共享一个关联模型）

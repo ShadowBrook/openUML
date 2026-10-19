@@ -32,6 +32,7 @@ export function createModel(type, name, extra = {}) {
     el.typeName = extra.typeName ?? '';
     el.multiplicity = extra.multiplicity ?? '';
     el.isStatic = false;
+    el.isConjugated = extra.isConjugated ?? false;
   }
   if (type === 'UMLPart') {
     el.typeName = extra.typeName ?? '';
@@ -40,6 +41,15 @@ export function createModel(type, name, extra = {}) {
   }
   if (type === 'UMLCollaborationUse') {
     el.typeName = extra.typeName ?? '';
+  }
+  if (type === 'UMLInformationFlow') {
+    el.conveyed = extra.conveyed ?? [];
+  }
+  if (type === 'UMLCompositeConnector') {
+    el.connectorKind = extra.connectorKind ?? 'assembly';
+  }
+  if (type === 'UMLExtension') {
+    el.multiplicity = extra.multiplicity ?? '';
   }
   if (type === 'UMLTimeTick') {
     el.text = extra.text ?? 't';

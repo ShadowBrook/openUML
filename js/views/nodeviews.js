@@ -301,6 +301,10 @@ export function renderNode(g, view, model, kind) {
       svgEl('rect', { x, y: y + tabH - 1, width: w, height: h - tabH + 1, fill, stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
       const t = svgEl('text', { x: x + tabW / 2, y: y + 12, 'text-anchor': 'middle', 'font-size': fs, fill: fontColor }, g);
       t.textContent = model.name;
+      if (model.stereotype === 'profile') {
+        const st = svgEl('text', { x: x + 6, y: y + tabH + fs + 2, 'font-size': fs, 'font-style': 'italic', fill: fontColor }, g);
+        st.textContent = '«profile»';
+      }
       meta.textSlots.name = { box: new Rect(x, y, tabW, tabH), text: model.name, field: 'name', align: 'center' };
       break;
     }
@@ -803,7 +807,7 @@ export function renderNode(g, view, model, kind) {
     }
     case 'port': {
       // port: small square on the classifier boundary, label outside
-      const label = `${model.name}${model.typeName ? ': ' + model.typeName : ''}${model.multiplicity ? ` [${model.multiplicity}]` : ''}`;
+      const label = `${model.isConjugated ? '~' : ''}${model.name}${model.typeName ? ': ' + model.typeName : ''}${model.multiplicity ? ` [${model.multiplicity}]` : ''}`;
       svgEl('rect', {
         x, y, width: w, height: h,
         fill: view.fillColor || '#ffffff', stroke: line, 'stroke-width': 1, class: 'node-frame',
@@ -815,7 +819,7 @@ export function renderNode(g, view, model, kind) {
     }
     case 'part': {
       // part: rounded box; dashed when the role is a shared (non-composite) part
-      const label = `${model.name}${model.typeName ? ': ' + model.typeName : ''}${model.multiplicity ? ` [${model.multiplicity}]` : ''}`;
+      const label = `${model.isConjugated ? '~' : ''}${model.name}${model.typeName ? ': ' + model.typeName : ''}${model.multiplicity ? ` [${model.multiplicity}]` : ''}`;
       svgEl('rect', {
         x, y, width: w, height: h, rx: 5, ry: 5,
         fill: view.fillColor || '#ffffff', stroke: line, 'stroke-width': 1,
