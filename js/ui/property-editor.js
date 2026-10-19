@@ -4,6 +4,7 @@ import { repository } from '../core/repository.js';
 import { commandStack } from '../core/commands.js';
 import { ModelKinds, VISIBILITY } from '../core/metamodel.js';
 import { createAttribute, createOperation, createLiteral, createSlot } from '../core/factory.js';
+import { t } from './i18n.js';
 
 /** Walk to the project root and find the UMLStereotype definition by applied name. */
 function findStereotypeModel(model) {
@@ -55,7 +56,7 @@ export class PropertyEditor {
     if (!model) {
       this.propPanel.innerHTML = '';
       if (this.currentView && this.currentView.isEdge) this._renderViewEdgeProps(this.currentView);
-      else this.propPanel.innerHTML = '<div class="prop-empty">在图表或模型资源管理器中选择一个元素</div>';
+      else this.propPanel.innerHTML = `<div class="prop-empty">${t('在图表或模型资源管理器中选择一个元素')}</div>`;
       this._renderStyles(null);
       if (keepFocus && active && active.tagName === 'INPUT') active.focus();
       return;
@@ -94,7 +95,7 @@ export class PropertyEditor {
     sec.className = 'prop-section';
     const h = document.createElement('div');
     h.className = 'prop-section-header';
-    h.innerHTML = `<span class="arrow">${open ? '▾' : '▸'}</span><span>${title}</span>`;
+    h.innerHTML = `<span class="arrow">${open ? '▾' : '▸'}</span><span>${t(title)}</span>`;
     const body = document.createElement('div');
     h.onclick = () => {
       body.classList.toggle('hidden');
@@ -110,7 +111,7 @@ export class PropertyEditor {
     const row = document.createElement('div');
     row.className = 'prop-row';
     const l = document.createElement('label');
-    l.textContent = label;
+    l.textContent = t(label);
     row.appendChild(l);
     const val = document.createElement('div');
     val.className = 'prop-value';
@@ -119,7 +120,7 @@ export class PropertyEditor {
       el = document.createElement('select');
       for (const [v, text] of options) {
         const o = document.createElement('option');
-        o.value = v; o.textContent = text;
+        o.value = v; o.textContent = t(text);
         if (v === value) o.selected = true;
         el.appendChild(o);
       }
@@ -143,7 +144,7 @@ export class PropertyEditor {
     const row = document.createElement('div');
     row.className = 'prop-row';
     const l = document.createElement('label');
-    l.textContent = label;
+    l.textContent = t(label);
     row.appendChild(l);
     const val = document.createElement('div');
     val.className = 'prop-value';
@@ -162,7 +163,7 @@ export class PropertyEditor {
     const panel = this.propPanel;
     panel.innerHTML = '';
     if (!model) {
-      panel.innerHTML = '<div class="prop-empty">在图表或模型资源管理器中选择一个元素</div>';
+      panel.innerHTML = `<div class="prop-empty">${t('在图表或模型资源管理器中选择一个元素')}</div>`;
       return;
     }
     const meta = ModelKinds[model.type] || { name: model.type };
@@ -471,15 +472,15 @@ export class PropertyEditor {
     const toolbar = document.createElement('div');
     toolbar.className = 'list-editor-toolbar';
     const addBtn = document.createElement('button');
-    addBtn.textContent = '＋ 添加';
+    addBtn.textContent = t('＋ 添加');
     const delBtn = document.createElement('button');
-    delBtn.textContent = '－ 删除';
+    delBtn.textContent = t('－ 删除');
     const upBtn = document.createElement('button');
     upBtn.textContent = '↑';
-    upBtn.title = '上移';
+    upBtn.title = t('上移');
     const downBtn = document.createElement('button');
     downBtn.textContent = '↓';
-    downBtn.title = '下移';
+    downBtn.title = t('下移');
     toolbar.appendChild(addBtn);
     toolbar.appendChild(delBtn);
     toolbar.appendChild(upBtn);
@@ -614,7 +615,7 @@ export class PropertyEditor {
       const val = document.createElement('div');
       val.className = 'prop-value';
       const sel = document.createElement('select');
-      sel.appendChild(new Option('选择元素…', ''));
+      sel.appendChild(new Option(t('选择元素…'), ''));
       for (const c of candidates) sel.appendChild(new Option(`${c.name || c.type}`, c._id));
       const btn = document.createElement('button');
       btn.textContent = '＋ 添加';
@@ -646,7 +647,7 @@ export class PropertyEditor {
     for (const f of editableFields) {
       const row = document.createElement('div');
       row.className = 'prop-row';
-      row.innerHTML = `<label>${f.label}</label>`;
+      row.innerHTML = `<label>${t(f.label)}</label>`;
       const val = document.createElement('div');
       val.className = 'prop-value';
       if (f.bool) {

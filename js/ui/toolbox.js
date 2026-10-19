@@ -291,8 +291,8 @@ export function initToolbox(canvas, getActiveToolboxGroup) {
   function makeItem(item) {
     const el = document.createElement('div');
     el.className = 'toolbox-item';
-    el.innerHTML = (Icons[item.icon] || '') + `<span>${item.name}</span>`;
-    el.title = item.name;
+    el.innerHTML = (Icons[item.icon] || '') + `<span>${t(item.name)}</span>`;
+    el.title = t(item.name);
     el.onclick = () => {
       document.getElementById('toolbox').querySelectorAll('.toolbox-item').forEach((n) => n.classList.remove('active'));
       if (item.id === 'tool-select') {

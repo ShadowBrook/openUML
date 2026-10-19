@@ -1,5 +1,7 @@
 // dialogs.js — modal dialogs (input / confirm / about)
 
+import { t } from './i18n.js';
+
 export function showInputDialog({ title = '输入', label = '', value = '', placeholder = '' } = {}) {
   return new Promise((resolve) => {
     const overlay = document.getElementById('dialog-overlay');
@@ -22,10 +24,10 @@ export function showInputDialog({ title = '输入', label = '', value = '', plac
     buttons.innerHTML = '';
     const ok = document.createElement('button');
     ok.className = 'btn primary';
-    ok.textContent = '确定';
+    ok.textContent = t('确定');
     const cancel = document.createElement('button');
     cancel.className = 'btn';
-    cancel.textContent = '取消';
+    cancel.textContent = t('取消');
     buttons.appendChild(ok);
     buttons.appendChild(cancel);
     const close = (val) => { overlay.classList.add('hidden'); resolve(val); };
@@ -52,10 +54,10 @@ export function showConfirmDialog({ title = '确认', message = '' } = {}) {
     buttons.innerHTML = '';
     const ok = document.createElement('button');
     ok.className = 'btn primary';
-    ok.textContent = '确定';
+    ok.textContent = t('确定');
     const cancel = document.createElement('button');
     cancel.className = 'btn';
-    cancel.textContent = '取消';
+    cancel.textContent = t('取消');
     buttons.appendChild(ok);
     buttons.appendChild(cancel);
     const close = (val) => { overlay.classList.add('hidden'); resolve(val); };
@@ -75,7 +77,7 @@ export function showAlertDialog({ title = '提示', message = '' } = {}) {
     buttons.innerHTML = '';
     const ok = document.createElement('button');
     ok.className = 'btn primary';
-    ok.textContent = '知道了';
+    ok.textContent = t('知道了');
     ok.onclick = () => { overlay.classList.add('hidden'); resolve(); };
     buttons.appendChild(ok);
     overlay.classList.remove('hidden');
@@ -98,7 +100,7 @@ export function showAboutDialog() {
   buttons.innerHTML = '';
   const ok = document.createElement('button');
   ok.className = 'btn primary';
-  ok.textContent = '关闭';
+  ok.textContent = t('关闭');
   ok.onclick = () => overlay.classList.add('hidden');
   buttons.appendChild(ok);
   overlay.classList.remove('hidden');

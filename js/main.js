@@ -38,6 +38,28 @@ function diagramTypeLabel(type) {
   return DIAGRAM_TYPE_LABELS[type] || '';
 }
 
+/** Static pane headers / mini-tabs: remember the source string and re-translate. */
+function applyStaticI18n() {
+  for (const el of document.querySelectorAll('.pane-title, .mini-tab')) {
+    if (!el.dataset.i18n) el.dataset.i18n = el.textContent.trim();
+    el.textContent = t(el.dataset.i18n);
+  }
+}
+
+const DIAGRAM_TYPE_LABELS_EN = {
+  UMLClassDiagram: 'Class', UMLUseCaseDiagram: 'Use Case', UMLSequenceDiagram: 'Sequence',
+  UMLStatechartDiagram: 'Statechart', UMLActivityDiagram: 'Activity',
+  UMLComponentDiagram: 'Component', UMLDeploymentDiagram: 'Deployment',
+  UMLPackageDiagram: 'Package', UMLCommunicationDiagram: 'Communication',
+  UMLObjectDiagram: 'Object', UMLCompositeStructureDiagram: 'Composite Structure',
+  UMLTimingDiagram: 'Timing', UMLInteractionOverviewDiagram: 'Interaction Overview',
+  UMLInformationFlowDiagram: 'Information Flow', UMLProfileDiagram: 'Profile',
+};
+
+function diagramTypeLabelI18n(type) {
+  return getLang() === 'zh-CN' ? diagramTypeLabel(type) : (DIAGRAM_TYPE_LABELS_EN[type] || '');
+}
+
 const app = {
   canvas: null,
   explorer: null,
@@ -213,6 +235,8 @@ function applyPreferences(next) {
     setLang(app.prefs.lang);
     buildMenus();
     initToolbox(c);
+    applyStaticI18n();
+    app.editor?.show(repository.selectedModel);
   }
   savePreferences(app.prefs);
   c.requestRender();
@@ -366,7 +390,7 @@ function renderTabs() {
   for (const d of diagrams) {
     const row = document.createElement('div');
     row.className = 'diagram-tab' + (d === app.activeDiagram ? ' active' : '');
-    const typeName = diagramTypeLabel(d.type);
+    const typeName = diagramTypeLabelI18n(d.type);
     row.innerHTML = `<span class="tab-icon">${diagramIcon(d.type)}</span><span>${esc(d.name)}</span>` + (typeName && d !== app.activeDiagram ? `<span class="tab-type">${typeName}</span>` : '');
     row.onclick = () => openDiagram(d);
     row.ondblclick = () => renameElement(d);
@@ -774,9 +798,10 @@ async function openRecent(entry) {
     const file = await handle.getFile();
     const text = await file.text();
     app.fileHandle = handle;
+    await recentPut(file.name, handle);
     loadProjectJSON(text);
     app.canvas.setStatusMessage(`已打开 ${file.name}`);
-    buildMenus();
+    refreshRecentsAndMenus();
   } catch (err) {
     app.canvas.setStatusMessage(`无法打开 ${entry.name}: ${err.message}`);
   }
@@ -792,7 +817,7 @@ async function openProjectFilePicker() {
     await recentPut(file.name, handle);
     loadProjectJSON(await file.text());
     app.canvas.setStatusMessage(`已打开 ${file.name}`);
-    buildMenus();
+    refreshRecentsAndMenus();
   } catch (err) {
     if (err.name !== 'AbortError') app.canvas.setStatusMessage(`打开失败: ${err.message}`);
   }
@@ -1252,7 +1277,7 @@ function quickFindItems(query) {
     const name = n.name || '(unnamed)';
     const parent = parentPath(n);
     const typeLabel = isDiagram
-      ? (diagramTypeLabel(n.type) || '图表')
+      ? (diagramTypeLabelI18n(n.type) || '图表')
       : (ModelKinds[n.type]?.name || n.type.replace(/^UML/, ''));
     const haystack = `${name} ${typeLabel} ${parent}`.toLowerCase();
     if (q && !haystack.includes(q)) return;
@@ -1450,19 +1475,21 @@ function runValidation() {
 
 // ---------------- menus ----------------
 
-async function buildMenus() {
+// recent-file entries cached at boot; refreshed whenever a file is opened
+let recentCache = [];
+
+function refreshRecentsAndMenus() {
+  if (!window.indexedDB || !window.showOpenFilePicker) return;
+  recentList().then((items) => {
+    recentCache = items.map((r) => ({ label: r.name, action: () => openRecent(r) }));
+    if (recentCache.length) buildMenus();
+  }).catch(() => { /* private mode */ });
+}
+
+function buildMenus() {
   const sel = () => repository.selectedModel;
   const hasSel = () => repository.selections.length > 0;
-  // recent files (File System Access handles persisted in IndexedDB)
-  let recentItems = [];
-  if (window.indexedDB && window.showOpenFilePicker) {
-    try {
-      recentItems = (await recentList()).map((r) => ({
-        label: r.name,
-        action: () => openRecent(r),
-      }));
-    } catch { /* private mode */ }
-  }
+  const recentItems = recentCache;
   const T = (label) => (typeof label === 'string' ? t(label) : label);
   const tr = (items) => items.map((item) => {
     if (item === '---') return item;
@@ -1816,6 +1843,7 @@ function boot() {
   app.canvas = canvas;
   const prefs = loadPreferences();
   app.prefs = prefs;
+  if (prefs.lang) setLang(prefs.lang);
   canvas.gridSize = prefs.gridSize;
   canvas.showGrid = prefs.showGrid;
   canvas.snapToGrid = prefs.snapToGrid;
@@ -1850,6 +1878,7 @@ function boot() {
   document.getElementById('tb-grid').classList.toggle('active', prefs.showGrid);
   document.getElementById('tb-snap').classList.toggle('active', prefs.snapToGrid);
   buildMenus();
+  refreshRecentsAndMenus();
   applyPanels();
 
   document.addEventListener('canvas-contextmenu', (e) => {
@@ -1923,6 +1952,7 @@ function boot() {
     try { localStorage.setItem(PROJECT_KEY, serializeProject(repository.root)); } catch { /* ignore */ }
   });
   canvas.zoomFit();
+  applyStaticI18n();
   // expose the plugin API (window.openuml) for extensions
   initPluginApi(app, {
     registerPaletteCommand: (cmd) => {

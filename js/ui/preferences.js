@@ -1,6 +1,6 @@
 // preferences.js — persisted editor/export preferences and the preferences dialog.
 
-import { setLang, availableLangs } from './i18n.js';
+import { setLang, availableLangs, t } from './i18n.js';
 
 const KEY = 'openuml-preferences';
 
@@ -84,56 +84,56 @@ export function showPreferencesDialog(current = DEFAULT_PREFERENCES) {
     const body = document.getElementById('dialog-body');
     body.innerHTML = '';
 
-    const gridSec = section(body, '网格');
+    const gridSec = section(body, t('网格'));
     const gridSize = select([[5, '5 px'], [10, '10 px'], [20, '20 px']], current.gridSize);
-    row(gridSec, '网格大小', gridSize);
+    row(gridSec, t('网格大小'), gridSize);
     const showGrid = checkbox(current.showGrid);
-    row(gridSec, '显示网格', showGrid);
+    row(gridSec, t('显示网格'), showGrid);
     const snap = checkbox(current.snapToGrid);
-    row(gridSec, '吸附到网格', snap);
+    row(gridSec, t('吸附到网格'), snap);
 
-    const lookSec = section(body, '外观');
-    const theme = select([['light', '浅色'], ['dark', '深色']], current.theme);
-    row(lookSec, '主题', theme);
+    const lookSec = section(body, t('外观'));
+    const theme = select([['light', t('浅色')], ['dark', t('深色')]], current.theme);
+    row(lookSec, t('主题'), theme);
     const lang = select(availableLangs(), current.lang || 'zh-CN');
     row(lookSec, '语言 / Language', lang);
 
-    const exportSec = section(body, '导出');
+    const exportSec = section(body, t('导出'));
     const scale = select([[1, '1×'], [2, '2×'], [3, '3×']], current.exportScale);
-    row(exportSec, 'PNG / JPEG 缩放', scale);
+    row(exportSec, t('PNG / JPEG 缩放'), scale);
     const transparent = checkbox(current.transparentBackground);
-    row(exportSec, '透明背景（PNG / SVG）', transparent);
+    row(exportSec, t('透明背景（PNG / SVG）'), transparent);
 
-    const panelSec = section(body, '面板');
+    const panelSec = section(body, t('面板'));
     const panelChecks = {};
     for (const [key, label] of [['sidebar', '侧栏'], ['navigator', '导航器'],
       ['toolbox', '工具箱'], ['toolbar', '工具栏'], ['statusbar', '状态栏']]) {
       const box = checkbox(current.panels ? current.panels[key] !== false : true);
       panelChecks[key] = box;
-      row(panelSec, label, box);
+      row(panelSec, t(label), box);
     }
 
-    const editSec = section(body, '编辑器');
+    const editSec = section(body, t('编辑器'));
     const autoResize = checkbox(current.autoResize);
-    row(editSec, '自动调整类/枚举框尺寸', autoResize);
+    row(editSec, t('自动调整类/枚举框尺寸'), autoResize);
     const autoRoute = checkbox(current.autoRoute !== false);
-    row(editSec, '连线自动避障（正交布线绕开节点）', autoRoute);
+    row(editSec, t('连线自动避障（正交布线绕开节点）'), autoRoute);
     const hint = document.createElement('div');
     hint.className = 'pref-hint';
-    hint.textContent = '关闭后，新增成员可能被现有尺寸裁切；手动调整尺寸始终可用。';
+    hint.textContent = t('关闭后，新增成员可能被现有尺寸裁切；手动调整尺寸始终可用。');
     editSec.appendChild(hint);
 
     const buttons = document.getElementById('dialog-buttons');
     buttons.innerHTML = '';
     const reset = document.createElement('button');
     reset.className = 'btn';
-    reset.textContent = '恢复默认';
+    reset.textContent = t('恢复默认');
     const cancel = document.createElement('button');
     cancel.className = 'btn';
-    cancel.textContent = '取消';
+    cancel.textContent = t('取消');
     const apply = document.createElement('button');
     apply.className = 'btn primary';
-    apply.textContent = '应用';
+    apply.textContent = t('应用');
     buttons.appendChild(reset);
     buttons.appendChild(cancel);
     buttons.appendChild(apply);
