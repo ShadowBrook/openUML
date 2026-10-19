@@ -230,6 +230,7 @@ function applyPreferences(next) {
   c.snapToGrid = app.prefs.snapToGrid;
   c.autoResize = app.prefs.autoResize;
   c.autoRoute = app.prefs.autoRoute !== false;
+  c.showFrame = app.prefs.diagramFrame !== false;
   document.getElementById('tb-grid')?.classList.toggle('active', c.showGrid);
   document.getElementById('tb-snap')?.classList.toggle('active', c.snapToGrid);
   applyPanels();
@@ -254,8 +255,15 @@ async function editPreferences() {
 
 // ---------------- project lifecycle ----------------
 
-function newProject() {
-  repository.root = createProject();
+const BACKUP_KEY = 'openuml-backup';
+
+function newProject(opts = {}, { quiet = false } = {}) {
+  // back up the current project so "新建" never silently destroys work
+  if (repository.root) {
+    try { localStorage.setItem(BACKUP_KEY, serializeProject(repository.root)); } catch { /* quota */ }
+    app.backupAvailable = true;
+  }
+  repository.root = createProject(opts);
   repository._index = new Map();
   repository.walk((n) => repository._index.set(n._id, n));
   app.openDiagrams = [];
@@ -388,11 +396,35 @@ function renderTabs() {
   // left working-diagrams list
   const list = document.getElementById('diagram-tabs');
   list.innerHTML = '';
+  list.oncontextmenu = (e) => {
+    if (e.target.closest('.diagram-tab')) return; // rows have their own menu
+    e.preventDefault();
+    const kinds = [
+      ['类图', 'UMLClassDiagram'], ['用例图', 'UMLUseCaseDiagram'], ['序列图', 'UMLSequenceDiagram'],
+      ['状态机图', 'UMLStatechartDiagram'], ['活动图', 'UMLActivityDiagram'], ['组件图', 'UMLComponentDiagram'],
+      ['部署图', 'UMLDeploymentDiagram'], ['包图', 'UMLPackageDiagram'], ['通信图', 'UMLCommunicationDiagram'],
+      ['对象图', 'UMLObjectDiagram'], ['ERD / PDM', 'ERDDiagram'],
+    ];
+    showContextMenu(e.clientX, e.clientY, kinds.map(([label, type]) => ({
+      label: '新增' + label,
+      action: () => addDiagram(type),
+    })));
+  };
   const diagrams = [];
   repository.walk((n) => { if (n.type?.endsWith('Diagram')) diagrams.push(n); });
   for (const d of diagrams) {
     const row = document.createElement('div');
     row.className = 'diagram-tab' + (d === app.activeDiagram ? ' active' : '');
+    row.oncontextmenu = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      showContextMenu(e.clientX, e.clientY, [
+        { label: '打开', action: () => openDiagram(d) },
+        { label: '重命名…', action: () => renameElement(d) },
+        '---',
+        { label: '删除图表', action: () => removeDiagram(d) },
+      ]);
+    };
     const typeName = diagramTypeLabelI18n(d.type);
     row.innerHTML = `<span class="tab-icon">${diagramIcon(d.type)}</span><span>${esc(d.name)}</span>` + (typeName && d !== app.activeDiagram ? `<span class="tab-type">${typeName}</span>` : '');
     row.onclick = () => openDiagram(d);
@@ -1344,12 +1376,65 @@ function openMarkdownEditor() {
 
 // ---------------- quick find / command palette ----------------
 
+const NEW_PROJECT_KINDS = [
+  { id: 'empty', label: '空项目（不创建图表）' },
+  { id: 'UMLClassDiagram', label: '类图 (Class Diagram)', type: 'UMLClassDiagram', name: 'Main' },
+  { id: 'UMLUseCaseDiagram', label: '用例图 (Use Case Diagram)', type: 'UMLUseCaseDiagram', name: 'UseCaseDiagram' },
+  { id: 'ERDDiagram', label: 'ERD / PDM 实体关系图', type: 'ERDDiagram', name: 'PDM' },
+  { id: 'UMLSequenceDiagram', label: '序列图 (Sequence Diagram)', type: 'UMLSequenceDiagram', name: 'SequenceDiagram' },
+];
+
 async function requestNewProject() {
+  const hasBackup = !!localStorage.getItem(BACKUP_KEY);
+  const choice = await new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'dialog-overlay';
+    overlay.innerHTML = `<div class="dialog" style="width:420px">
+      <div class="dialog-title">新建项目</div>
+      <div class="dialog-body">
+        <div style="margin-bottom:8px;color:var(--text-dim)">选择初始图表类型：</div>
+        ${NEW_PROJECT_KINDS.map((k, i) => `
+          <label style="display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer">
+            <input type="radio" name="np-kind" value="${k.id}" ${i === 1 ? 'checked' : ''}>
+            <span>${k.label}</span>
+          </label>`).join('')}
+        ${hasBackup ? `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--panel-border)">
+          <button class="btn" id="np-restore" style="width:100%">恢复上次新建前的项目…</button>
+        </div>` : ''}
+      </div>
+      <div class="dialog-actions">
+        <button class="btn primary" id="np-ok">新建</button>
+        <button class="btn" id="np-cancel">取消</button>
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
+    const close = (v) => { overlay.remove(); resolve(v); };
+    overlay.querySelector('#np-cancel').onclick = () => close(null);
+    const restoreBtn = overlay.querySelector('#np-restore');
+    if (restoreBtn) restoreBtn.onclick = () => close('__restore__');
+    overlay.querySelector('#np-ok').onclick = () => close(overlay.querySelector('input[name=np-kind]:checked').value);
+  });
+  if (choice === '__restore__') { restoreBackup(); return; }
+  if (!choice) return;
   if (app.dirty) {
     const ok = await showConfirmDialog({ title: '新建', message: '当前项目有未保存的更改，确定放弃并新建吗？' });
     if (!ok) return;
   }
-  newProject();
+  const kind = NEW_PROJECT_KINDS.find((k) => k.id === choice);
+  newProject(kind && kind.type ? { diagramType: kind.type, diagramName: kind.name } : { empty: true });
+}
+
+function restoreBackup() {
+  const raw = localStorage.getItem(BACKUP_KEY);
+  if (!raw) { showToast('没有可恢复的备份'); return; }
+  try {
+    loadProjectJSON(raw);
+    localStorage.removeItem(BACKUP_KEY);
+    app.backupAvailable = false;
+    showToast('已恢复新建前的项目', 'success');
+  } catch (e) {
+    showToast('恢复失败：备份已损坏');
+  }
 }
 
 function exportCurrentSVG() {
@@ -1640,6 +1725,7 @@ function buildMenus() {
       label: '文件', submenu: [
         { label: '新建', shortcut: 'Ctrl+N', action: requestNewProject },
         { label: '从模板新建…', action: requestNewFromTemplate },
+        { label: '恢复新建前的项目…', disabled: !localStorage.getItem('openuml-backup'), action: restoreBackup },
         { label: '打开项目…', shortcut: 'Ctrl+O', action: openProjectFile },
         { label: '最近文件', disabled: !recentItems.length, submenu: recentItems.length ? recentItems : [{ label: '（空）', action: () => {} }] },
         { label: '保存项目', shortcut: 'Ctrl+S', action: () => saveProject(false) },
@@ -1785,6 +1871,12 @@ function buildMenus() {
         { label: '连线自动避障', checked: app.canvas.autoRoute !== false, action: toggleAutoRoute },
         '---',
         { label: '深色主题', checked: app.theme === 'dark', action: () => setTheme(app.theme === 'dark' ? 'light' : 'dark') },
+        { label: '图表外框', checked: app.prefs.diagramFrame !== false, action: () => {
+          app.prefs.diagramFrame = app.prefs.diagramFrame === false;
+          app.canvas.showFrame = app.prefs.diagramFrame !== false;
+          savePreferences(app.prefs);
+          app.canvas.requestRender();
+        } },
       ],
     },
     {

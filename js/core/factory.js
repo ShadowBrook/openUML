@@ -181,13 +181,15 @@ export function createDiagram(diagramType, name, extra = {}) {
   };
 }
 
-export function createProject() {
+export function createProject(opts = {}) {
   const project = { _id: genId('p'), type: 'Project', name: 'Project', ownedElements: [], documentation: '' };
   const model = createModel('Model', 'Model');
   repositorylessAdd(project, model);
-  const diagram = createDiagram('UMLClassDiagram', 'Main');
-  repositorylessAdd(model, diagram);
-  diagram.defaultDiagram = true;
+  if (!opts.empty) {
+    const diagram = createDiagram(opts.diagramType || 'UMLClassDiagram', opts.diagramName || 'Main');
+    repositorylessAdd(model, diagram);
+    diagram.defaultDiagram = true;
+  }
   return project;
 }
 

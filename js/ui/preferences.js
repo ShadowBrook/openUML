@@ -13,6 +13,7 @@ export const DEFAULT_PREFERENCES = {
   transparentBackground: false,
   autoResize: true,
   autoRoute: true,
+  diagramFrame: true,
   lang: 'zh-CN',
   panels: { sidebar: true, navigator: true, toolbox: true, toolbar: true, statusbar: true },
 };

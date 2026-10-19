@@ -21,6 +21,7 @@ export class DiagramCanvas {
     this.gridSize = DEFAULT_GRID;
     this.showGrid = true;
     this.snapToGrid = true;
+    this.showFrame = true;
     this.autoResize = true;
     this.autoRoute = true;        // orthogonal edges reroute around obstacles
 
@@ -312,6 +313,7 @@ export class DiagramCanvas {
    */
   _renderFrame(nodes) {
     if (!this.diagram) return;
+    if (this.showFrame === false) return;
     const prefixes = {
       UMLClassDiagram: 'cd', UMLUseCaseDiagram: 'uc', UMLSequenceDiagram: 'sd',
       UMLStatechartDiagram: 'stm', UMLActivityDiagram: 'ad',
