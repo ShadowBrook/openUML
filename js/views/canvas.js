@@ -196,6 +196,7 @@ export class DiagramCanvas {
       : v.$type === 'UMLSendSignal' ? 'sendsignal'
       : v.$type === 'UMLAcceptSignal' ? 'acceptsignal'
       : v.$type === 'UMLCombinedFragment' ? 'fragment'
+      : v.$type === 'ERDEntity' ? 'erdentity'
       : v.$type === 'UMLInteractionUse' ? 'ref'
       : v.$type === 'UMLInteractionUseInOverview' ? 'ref'
       : v.$type === 'UMLInteractionInOverview' ? 'interactionOverview'
@@ -227,6 +228,7 @@ export class DiagramCanvas {
       : v.$type === 'UMLTimeTick' ? 'timeTick'
       : v.$type === 'UMLTimeConstraint' ? 'timeConstraint'
       : v.$type === 'UMLDurationConstraint' ? 'durationConstraint'
+      : v.$type === 'ERDEntity' ? 'erdentity'
       : v.$type === 'UMLNote' ? 'note' : 'class';
     const meta = renderNode(g, v, model, kind);
     g.dataset.id = v._id;
@@ -315,6 +317,7 @@ export class DiagramCanvas {
       UMLComponentDiagram: 'cp', UMLDeploymentDiagram: 'dp',
       UMLPackageDiagram: 'pkg', UMLCommunicationDiagram: 'comm',
       UMLObjectDiagram: 'od', UMLCompositeStructureDiagram: 'cs',
+      ERDDiagram: 'erd',
       UMLTimingDiagram: 'tm', UMLInteractionOverviewDiagram: 'iod',
       UMLInformationFlowDiagram: 'if', UMLProfileDiagram: 'pf',
     };
@@ -2023,7 +2026,8 @@ export class DiagramCanvas {
     }
     // view-only connectors: note link, containment, communication links, object-diagram links
     if (edgeType === 'UMLNoteLink' || edgeType === 'UMLContainment' || edgeType === 'UMLConnector' || edgeType === 'UMLLinkMessage'
-        || edgeType === 'UMLLink' || edgeType === 'UMLDirectedLink' || edgeType === 'UMLLinkObject') {
+        || edgeType === 'UMLLink' || edgeType === 'UMLDirectedLink' || edgeType === 'UMLLinkObject'
+        || edgeType === 'ERDReference' || edgeType === 'ERDRelationship') {
       const diagram = this.diagram;
       const requested = edgeType;
       if (requested === 'UMLLinkMessage') {
@@ -2046,6 +2050,10 @@ export class DiagramCanvas {
       }
       const view = createEdgeView(edgeType, '', tailId, headId);
       view.messages = requested === 'UMLLinkMessage' ? [{ text: '', direction: 'forward' }] : [];
+      if (edgeType === 'ERDReference' || edgeType === 'ERDRelationship') {
+        view.tailCardinality = '';
+        view.headCardinality = edgeType === 'ERDReference' ? '0..*' : '';
+      }
       let linkObjectModel = null;
       if (edgeType === 'UMLLinkObject') {
         // a link object carries real object semantics: classifier + slots

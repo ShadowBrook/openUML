@@ -36,6 +36,9 @@ SysML 等非 UML 扩展样例不在映射范围内。
 ## 功能
 
 ### 图表与图元
+- **ERD / PDM**：实体表（列类型/主键 PK/非空/唯一徽标，自适应高度）、
+  引用（FK 列、基数标签、ON DELETE/UPDATE）、关系（CDM 基数）、
+  **PDM → SQL**（MySQL / PostgreSQL / SQLite / ANSI，含注释与外键动作）
 - **类图**：类、接口（«interface»）、枚举、数据类型、原始类型（«primitive»）、
   信号（«signal»）、包、注释、**框架 Frame**（带名称页签，可容纳子元素）、
   **模板参数**（右上角虚线隔间，`T` / `K : Type`）、**模板绑定**（«bind» 虚线）、

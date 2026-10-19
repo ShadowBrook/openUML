@@ -98,6 +98,20 @@ export function renderSelfLoop(g, edge, model, rect) {
     const conveyed = model.conveyed.map((c) => c.name).filter(Boolean);
     if (conveyed.length) labelParts.push(conveyed.join(', '));
   }
+  // ERD reference/relationship: cardinalities near each end
+  if (edge.$type === 'ERDReference' || edge.$type === 'ERDRelationship') {
+    const card = (text, end, before) => {
+      if (!text) return;
+      const side = end.x <= mid.x ? 'start' : 'end';
+      const t = svgEl('text', {
+        x: end.x + (side === 'start' ? 8 : -8), y: end.y - 6,
+        'text-anchor': side, 'font-size': fs, fill: fontColor,
+      }, g);
+      t.textContent = text;
+    };
+    card(edge.tailCardinality, tailEnd);
+    card(edge.headCardinality, headEnd);
+  }
   if (edge.$type === 'UMLExtension' && model?.multiplicity) {
     const mt = svgEl('text', {
       x: headEnd.x, y: headEnd.y - fs - 6, 'text-anchor': 'middle',

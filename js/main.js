@@ -22,6 +22,7 @@ import { TEMPLATES, applyTemplate } from './ui/templates.js';
 import { convertMdj } from './io/mdj.js';
 import { initPluginApi } from './plugins.js';
 import { generate, CODEGEN_TEMPLATES } from './codegen.js';
+import { generateSQL, collectERD, SQL_DIALECTS } from './sql.js';
 import { t, setLang, availableLangs, getLang } from './ui/i18n.js';
 
 const DIAGRAM_TYPE_LABELS = {
@@ -961,6 +962,50 @@ function safeName(s) {
 
 // ---------------- code generation ----------------
 
+function openERDSQLDialog() {
+  const diagram = app.canvas.diagram;
+  if (!diagram || diagram.type !== 'ERDDiagram') { showToast('请先打开一张 ERD / PDM 图'); return; }
+  const { entities, references } = collectERD(diagram);
+  if (!entities.length) { showToast('当前图中没有实体/表'); return; }
+  const overlay = document.createElement('div');
+  overlay.className = 'dialog-overlay';
+  overlay.innerHTML = `<div class="dialog" style="width:760px;height:560px;display:flex;flex-direction:column">
+    <div class="dialog-title">PDM → SQL — ${entities.length} 表 / ${references.length} 引用</div>
+    <div class="dialog-body" style="flex:1;display:flex;flex-direction:column;gap:6px;min-height:0">
+      <div style="display:flex;gap:8px;align-items:center">
+        <label style="color:var(--text-dim)">方言</label>
+        <select id="sql-dialect" style="align-self:flex-start">
+          ${Object.entries(SQL_DIALECTS).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
+        </select>
+        <button class="btn" id="sql-copy">复制</button>
+        <button class="btn primary" id="sql-download">下载 .sql</button>
+      </div>
+      <textarea id="sql-out" readonly style="flex:1;font-family:monospace;white-space:pre;resize:none"></textarea>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn" id="sql-close">关闭</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  const dialectSel = overlay.querySelector('#sql-dialect');
+  const out = overlay.querySelector('#sql-out');
+  const regen = () => { out.value = generateSQL(entities, references, dialectSel.value); };
+  dialectSel.onchange = regen;
+  regen();
+  overlay.querySelector('#sql-copy').onclick = async () => {
+    try { await navigator.clipboard.writeText(out.value); showToast('已复制 SQL'); } catch { showToast('复制失败'); }
+  };
+  overlay.querySelector('#sql-download').onclick = () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([out.value], { type: 'application/sql' }));
+    a.download = (diagram.name || 'schema') + '.sql';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    app.canvas.setStatusMessage('已导出 SQL 脚本');
+  };
+  overlay.querySelector('#sql-close').onclick = () => overlay.remove();
+}
+
 function openCodegenDialog() {
   const selModels = repository.selections.map((id) => repository.lookup(id)).filter(Boolean);
   const files = generate(selModels.length ? selModels : null);
@@ -1586,6 +1631,7 @@ function buildMenus() {
           { label: '包图 (Package Diagram)', action: () => addDiagram('UMLPackageDiagram') },
           { label: '通信图 (Communication Diagram)', action: () => addDiagram('UMLCommunicationDiagram') },
           { label: '对象图 (Object Diagram)', action: () => addDiagram('UMLObjectDiagram') },
+          { label: 'ERD / PDM 实体关系图', action: () => addDiagram('ERDDiagram') },
           '---',
           { label: '复合结构图 (Composite Structure)', action: () => addDiagram('UMLCompositeStructureDiagram') },
           { label: '时序图 (Timing Diagram)', action: () => addDiagram('UMLTimingDiagram') },
@@ -1608,6 +1654,7 @@ function buildMenus() {
         { label: '验证模型…', action: runValidation },
         { label: '文档编辑器… (Markdown)', disabled: !sel(), action: openMarkdownEditor },
         { label: '代码生成…', action: openCodegenDialog },
+        { label: 'ERD / PDM 转 SQL…', action: openERDSQLDialog },
         '---',
         { label: '重命名…', shortcut: 'F2', disabled: !sel(), action: () => sel() && renameElement(sel()) },
       ],

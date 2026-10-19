@@ -1162,6 +1162,42 @@ export function renderNode(g, view, model, kind) {
       break;
     }
     case 'note':
+    case 'erdentity': {
+      // ERD table/entity: header band + column rows (PK badge, type right-aligned)
+      const cols = (model.columns || []);
+      const headH = fs + 12;
+      const rowH = fs + 6;
+      const bodyH = cols.length * rowH + 6;
+      const hEff = Math.max(h, headH + bodyH);
+      meta.autoHeight = hEff;
+      // header
+      svgEl('rect', { x, y, width: w, height: headH, fill: '#e2f3ea', stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
+      const ht = svgEl('text', { x: x + w / 2, y: y + headH - 5, 'text-anchor': 'middle', 'font-size': fs, 'font-weight': 700, fill: fontColor }, g);
+      ht.textContent = (model.stereotype ? '«' + model.stereotype + '» ' : '') + (model.name || '');
+      // body
+      svgEl('rect', { x, y: y + headH, width: w, height: hEff - headH, fill: '#ffffff', stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
+      let ry = y + headH;
+      const typeX = x + w - 6;
+      cols.forEach((col, i) => {
+        const cy = ry + i * rowH;
+        if (i > 0) svgEl('line', { x1: x, y1: cy, x2: x + w, y2: cy, stroke: '#e2e6e6', 'stroke-width': 0.7 }, g);
+        const isPK = !!col.primaryKey, isFK = !!col.foreignKey;
+        const badge = isPK ? 'PK' : isFK ? 'FK' : '';
+        if (badge) {
+          const bt = svgEl('text', { x: x + 6, y: cy + rowH - 6, 'font-size': fs - 3, 'font-weight': 700, fill: isPK ? '#d9a520' : '#5c8ac7' }, g);
+          bt.textContent = badge;
+        }
+        const nx = x + 6 + (badge ? 20 : 0);
+        const nt = svgEl('text', { x: nx, y: cy + rowH - 6, 'font-size': fs, fill: fontColor }, g);
+        nt.textContent = col.name || '';
+        if (col.type) {
+          const tt = svgEl('text', { x: typeX, y: cy + rowH - 6, 'text-anchor': 'end', 'font-size': fs - 1, fill: '#6b7272' }, g);
+          tt.textContent = col.type + (col.notNull ? ' NN' : '') + (col.unique && !isPK ? ' U' : '');
+        }
+      });
+      meta.textSlots.name = { box: new Rect(x, y, w, headH), text: model.name, field: 'name', align: 'center' };
+      break;
+    }
     case 'constraint': {
       const isConstraint = kind === 'constraint';
       const fold = 12;

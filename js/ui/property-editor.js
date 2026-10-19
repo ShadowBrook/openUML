@@ -247,6 +247,24 @@ export class PropertyEditor {
       }
     }
 
+    // ERD entity: column list with type / PK / NOT NULL / UNIQUE
+    if (model.type === 'ERDEntity') {
+      const sec = this._section('列 (Columns)');
+      this._listEditor(sec, model, 'columns',
+        () => ({ _id: 'col-' + Math.random().toString(36).slice(2, 9), name: 'column', type: 'VARCHAR(50)', primaryKey: false, notNull: true, unique: false }),
+        (col) => {
+          const vis = col.primaryKey ? 'PK' : col.foreignKey ? 'FK' : '';
+          return { vis, name: col.name, type: col.type + (col.notNull ? ' NN' : '') + (col.unique && !col.primaryKey ? ' U' : '') };
+        },
+        [
+          { key: 'name', label: '列名' },
+          { key: 'type', label: '类型' },
+          { key: 'primaryKey', label: '主键 (PK)', bool: true },
+          { key: 'notNull', label: '非空 (NOT NULL)', bool: true },
+          { key: 'unique', label: '唯一 (UNIQUE)', bool: true },
+          { key: 'comment', label: '备注' },
+        ]);
+    }
     // Template parameters (classifiers)
     if (Array.isArray(model.templateParameters)) {
       const sec = this._section('模板参数 (Template Parameters)');
@@ -448,6 +466,23 @@ export class PropertyEditor {
     if (this.currentView && this.currentView.$type === 'UMLExtension') {
       const sec = this._section('扩展 (Extension)');
       this._row(sec, 'multiplicity', model.multiplicity || '', (v) => this._set(model, 'multiplicity', v.trim()));
+    }
+
+    // ERD reference: cardinalities + FK columns; ERD relationship: CDM cardinalities
+    if (this.currentView && this.currentView.isEdge &&
+        (this.currentView.$type === 'ERDReference' || this.currentView.$type === 'ERDRelationship')) {
+      const isRef = this.currentView.$type === 'ERDReference';
+      const sec = this._section(isRef ? '引用 (Reference)' : '关系 (Relationship)');
+      const v = this.currentView;
+      this._row(sec, 'tail 基数', v.tailCardinality || '', (val) => this._setView(v, 'tailCardinality', val));
+      this._row(sec, 'head 基数', v.headCardinality || '', (val) => this._setView(v, 'headCardinality', val));
+      if (isRef) {
+        this._row(sec, 'FK 列 (子表)', v.fkColumns || '', (val) => this._setView(v, 'fkColumns', val));
+        this._row(sec, 'ON DELETE', v.onDelete || 'RESTRICT', (val) => this._setView(v, 'onDelete', val), 'select',
+          [['RESTRICT', 'RESTRICT'], ['CASCADE', 'CASCADE'], ['SET NULL', 'SET NULL'], ['NO ACTION', 'NO ACTION']]);
+        this._row(sec, 'ON UPDATE', v.onUpdate || 'RESTRICT', (val) => this._setView(v, 'onUpdate', val), 'select',
+          [['RESTRICT', 'RESTRICT'], ['CASCADE', 'CASCADE'], ['SET NULL', 'SET NULL'], ['NO ACTION', 'NO ACTION']]);
+      }
     }
 
     // Edge naming
