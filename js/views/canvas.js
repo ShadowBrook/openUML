@@ -1039,7 +1039,9 @@ export class DiagramCanvas {
     } else if (!sel.includes(id)) {
       sel = [id];
     }
-    repository.select(sel, this._primaryModel());
+    // resolve the model from the new selection itself — repository.selections
+    // is still the previous one until select() runs
+    repository.select(sel, this._primaryModel(sel[0]));
     const selectedViews = sel.map((sid) => this.renderers.get(sid)).filter(Boolean);
     // moving a container (or a fragment with nested content) drags descendants along
     const items = [];
@@ -1064,8 +1066,7 @@ export class DiagramCanvas {
     this.drag = { kind: 'move', start: w, moved: false, items };
   }
 
-  _primaryModel() {
-    const id = repository.selections[0];
+  _primaryModel(id = repository.selections[0]) {
     const r = id && this.renderers.get(id);
     return r ? repository.lookup(r.view.modelRef) : null;
   }
@@ -1309,7 +1310,7 @@ export class DiagramCanvas {
           if (!ids.includes(v._id)) ids.push(v._id);
         }
       }
-      repository.select(ids, this._primaryModel());
+      repository.select(ids, this._primaryModel(ids[0]));
       return;
     }
 
