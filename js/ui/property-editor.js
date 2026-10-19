@@ -3,7 +3,7 @@
 import { repository } from '../core/repository.js';
 import { commandStack } from '../core/commands.js';
 import { ModelKinds, VISIBILITY } from '../core/metamodel.js';
-import { createAttribute, createOperation, createLiteral } from '../core/factory.js';
+import { createAttribute, createOperation, createLiteral, createSlot } from '../core/factory.js';
 
 export class PropertyEditor {
   constructor() {
@@ -17,10 +17,11 @@ export class PropertyEditor {
       this.show(model);
     });
     repository.on('change', () => {
-      if (this.currentModel) this.show(this.currentModel, { keepFocus: true });
+      if (this.currentModel || this.currentView) this.show(this.currentModel, { keepFocus: true });
     });
     document.addEventListener('stack-changed', () => {
       if (this.currentModel) this.show(repository.lookup(this.currentModel._id) || this.currentModel, { keepFocus: true });
+      else if (this.currentView) this.show(null, { keepFocus: true });
     });
   }
 
@@ -28,15 +29,45 @@ export class PropertyEditor {
     const active = document.activeElement;
     this.currentModel = model;
     this.currentView = null;
-    // find selected view for style editing
+    // find selected view for style editing; view-only edges have no model
     const viewId = repository.selections[0];
     if (viewId) {
       const v = repository.lookup(viewId);
-      if (v && v.modelRef === model?._id) this.currentView = v;
+      if (v && (model ? v.modelRef === model._id : v.isEdge)) this.currentView = v;
+    }
+    if (!model) {
+      this.propPanel.innerHTML = '';
+      if (this.currentView && this.currentView.isEdge) this._renderViewEdgeProps(this.currentView);
+      else this.propPanel.innerHTML = '<div class="prop-empty">在图表或模型资源管理器中选择一个元素</div>';
+      this._renderStyles(null);
+      if (keepFocus && active && active.tagName === 'INPUT') active.focus();
+      return;
     }
     this._renderProps(model);
     this._renderStyles(model);
     if (keepFocus && active && active.tagName === 'INPUT') active.focus();
+  }
+
+  /** Properties for view-only edges (object links, note links, communication links). */
+  _renderViewEdgeProps(v) {
+    const sec = this._section(`${v.$type.replace(/^UML/, '')} — 视图`);
+    if (v.$type === 'UMLLinkObject') {
+      this._row(sec, 'name', v.name || '', (val) => this._setView(v, 'name', val));
+    }
+    if (['UMLLink', 'UMLDirectedLink', 'UMLLinkObject'].includes(v.$type)) {
+      this._row(sec, 'end1 (tail) role', v.tailRoleName || '', (val) => this._setView(v, 'tailRoleName', val));
+      this._row(sec, 'end1 multiplicity', v.tailMultiplicity || '', (val) => this._setView(v, 'tailMultiplicity', val));
+      this._row(sec, 'end2 (head) role', v.headRoleName || '', (val) => this._setView(v, 'headRoleName', val));
+      this._row(sec, 'end2 multiplicity', v.headMultiplicity || '', (val) => this._setView(v, 'headMultiplicity', val));
+    }
+    this._row(sec, '显示名称', v.nameVisible !== false, (val) => this._setView(v, 'nameVisible', val === 'true'), 'select', [['true', '是'], ['false', '否']]);
+    this._row(sec, '线型', v.lineStyle || 'solid', (val) => this._setView(v, 'lineStyle', val), 'select', [['solid', '实线'], ['dashed', '虚线'], ['dotted', '点线']]);
+    if (v.$type === 'UMLConnector' && (v.messages || []).length) {
+      const hint = document.createElement('div');
+      hint.className = 'pref-hint';
+      hint.textContent = `${v.messages.length} 条消息；双击连线可编辑文本与方向。`;
+      sec.appendChild(hint);
+    }
   }
 
   _section(title, open = true) {
@@ -161,9 +192,10 @@ export class PropertyEditor {
         { key: 'name', label: '名称' },
       ]);
     }
-    // Association ends
-    if (model.type === 'UMLAssociation' && this.currentView) {
-      const sec = this._section('关联端 (Ends)');
+    // Association / link ends
+    if (this.currentView && (model.type === 'UMLAssociation'
+      || ['UMLLink', 'UMLDirectedLink'].includes(this.currentView.$type))) {
+      const sec = this._section(model.type === 'UMLAssociation' ? '关联端 (Ends)' : '链接端 (Link Ends)');
       const v = this.currentView;
       this._row(sec, 'end1 (tail) role', v.tailRoleName || '', (val) => this._setView(v, 'tailRoleName', val));
       this._row(sec, 'end1 multiplicity', v.tailMultiplicity || '', (val) => this._setView(v, 'tailMultiplicity', val));
@@ -219,6 +251,13 @@ export class PropertyEditor {
     if (['UMLObject', 'UMLArtifactInstance', 'UMLComponentInstance', 'UMLNodeInstance'].includes(model.type)) {
       const sec = this._section('实例 (Instance)');
       this._row(sec, 'classifier', model.classifier || '', (v) => this._set(model, 'classifier', v.trim()));
+      if (model.type === 'UMLObject') {
+        const slotSec = this._section('槽 (Slots)');
+        this._listEditor(slotSec, model, 'slots', createSlot, (s) => ({ vis: '=', name: s.name, type: s.value }), [
+          { key: 'name', label: '名称' },
+          { key: 'value', label: '值' },
+        ]);
+      }
     }
 
     // Composite structure: port / part details

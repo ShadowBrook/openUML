@@ -420,13 +420,34 @@ export function renderNode(g, view, model, kind) {
       break;
     }
     case 'object': {
-      // object: rectangle with underlined "name : Classifier"
+      // object: underlined "name : Classifier", plus a slot compartment
       const label = instanceLabel(model);
-      svgEl('rect', { x, y, width: w, height: h, fill, stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
-      const t = svgEl('text', { x: x + w / 2, y: y + h / 2 + fs * 0.35, 'text-anchor': 'middle', 'font-size': fs, fill: fontColor, 'text-decoration': 'underline' }, g);
+      const slots = (model.slots || []).filter((s) => s && (s.name || s.value));
+      const slotLines = slots.map((s) => `${s.name || ''} = ${s.value ?? ''}`);
+      const nameH = fs + 14;
+      const slotH = slotLines.length ? slotLines.length * (fs + 4) + 6 : 0;
+      const requiredH = nameH + slotH;
+      const hEff = Math.max(h, requiredH);
+      meta.autoHeight = requiredH;
+      svgEl('rect', { x, y, width: w, height: hEff, fill, stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
+      const nameY = slotLines.length ? y + fs + 4 : y + hEff / 2 + fs * 0.35;
+      const t = svgEl('text', {
+        x: x + w / 2, y: nameY, 'text-anchor': 'middle', 'font-size': fs,
+        fill: fontColor, 'text-decoration': 'underline',
+      }, g);
       t.textContent = label;
-      meta.autoWidth = label.length * fs * 0.62 + 18;
-      meta.textSlots.name = { box: new Rect(x, y, w, h), text: model.name, field: 'name', align: 'center' };
+      if (slotLines.length) {
+        svgEl('line', { x1: x, y1: y + nameH, x2: x + w, y2: y + nameH, stroke: line, 'stroke-width': 1 }, g);
+        slotLines.forEach((text, i) => {
+          const st = svgEl('text', {
+            x: x + 6, y: y + nameH + fs + 2 + i * (fs + 4), 'font-size': fs, fill: fontColor,
+          }, g);
+          st.textContent = text;
+        });
+      }
+      const widest = Math.max(label.length, ...slotLines.map((s) => s.length), 0);
+      meta.autoWidth = widest * fs * 0.62 + 18;
+      meta.textSlots.name = { box: new Rect(x, y, w, nameH), text: model.name, field: 'name', align: 'center' };
       break;
     }
     case 'subsystem': {

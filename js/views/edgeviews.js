@@ -372,7 +372,10 @@ export function renderEdge(g, edge, model, tailRect, headRect, opts = {}) {
     t.textContent = name;
   }
 
-  if (model?.type === 'UMLAssociation') {
+  const showEndLabels = model?.type === 'UMLAssociation'
+    || model?.type === 'UMLLink' || model?.type === 'UMLDirectedLink'
+    || edge.$type === 'UMLLink' || edge.$type === 'UMLDirectedLink';
+  if (showEndLabels) {
     if (edge.headRoleName) {
       const t = svgEl('text', { x: headEnd.x, y: headEnd.y - 6, 'font-size': fs, fill: fontColor, 'text-anchor': 'middle' }, g);
       t.textContent = edge.headRoleName;

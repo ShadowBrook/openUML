@@ -378,6 +378,18 @@ class Converter:
             ]
         if our_type in ('UMLObject', 'UMLArtifactInstance', 'UMLComponentInstance', 'UMLNodeInstance'):
             model['classifier'] = self.resolve_name(sm.get('classifier'))
+            slots = []
+            for slot in sm.get('slots') or []:
+                if not isinstance(slot, dict):
+                    continue
+                value = clean_text(slot.get('value'))
+                if len(value) >= 2 and value[0] == value[-1] == '"':
+                    value = value[1:-1]
+                slots.append({
+                    '_id': self.nid('s'), '$type': 'UMLSlot',
+                    'name': clean_text(slot.get('name')), 'value': value,
+                })
+            model['slots'] = slots
         if our_type == 'UMLPart':
             model['typeName'] = self.resolve_name(sm.get('type'))
             model['multiplicity'] = clean_text(sm.get('multiplicity'))
@@ -981,7 +993,12 @@ class Converter:
             v['tailArrow'] = 'containment'
         elif our_type == 'UMLLink':
             v['lineStyle'] = 'solid'
+            end1 = (model or {}).get('end1') or {}
             end2 = (model or {}).get('end2') or {}
+            v['tailRoleName'] = clean_text(end1.get('name'))
+            v['tailMultiplicity'] = clean_text(end1.get('multiplicity'))
+            v['headRoleName'] = clean_text(end2.get('name'))
+            v['headMultiplicity'] = clean_text(end2.get('multiplicity'))
             if end2.get('navigable') == 'navigable':
                 v['headArrow'] = 'open'
         elif our_type == 'UMLConnector':
@@ -1015,7 +1032,12 @@ class Converter:
                 continue
             text = self.first_label(view) or clean_text(model.get('name'))
             text = re.sub(r'^\s*\d+\s*', '', text).strip()
-            target.setdefault('messages', []).append({'text': text})
+            connector = self.by_id.get(connector_id) or {}
+            end1 = ref((connector.get('end1') or {}).get('reference'))
+            end2 = ref((connector.get('end2') or {}).get('reference'))
+            source = ref(model.get('source'))
+            direction = 'reverse' if end2 and source == end2 and source != end1 else 'forward'
+            target.setdefault('messages', []).append({'text': text, 'direction': direction})
 
     # ---------------- project ----------------
     def convert(self):

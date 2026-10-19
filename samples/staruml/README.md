@@ -21,4 +21,4 @@ The converter maps only notation implemented by OpenUML. Views that have no
 OpenUML equivalent are skipped and listed in `UMLExample.report.json`; for this
 sample that is limited to three control-flow and three object-flow endpoints
 attached to pins/structured activity nodes, plus one structured activity node.
-Object slots, orthogonal regions, expansion regions and pins are not represented.
+Orthogonal regions, expansion regions and pins are not represented.

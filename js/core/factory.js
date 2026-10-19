@@ -26,6 +26,7 @@ export function createModel(type, name, extra = {}) {
   }
   if (type === 'UMLObject' || type === 'UMLArtifactInstance' || type === 'UMLComponentInstance' || type === 'UMLNodeInstance') {
     el.classifier = extra.classifier ?? '';
+    el.slots = extra.slots ?? [];
   }
   if (type === 'UMLPort') {
     el.typeName = extra.typeName ?? '';
@@ -62,6 +63,9 @@ export function createOperation(name = 'operation', params = [], returnType = ''
 }
 export function createLiteral(name = 'literal') {
   return { _id: genId('l'), $type: 'UMLEnumerationLiteral', name, visibility: 'public' };
+}
+export function createSlot(name = 'slot', value = '') {
+  return { _id: genId('s'), $type: 'UMLSlot', name, value };
 }
 
 export function defaultName(type) {

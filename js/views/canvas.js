@@ -414,7 +414,8 @@ export class DiagramCanvas {
           x: mid.x, y: mid.y - 6 - (e.messages.length - 1 - i) * (mfs + 2),
           'text-anchor': 'middle', 'font-size': mfs, fill: e.fontColor || '#353535',
         }, g);
-        t.textContent = `${i + 1}: ${msg.text || '…'}`;
+        const arrow = msg.direction === 'reverse' ? '←' : '→';
+        t.textContent = `${i + 1}: ${arrow} ${msg.text || '…'}`;
       });
     }
     g.dataset.id = e._id;
@@ -1203,7 +1204,9 @@ export class DiagramCanvas {
       const up = this.clientToWorld(e);
       const hit = this.hitTest(up);
       const isLost = d.edgeType === 'UMLMessage+lost';
-      const allowSelf = d.edgeType === 'UMLSelfTransition' || d.edgeType === 'UMLSelfMessage';
+      const allowSelf = ['UMLSelfTransition', 'UMLSelfMessage', 'UMLConnector', 'UMLLinkMessage',
+        'UMLLink', 'UMLDirectedLink', 'UMLCompositeConnector', 'UMLAssociation',
+        'UMLAssociation+directed', 'UMLAssociation+aggregation', 'UMLAssociation+composition'].includes(d.edgeType);
       const targetId = (hit && hit.kind === 'node' && (allowSelf || hit.view._id !== d.tailId)) ? hit.view._id : d.hoverTarget;
       if (targetId) {
         d.onComplete(targetId, up, d.startPoint);
@@ -1613,7 +1616,7 @@ export class DiagramCanvas {
           ((v.tail === tailId && v.head === headId) || (v.tail === headId && v.head === tailId)));
         if (existing) {
           const msgs = (existing.messages || []);
-          const next = [...msgs, { text: '' }];
+          const next = [...msgs, { text: '', direction: 'forward' }];
           commandStack.exec({
             label: 'add message',
             redo: () => { existing.messages = next; },
@@ -1626,7 +1629,7 @@ export class DiagramCanvas {
         edgeType = 'UMLConnector';
       }
       const view = createEdgeView(edgeType, '', tailId, headId);
-      view.messages = requested === 'UMLLinkMessage' ? [{ text: '' }] : [];
+      view.messages = requested === 'UMLLinkMessage' ? [{ text: '', direction: 'forward' }] : [];
       if (edgeType === 'UMLLinkObject') view.name = 'link';
       compound('connect', [{
         redo: () => { diagram.elements.push(view); view.__diagram = diagram; repository._reindex(); },

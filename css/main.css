@@ -698,6 +698,16 @@ html, body {
   -webkit-user-select: text;
 }
 .quickedit .qe-input:focus { border-color: var(--accent); background: #fff; }
+.quickedit .qe-dir {
+  flex: 0 0 42px;
+  border: 1px solid #ccd6dd;
+  border-radius: 2px;
+  padding: 2px 3px;
+  font-size: 11px;
+  background: #f6f9fb;
+  color: var(--text);
+}
+:root[data-theme="dark"] .quickedit .qe-dir { background: #1e2326; color: var(--text); border-color: #465055; }
 .quickedit .qe-section {
   margin: 7px 0 2px;
   font-size: 10.5px;

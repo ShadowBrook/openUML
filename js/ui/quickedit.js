@@ -213,15 +213,25 @@ export function openConnectorEdit(canvas, view) {
     const label = document.createElement('span');
     label.className = 'qe-label';
     label.textContent = `${i + 1}:`;
+    const dir = document.createElement('select');
+    dir.className = 'qe-dir';
+    dir.title = '消息方向';
+    for (const [value, text] of [['forward', '→'], ['reverse', '←']]) {
+      const opt = document.createElement('option');
+      opt.value = value; opt.textContent = text;
+      if ((msg.direction || 'forward') === value) opt.selected = true;
+      dir.appendChild(opt);
+    }
     const input = document.createElement('input');
     input.type = 'text';
     input.className = 'qe-input';
     input.value = msg.text || '';
     input.placeholder = 'name()';
     rw.appendChild(label);
+    rw.appendChild(dir);
     rw.appendChild(input);
     panel.appendChild(rw);
-    inputs.push({ input, i });
+    inputs.push({ input, dir, i });
   });
   if (!msgs.length) {
     const empty = document.createElement('div');
@@ -231,8 +241,12 @@ export function openConnectorEdit(canvas, view) {
   }
 
   const commitAll = () => {
-    const next = msgs.map((m, i) => ({ text: inputs[i] ? inputs[i].input.value : m.text }));
-    const changed = next.some((m, i) => m.text !== msgs[i].text);
+    const next = msgs.map((m, i) => ({
+      text: inputs[i] ? inputs[i].input.value : m.text,
+      direction: inputs[i] ? inputs[i].dir.value : (m.direction || 'forward'),
+    }));
+    const changed = next.some((m, i) => m.text !== msgs[i].text
+      || (m.direction || 'forward') !== (msgs[i].direction || 'forward'));
     if (!changed) return;
     commandStack.exec({
       label: 'edit messages',
@@ -240,13 +254,15 @@ export function openConnectorEdit(canvas, view) {
       undo: () => { view.messages = msgs; },
     });
   };
-  for (const { input } of inputs) {
+  for (const { input, dir } of inputs) {
     input.addEventListener('keydown', (e) => {
       e.stopPropagation();
       if (e.key === 'Enter') { e.preventDefault(); commitAll(); }
       if (e.key === 'Escape') close();
     });
     input.addEventListener('blur', commitAll);
+    dir.addEventListener('change', commitAll);
+    dir.addEventListener('keydown', (e) => e.stopPropagation());
   }
 
   const r = canvas.svg.getBoundingClientRect();
