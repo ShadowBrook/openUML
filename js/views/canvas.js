@@ -119,7 +119,8 @@ export class DiagramCanvas {
       if (!v.isEdge) rects.set(v._id, this.rectOf(v));
     }
     // draw nodes first (backdrops below their children), then edges on top.
-    const isBackdrop = (v) => v.$type === 'UMLSwimlaneVert' || v.$type === 'UMLSwimlaneHorz' || v.$type === 'UMLCompositeState' || v.$type === 'UMLCombinedFragment' || v.$type === 'UMLFrame' || v.$type === 'UMLStructuredActivityNode' || v.$type === 'UMLInterruptibleRegion';
+    const isBackdrop = (v) => v.$type === 'UMLSwimlaneVert' || v.$type === 'UMLSwimlaneHorz' || v.$type === 'UMLCompositeState' || v.$type === 'UMLCombinedFragment' || v.$type === 'UMLFrame' || v.$type === 'UMLStructuredActivityNode' || v.$type === 'UMLInterruptibleRegion'
+      || v.$type === 'UMLNode' || v.$type === 'UMLNodeInstance';
     const nodes = views.filter((v) => !v.isEdge)
       .sort((a, b) => {
         const pa = isBackdrop(a) ? 0 : 1, pb = isBackdrop(b) ? 0 : 1;
@@ -196,6 +197,8 @@ export class DiagramCanvas {
       : v.$type === 'UMLFrame' ? 'frame'
       : v.$type === 'UMLNaryAssociation' ? 'nary'
       : v.$type === 'UMLAssociationClass' ? 'class'
+      : v.$type === 'UMLProvidedInterface' ? 'providedInterface'
+      : v.$type === 'UMLRequiredInterface' ? 'requiredInterface'
       : v.$type === 'UMLMetaClass' ? 'metaclass'
       : v.$type === 'UMLStereotype' ? 'stereotype'
       : v.$type === 'UMLCollaboration' ? 'collaboration'
@@ -553,7 +556,7 @@ export class DiagramCanvas {
 
   // ---------------- containment (swimlanes / composite states) ----------------
   static CONTAINER_TYPES = ['UMLSwimlaneVert', 'UMLSwimlaneHorz', 'UMLCompositeState', 'UMLFrame',
-    'UMLStructuredActivityNode', 'UMLInterruptibleRegion'];
+    'UMLStructuredActivityNode', 'UMLInterruptibleRegion', 'UMLNode', 'UMLNodeInstance'];
   // structural containers used by composite-structure / timing diagrams
   static STRUCTURAL_CONTAINERS = ['UMLClass', 'UMLInterface', 'UMLComponent', 'UMLCollaboration', 'UMLTimingLifeline'];
   isContainerView(v) {
@@ -1527,12 +1530,14 @@ export class DiagramCanvas {
     let model, view;
     let forcedContainer = null;
 
-    if (nodeType === 'UMLAssociationClass' && hit && hit.kind === 'edge'
+    if (nodeType === 'UMLProvidedInterface' || nodeType === 'UMLRequiredInterface') {
+      model = createModel('UMLInterface');
+      view = createNodeView(nodeType, model._id, x, y);
+    } else if (nodeType === 'UMLAssociationClass' && hit && hit.kind === 'edge'
         && hit.view.$type === 'UMLAssociation') {
       this.createAssociationClassAt(w, hit.view);
       return;
-    }
-    if (nodeType === 'UMLNaryAssociation') {
+    } else if (nodeType === 'UMLNaryAssociation') {
       model = createModel('UMLAssociation', '');
       view = createNodeView('UMLNaryAssociation', model._id, x, y);
     } else if (nodeType === 'UMLInputPin' || nodeType === 'UMLOutputPin') {

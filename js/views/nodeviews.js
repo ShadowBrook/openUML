@@ -454,6 +454,32 @@ export function renderNode(g, view, model, kind) {
       meta.textSlots.name = { box: new Rect(x, y + d, w, h - d), text: model.name, field: 'name', align: 'center' };
       break;
     }
+    case 'providedInterface': {
+      const r = Math.max(4, Math.min(w, h) / 2 - 1);
+      const cx = x + w / 2, cy = y + h / 2;
+      svgEl('circle', { cx, cy, r, fill: view.fillColor || '#ffffff', stroke: line, 'stroke-width': 1.2, class: 'node-frame' }, g);
+      if (model.name) {
+        const t = svgEl('text', { x: x + w + 4, y: cy + fs * 0.35, 'font-size': fs, fill: fontColor }, g);
+        t.textContent = model.name;
+      }
+      meta.textSlots.name = { box: new Rect(x, y, w, h), text: model.name, field: 'name', align: 'center' };
+      break;
+    }
+    case 'requiredInterface': {
+      const r = Math.max(4, Math.min(w, h) / 2 - 1);
+      const cx = x + w / 2, cy = y + h / 2;
+      svgEl('path', {
+        d: `M ${cx} ${cy - r} A ${r} ${r} 0 0 1 ${cx} ${cy + r}`,
+        fill: 'none', stroke: line, 'stroke-width': 1.4, class: 'node-frame',
+      }, g);
+      svgEl('line', { x1: x, y1: cy, x2: cx, y2: cy, stroke: line, 'stroke-width': 1 }, g);
+      if (model.name) {
+        const t = svgEl('text', { x: x + w + 4, y: cy + fs * 0.35, 'font-size': fs, fill: fontColor }, g);
+        t.textContent = model.name;
+      }
+      meta.textSlots.name = { box: new Rect(x, y, w, h), text: model.name, field: 'name', align: 'center' };
+      break;
+    }
     case 'object': {
       // object: underlined "name : Classifier", plus a slot compartment
       const label = instanceLabel(model);

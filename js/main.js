@@ -148,8 +148,41 @@ function toggleSnap() {
   buildMenus();
 }
 
+const PANEL_IDS = {
+  sidebar: ['sidebar', 'sidebar-resizer'],
+  navigator: ['navigator', 'navigator-resizer'],
+  toolbox: ['toolbox-holder'],
+  toolbar: ['toolbar'],
+  statusbar: ['statusbar'],
+};
+
+function applyPanels() {
+  const panels = app.prefs?.panels || {};
+  for (const [key, ids] of Object.entries(PANEL_IDS)) {
+    const visible = panels[key] !== false;
+    for (const id of ids) {
+      const el = document.getElementById(id);
+      if (el) el.style.display = visible ? '' : 'none';
+    }
+  }
+  window.dispatchEvent(new Event('resize'));
+}
+
+function togglePanel(key) {
+  if (!app.prefs) return;
+  app.prefs.panels = { ...(app.prefs.panels || {}) };
+  app.prefs.panels[key] = app.prefs.panels[key] === false;
+  savePreferences(app.prefs);
+  applyPanels();
+  buildMenus();
+}
+
 function applyPreferences(next) {
-  app.prefs = { ...app.prefs, ...next };
+  app.prefs = {
+    ...app.prefs,
+    ...next,
+    panels: { ...(app.prefs?.panels || {}), ...(next.panels || {}) },
+  };
   const c = app.canvas;
   c.gridSize = app.prefs.gridSize;
   c.showGrid = app.prefs.showGrid;
@@ -157,6 +190,7 @@ function applyPreferences(next) {
   c.autoResize = app.prefs.autoResize;
   document.getElementById('tb-grid')?.classList.toggle('active', c.showGrid);
   document.getElementById('tb-snap')?.classList.toggle('active', c.snapToGrid);
+  applyPanels();
   setTheme(app.prefs.theme);
   savePreferences(app.prefs);
   c.requestRender();
@@ -1001,6 +1035,14 @@ function buildMenus() {
         { label: '关闭其他图表', disabled: !app.activeDiagram, action: closeOtherDiagrams },
         { label: '关闭全部图表', disabled: !app.activeDiagram, action: closeAllDiagrams },
         '---',
+        { label: '面板', submenu: [
+          { label: '侧栏', checked: app.prefs.panels.sidebar !== false, action: () => togglePanel('sidebar') },
+          { label: '导航器', checked: app.prefs.panels.navigator !== false, action: () => togglePanel('navigator') },
+          { label: '工具箱', checked: app.prefs.panels.toolbox !== false, action: () => togglePanel('toolbox') },
+          { label: '工具栏', checked: app.prefs.panels.toolbar !== false, action: () => togglePanel('toolbar') },
+          { label: '状态栏', checked: app.prefs.panels.statusbar !== false, action: () => togglePanel('statusbar') },
+        ] },
+        '---',
         { label: '显示网格', checked: app.canvas.showGrid, action: toggleGrid },
         { label: '吸附网格', checked: app.canvas.snapToGrid, action: toggleSnap },
         '---',
@@ -1236,6 +1278,7 @@ function boot() {
   document.getElementById('tb-grid').classList.toggle('active', prefs.showGrid);
   document.getElementById('tb-snap').classList.toggle('active', prefs.snapToGrid);
   buildMenus();
+  applyPanels();
 
   document.addEventListener('canvas-contextmenu', (e) => {
     const { world, client, hit } = e.detail;

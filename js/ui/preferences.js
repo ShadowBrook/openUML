@@ -10,6 +10,7 @@ export const DEFAULT_PREFERENCES = {
   exportScale: 2,
   transparentBackground: false,
   autoResize: true,
+  panels: { sidebar: true, navigator: true, toolbox: true, toolbar: true, statusbar: true },
 };
 
 export function loadPreferences() {
@@ -17,6 +18,7 @@ export function loadPreferences() {
   try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { saved = null; }
   const legacyTheme = localStorage.getItem('openuml-theme');
   const prefs = { ...DEFAULT_PREFERENCES, ...(saved || {}) };
+  prefs.panels = { ...DEFAULT_PREFERENCES.panels, ...((saved && saved.panels) || {}) };
   if (!saved || !saved.theme) {
     if (legacyTheme === 'dark' || legacyTheme === 'light') prefs.theme = legacyTheme;
   }
@@ -96,6 +98,15 @@ export function showPreferencesDialog(current = DEFAULT_PREFERENCES) {
     const transparent = checkbox(current.transparentBackground);
     row(exportSec, '透明背景（PNG / SVG）', transparent);
 
+    const panelSec = section(body, '面板');
+    const panelChecks = {};
+    for (const [key, label] of [['sidebar', '侧栏'], ['navigator', '导航器'],
+      ['toolbox', '工具箱'], ['toolbar', '工具栏'], ['statusbar', '状态栏']]) {
+      const box = checkbox(current.panels ? current.panels[key] !== false : true);
+      panelChecks[key] = box;
+      row(panelSec, label, box);
+    }
+
     const editSec = section(body, '编辑器');
     const autoResize = checkbox(current.autoResize);
     row(editSec, '自动调整类/枚举框尺寸', autoResize);
@@ -136,6 +147,7 @@ export function showPreferencesDialog(current = DEFAULT_PREFERENCES) {
       exportScale: parseInt(scale.value, 10),
       transparentBackground: transparent.checked,
       autoResize: autoResize.checked,
+      panels: Object.fromEntries(Object.entries(panelChecks).map(([k, el]) => [k, el.checked])),
     });
     cancel.onclick = () => close(null);
     apply.onclick = () => close(collect());
@@ -147,6 +159,7 @@ export function showPreferencesDialog(current = DEFAULT_PREFERENCES) {
       scale.value = String(DEFAULT_PREFERENCES.exportScale);
       transparent.checked = DEFAULT_PREFERENCES.transparentBackground;
       autoResize.checked = DEFAULT_PREFERENCES.autoResize;
+      for (const [k, el] of Object.entries(panelChecks)) el.checked = DEFAULT_PREFERENCES.panels[k] !== false;
     };
     overlay.classList.remove('hidden');
     apply.focus();
