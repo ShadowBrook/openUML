@@ -221,7 +221,7 @@ samples/staruml/      StarUML UMLExample 转换样例、转换报告与 MIT 许�
 - **插件 API**：`window.openuml`（repository / 命令栈 / 工厂 / 命令面板注册）
 - **国际化**：中文为源语言，偏好设置可切换 English（菜单 / 工具箱全部元素 /
   属性样式面板 / 对话框 / 校验面板 / 页签与面板标题，随项目持久化、可逆切换）
-- **自动化测试**：`node --test tests/`（命令栈 / 仓库 / 序列化 / 校验 / 转换器 / 代码生成）
+- **自动化测试**：`npm test`（命令栈 / 仓库 / 序列化 / 校验 / 转换器 / 代码生成）
 - **部署**：`.github/workflows/pages.yml`（push main 自动部署 GitHub Pages）
 - **可访问性**：模型树 ARIA 树角色与键盘操作、图标按钮 aria-label、焦点样式
 

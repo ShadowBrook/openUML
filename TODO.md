@@ -127,7 +127,7 @@
 - [x] 国际化（`js/ui/i18n.js`：320 词条，覆盖菜单、工具箱（组与全部元素）、
       属性/样式面板、对话框、偏好设置、校验面板、页签类型标签与静态面板标题；
       语言随偏好持久化，切换即时重建 UI 且可逆）
-- [x] 自动化测试（`node --test tests/`：命令栈撤销重做、仓库树、序列化回路、
+- [x] 自动化测试（`npm test`：命令栈撤销重做、仓库树、序列化回路、
       校验器、mdj 转换器、代码生成，8 项全过；commands.js 已无 DOM 依赖）
 - [x] GitHub Pages 部署（`.github/workflows/pages.yml`：push 到 main 自动部署
       静态站点；仓库允许 Pages（Actions 源）后即生效）
