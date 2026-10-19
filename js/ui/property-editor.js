@@ -22,7 +22,8 @@ function findStereotypeModel(model) {
 }
 
 export class PropertyEditor {
-  constructor() {
+  constructor(app = null) {
+    this.app = app;
     this.propPanel = document.getElementById('property-editor');
     this.stylePanel = document.getElementById('style-editor');
     this.currentModel = null;
@@ -171,6 +172,15 @@ export class PropertyEditor {
     if (model.type !== 'UMLNote') {
       this._row(idSec, 'stereotype', model.stereotype || '', (v) => this._set(model, 'stereotype', v));
     }
+    // classifier flags (StarUML property sheet)
+    if (['UMLClass', 'UMLInterface', 'UMLDataType', 'UMLSignal', 'UMLAssociationClass',
+      'UMLInformationItem', 'UMLStereotype', 'UMLPrimitiveType', 'UMLEnumeration'].includes(model.type)) {
+      this._checkRow(idSec, 'isAbstract (抽象)', model.isAbstract === true, (v) => this._set(model, 'isAbstract', v));
+      this._checkRow(idSec, 'isLeaf (叶子)', model.isLeaf === true, (v) => this._set(model, 'isLeaf', v));
+      if (model.type === 'UMLClass') {
+        this._checkRow(idSec, 'isActive (主动)', model.isActive === true, (v) => this._set(model, 'isActive', v));
+      }
+    }
     // Documentation (constraints carry their specification here)
     const docSec = this._section(model.type === 'UMLConstraint' ? '约束规范 (Specification)' : '文档');
     this._row(docSec, model.type === 'UMLConstraint' ? 'specification' : 'documentation',
@@ -269,6 +279,10 @@ export class PropertyEditor {
         { key: 'name', label: '名称' },
         { key: 'type', label: '类型' },
         { key: 'multiplicity', label: '多重性' },
+        { key: 'isStatic', label: 'isStatic (静态)', bool: true },
+        { key: 'isReadOnly', label: 'isReadOnly (只读)', bool: true },
+        { key: 'isOrdered', label: 'isOrdered (有序)', bool: true },
+        { key: 'isUnique', label: 'isUnique (唯一)', bool: true },
       ]);
     }
     // Operations
@@ -635,19 +649,35 @@ export class PropertyEditor {
       row.innerHTML = `<label>${f.label}</label>`;
       const val = document.createElement('div');
       val.className = 'prop-value';
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.value = item[f.key] ?? '';
-      input.addEventListener('change', () => {
-        const prev = item[f.key];
-        commandStack.exec({
-          label: 'edit member',
-          redo: () => { item[f.key] = input.value; },
-          undo: () => { item[f.key] = prev; },
+      if (f.bool) {
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.checked = item[f.key] === true;
+        input.addEventListener('change', () => {
+          const prev = item[f.key];
+          const next = input.checked;
+          commandStack.exec({
+            label: 'edit member',
+            redo: () => { item[f.key] = next; },
+            undo: () => { item[f.key] = prev; },
+          });
         });
-      });
-      input.addEventListener('keydown', (e) => e.stopPropagation());
-      val.appendChild(input);
+        val.appendChild(input);
+      } else {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = item[f.key] ?? '';
+        input.addEventListener('change', () => {
+          const prev = item[f.key];
+          commandStack.exec({
+            label: 'edit member',
+            redo: () => { item[f.key] = input.value; },
+            undo: () => { item[f.key] = prev; },
+          });
+        });
+        input.addEventListener('keydown', (e) => e.stopPropagation());
+        val.appendChild(input);
+      }
       row.appendChild(val);
       old.appendChild(row);
     }
@@ -768,6 +798,41 @@ export class PropertyEditor {
       row.appendChild(val);
       body.appendChild(row);
     }
+    // StarUML "Inherit Style": push colors/font down to contained views
+    const kids = (repository.lookup(v._id) ? this._descendantViews(v) : []);
+    if (kids.length) {
+      const row = document.createElement('div');
+      row.className = 'prop-row';
+      row.innerHTML = '<label></label>';
+      const val = document.createElement('div');
+      val.className = 'prop-value';
+      const btn = document.createElement('button');
+      btn.textContent = `继承到子视图 (${kids.length})`;
+      btn.onclick = () => {
+        const style = { fillColor: v.fillColor, lineColor: v.lineColor, fontColor: v.fontColor, fontSize: v.fontSize || 12 };
+        const changes = kids.map((k) => ({ k, old: { fillColor: k.fillColor, lineColor: k.lineColor, fontColor: k.fontColor, fontSize: k.fontSize } }));
+        commandStack.exec({
+          label: 'inherit style',
+          redo: () => { for (const { k } of changes) Object.assign(k, style); },
+          undo: () => { for (const { k, old: o } of changes) Object.assign(k, o); },
+        });
+      };
+      val.appendChild(btn);
+      row.appendChild(val);
+      body.appendChild(row);
+    }
+  }
+
+  _descendantViews(view) {
+    const out = [];
+    const elements = this.app?.canvas?.diagram?.elements || [];
+    const walk = (id) => {
+      for (const c of elements) {
+        if (c.container === id) { out.push(c); walk(c._id); }
+      }
+    };
+    walk(view._id);
+    return out;
   }
 
   _set(model, prop, value) {

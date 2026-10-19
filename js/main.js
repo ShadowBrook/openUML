@@ -17,7 +17,8 @@ import { showToast } from './ui/toast.js';
 import { validateProject } from './core/validator.js';
 import { showValidationDialog } from './ui/validation-panel.js';
 import { loadPreferences, savePreferences, showPreferencesDialog } from './ui/preferences.js';
-import { downloadPNG, downloadSVG, downloadJPEG, copyDiagramPNG, printDiagram } from './exporter.js';
+import { downloadPNG, downloadSVG, downloadJPEG, copyDiagramPNG, printDiagram, downloadPDF, buildPDF, diagramToSVG } from './exporter.js';
+import { TEMPLATES, applyTemplate } from './ui/templates.js';
 
 const DIAGRAM_TYPE_LABELS = {
   UMLClassDiagram: '类图', UMLUseCaseDiagram: '用例图', UMLSequenceDiagram: '序列图',
@@ -40,6 +41,7 @@ const app = {
   openDiagrams: [],     // diagram nodes currently open (tabs)
   activeDiagram: null,
   filePath: null,
+  fileHandle: null,     // File System Access handle for direct re-save
   dirty: false,
   theme: 'light',
   prefs: null,
@@ -612,6 +614,12 @@ function addModelElement(type) {
 // ---------------- file io ----------------
 
 function saveProject(download = true) {
+  // with a File System Access handle (opened via picker / recents), Ctrl+S
+  // writes straight back to the original file
+  if (!download && app.fileHandle) {
+    saveToFile();
+    return;
+  }
   const json = serializeProject(repository.root);
   const stored = storeProject(json);
   if (download) {
@@ -659,6 +667,12 @@ function loadProjectJSON(json) {
 }
 
 function openProjectFile() {
+  // prefer the File System Access API: keeps a handle for direct re-save and
+  // powers the recent-files list (falls back to a plain file input)
+  if (window.showOpenFilePicker) {
+    openProjectFilePicker();
+    return;
+  }
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = '.ouml,.json';
@@ -670,6 +684,311 @@ function openProjectFile() {
     reader.readAsText(f);
   };
   input.click();
+}
+
+// ---------------- file handles & recent files (File System Access) ----------------
+
+const RECENT_DB = 'openuml-recent';
+const RECENT_STORE = 'handles';
+
+function idbTx(mode, fn) {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(RECENT_DB, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(RECENT_STORE);
+    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      const db = req.result;
+      const tx = db.transaction(RECENT_STORE, mode);
+      const out = fn(tx.objectStore(RECENT_STORE));
+      tx.oncomplete = () => { db.close(); resolve(out?.result !== undefined ? out.result : undefined); };
+      tx.onerror = () => reject(tx.error);
+    };
+  });
+}
+
+async function recentPut(name, handle) {
+  try { await idbTx('readwrite', (s) => s.put({ handle, at: Date.now() }, name)); } catch { /* private mode */ }
+}
+
+async function recentList() {
+  try {
+    return await new Promise((resolve, reject) => {
+      const req = indexedDB.open(RECENT_DB, 1);
+      req.onupgradeneeded = () => req.result.createObjectStore(RECENT_STORE);
+      req.onerror = () => reject(req.error);
+      req.onsuccess = () => {
+        const db = req.result;
+        const tx = db.transaction(RECENT_STORE, 'readonly');
+        const store = tx.objectStore(RECENT_STORE);
+        const items = [];
+        store.openCursor().onsuccess = (ev) => {
+          const cur = ev.target.result;
+          if (cur) { items.push({ name: cur.key, at: cur.value.at, handle: cur.value.handle }); cur.continue(); }
+        };
+        tx.oncomplete = () => { db.close(); resolve(items.sort((a, b) => b.at - a.at).slice(0, 8)); };
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+async function openRecent(entry) {
+  try {
+    const handle = entry.handle;
+    if (!handle) return;
+    if ((await handle.queryPermission({ mode: 'readwrite' })) !== 'granted') {
+      const p = await handle.requestPermission({ mode: 'readwrite' });
+      if (p !== 'granted') return;
+    }
+    const file = await handle.getFile();
+    const text = await file.text();
+    app.fileHandle = handle;
+    loadProjectJSON(text);
+    app.canvas.setStatusMessage(`已打开 ${file.name}`);
+    buildMenus();
+  } catch (err) {
+    app.canvas.setStatusMessage(`无法打开 ${entry.name}: ${err.message}`);
+  }
+}
+
+async function openProjectFilePicker() {
+  try {
+    const [handle] = await window.showOpenFilePicker({
+      types: [{ description: 'OpenUML Project', accept: { 'application/json': ['.ouml', '.json'] } }],
+    });
+    const file = await handle.getFile();
+    app.fileHandle = handle;
+    await recentPut(file.name, handle);
+    loadProjectJSON(await file.text());
+    app.canvas.setStatusMessage(`已打开 ${file.name}`);
+    buildMenus();
+  } catch (err) {
+    if (err.name !== 'AbortError') app.canvas.setStatusMessage(`打开失败: ${err.message}`);
+  }
+}
+
+/** Write the project back through the retained file handle (Ctrl+S when available). */
+async function saveToFile() {
+  if (!app.fileHandle) return false;
+  try {
+    if ((await app.fileHandle.queryPermission({ mode: 'readwrite' })) !== 'granted') {
+      const p = await app.fileHandle.requestPermission({ mode: 'readwrite' });
+      if (p !== 'granted') return false;
+    }
+    const writable = await app.fileHandle.createWritable();
+    await writable.write(serializeProject(repository.root));
+    await writable.close();
+    markDirty(false);
+    app.canvas.setStatusMessage(`已保存到 ${app.fileHandle.name}`);
+    return true;
+  } catch (err) {
+    app.canvas.setStatusMessage(`保存失败: ${err.message}`);
+    return false;
+  }
+}
+
+// ---------------- templates ----------------
+
+async function requestNewFromTemplate() {
+  if (app.dirty) {
+    const ok = await showConfirmDialog({ title: '从模板新建', message: '当前项目有未保存的更改，确定放弃并新建吗？' });
+    if (!ok) return;
+  }
+  const choice = await showTemplateDialog();
+  if (!choice) return;
+  newProject();
+  const { diagrams } = applyTemplate(choice, repository.root);
+  commandStack.undoStack.length = 0;
+  commandStack.redoStack.length = 0;
+  markDirty(true);
+  app.explorer.render();
+  openDiagram(diagrams[0]);
+  storeProject(serializeProject(repository.root), { quiet: true });
+  app.canvas.setStatusMessage(`已从模板「${TEMPLATES[choice].label}」创建项目`);
+}
+
+function showTemplateDialog() {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'dialog-overlay';
+    overlay.innerHTML = `<div class="dialog" style="width:420px">
+      <div class="dialog-title">从模板新建 (New From Template)</div>
+      <div class="dialog-body" id="tpl-list" style="display:flex;flex-direction:column;gap:6px"></div>
+      <div class="dialog-actions"><button class="btn" id="tpl-cancel">取消</button></div>
+    </div>`;
+    document.body.appendChild(overlay);
+    const list = overlay.querySelector('#tpl-list');
+    for (const [key, tpl] of Object.entries(TEMPLATES)) {
+      const row = document.createElement('button');
+      row.className = 'btn';
+      row.style.cssText = 'text-align:left;display:flex;flex-direction:column;gap:2px';
+      row.innerHTML = `<strong>${tpl.label}</strong><span style="font-weight:400;opacity:.75">${tpl.description}</span>`;
+      row.onclick = () => { overlay.remove(); resolve(key); };
+      list.appendChild(row);
+    }
+    const close = (v) => { overlay.remove(); resolve(v); };
+    overlay.querySelector('#tpl-cancel').onclick = () => close(null);
+    overlay.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(null); });
+  });
+}
+
+// ---------------- batch export & direct PDF ----------------
+
+async function withEachDiagram(fn) {
+  if (!app.activeDiagram) return;
+  const original = app.activeDiagram;
+  const all = [];
+  repository.walk((n) => { if (n.type?.endsWith('Diagram')) all.push(n); });
+  let ok = 0;
+  for (const d of all) {
+    app.canvas.setDiagram(d);
+    try { if (await fn(d)) ok++; } catch { /* keep exporting the rest */ }
+  }
+  app.canvas.setDiagram(original);
+  app.canvas.setStatusMessage(`已导出 ${ok}/${all.length} 张图表`);
+}
+
+function exportAllSVG() { withEachDiagram((d) => downloadSVG(app.canvas, safeName(d.name) + '.svg')); }
+function exportAllPNG() { withEachDiagram((d) => downloadPNG(app.canvas, safeName(d.name) + '.png', app.prefs.exportScale || 2, { transparent: !!app.prefs.transparent })); }
+function exportAllJPEG() { withEachDiagram((d) => downloadJPEG(app.canvas, safeName(d.name) + '.jpg', app.prefs.exportScale || 2)); }
+
+async function exportAllPDF() {
+  if (!app.activeDiagram) return;
+  const original = app.activeDiagram;
+  const all = [];
+  repository.walk((n) => { if (n.type?.endsWith('Diagram')) all.push(n); });
+  const pages = [];
+  for (const d of all) {
+    app.canvas.setDiagram(d);
+    const s = diagramToSVG(app.canvas, { transparent: false });
+    if (!s) continue;
+    const rendered = await new Promise((resolve) => {
+      const img = new Image();
+      const blob = new Blob([s], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      img.onload = () => {
+        const cv = document.createElement('canvas');
+        cv.width = Math.max(1, Math.round(img.width * (app.prefs.exportScale || 2)));
+        cv.height = Math.max(1, Math.round(img.height * (app.prefs.exportScale || 2)));
+        const ctx = cv.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, cv.width, cv.height);
+        ctx.drawImage(img, 0, 0, cv.width, cv.height);
+        URL.revokeObjectURL(url);
+        resolve(cv);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+      img.src = url;
+    });
+    if (rendered) pages.push({ canvas: rendered, title: d.name });
+  }
+  app.canvas.setDiagram(original);
+  if (!pages.length) { app.canvas.setStatusMessage('没有可导出的图表'); return; }
+  const blob = await buildPDF(pages);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (repository.root.name || 'project') + '.pdf';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  app.canvas.setStatusMessage(`已导出 PDF（${pages.length} 页）`);
+}
+
+async function exportCurrentPDF() {
+  if (!app.activeDiagram) return;
+  const ok = await downloadPDF(app.canvas, safeName(app.activeDiagram.name) + '.pdf', app.prefs.exportScale || 2);
+  app.canvas.setStatusMessage(ok ? '已导出 PDF' : '导出失败：图表为空');
+}
+
+function safeName(s) {
+  return String(s || 'diagram').replace(/[\\/:*?"<>|]+/g, '_');
+}
+
+// ---------------- selection sync ----------------
+
+function revealInExplorer() {
+  const m = repository.selectedModel;
+  if (m) { app.explorer.expandTo(m); app.canvas.setStatusMessage(`已在资源管理器中定位 ${m.name || m.type}`); }
+}
+
+function locateInDiagram() {
+  const m = repository.selectedModel;
+  if (!m || !app.activeDiagram) return;
+  showInDiagram(m, app.canvas);
+}
+
+// ---------------- Markdown documentation editor ----------------
+
+function mdToHtml(src) {
+  const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const inline = (s) => s
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
+  const lines = esc(src).split(/\r?\n/);
+  const out = [];
+  let inCode = false, listType = null;
+  const closeList = () => { if (listType) { out.push(`</${listType}>`); listType = null; } };
+  for (const line of lines) {
+    if (/^```/.test(line)) { closeList(); out.push(inCode ? '</code></pre>' : '<pre><code>'); inCode = !inCode; continue; }
+    if (inCode) { out.push(line); continue; }
+    const h = line.match(/^(#{1,4})\s+(.*)$/);
+    if (h) { closeList(); out.push(`<h${h[1].length + 1}>${inline(h[2])}</h${h[1].length + 1}>`); continue; }
+    const ul = line.match(/^\s*[-*]\s+(.*)$/);
+    const ol = line.match(/^\s*\d+\.\s+(.*)$/);
+    if (ul || ol) {
+      const want = ul ? 'ul' : 'ol';
+      if (listType !== want) { closeList(); out.push(`<${want}>`); listType = want; }
+      out.push(`<li>${inline(ul ? ul[1] : ol[1])}</li>`);
+      continue;
+    }
+    closeList();
+    if (!line.trim()) { out.push(''); continue; }
+    out.push(`<p>${inline(line)}</p>`);
+  }
+  if (inCode) out.push('</code></pre>');
+  closeList();
+  return out.join('\n');
+}
+
+function openMarkdownEditor() {
+  const m = repository.selectedModel;
+  if (!m) { showToast('请先选择一个元素'); return; }
+  const overlay = document.createElement('div');
+  overlay.className = 'dialog-overlay';
+  overlay.innerHTML = `<div class="dialog" style="width:760px;height:520px;display:flex;flex-direction:column">
+    <div class="dialog-title">文档编辑器 — ${m.name || m.type}（Markdown）</div>
+    <div class="dialog-body" style="flex:1;display:flex;gap:8px;min-height:0">
+      <textarea id="md-src" style="flex:1;font-family:monospace;resize:none"></textarea>
+      <div id="md-view" class="md-view" style="flex:1;border:1px solid var(--border,#ddd);padding:8px;overflow:auto;background:#fff"></div>
+    </div>
+    <div class="dialog-actions">
+      <label style="margin-right:auto;font-size:12px"><input type="checkbox" id="md-live" checked> 实时预览</label>
+      <button class="btn" id="md-ok">应用</button>
+      <button class="btn" id="md-cancel">关闭</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  const src = overlay.querySelector('#md-src');
+  const view = overlay.querySelector('#md-view');
+  src.value = m.documentation || '';
+  view.innerHTML = mdToHtml(src.value);
+  overlay.querySelector('#md-live').onchange = (e) => {
+    view.style.display = e.target.checked ? '' : 'none';
+  };
+  src.addEventListener('input', () => { view.innerHTML = mdToHtml(src.value); });
+  overlay.querySelector('#md-ok').onclick = () => {
+    const old = m.documentation;
+    const next = src.value;
+    commandStack.exec({
+      label: 'edit documentation',
+      redo: () => { m.documentation = next; },
+      undo: () => { m.documentation = old; },
+    });
+    overlay.remove();
+  };
+  overlay.querySelector('#md-cancel').onclick = () => overlay.remove();
 }
 
 // ---------------- quick find / command palette ----------------
@@ -939,20 +1258,39 @@ function runValidation() {
 
 // ---------------- menus ----------------
 
-function buildMenus() {
+async function buildMenus() {
   const sel = () => repository.selectedModel;
   const hasSel = () => repository.selections.length > 0;
+  // recent files (File System Access handles persisted in IndexedDB)
+  let recentItems = [];
+  if (window.indexedDB && window.showOpenFilePicker) {
+    try {
+      recentItems = (await recentList()).map((r) => ({
+        label: r.name,
+        action: () => openRecent(r),
+      }));
+    } catch { /* private mode */ }
+  }
   buildMenu([
     {
       label: '文件', submenu: [
         { label: '新建', shortcut: 'Ctrl+N', action: requestNewProject },
+        { label: '从模板新建…', action: requestNewFromTemplate },
         { label: '打开项目…', shortcut: 'Ctrl+O', action: openProjectFile },
+        { label: '最近文件', disabled: !recentItems.length, submenu: recentItems.length ? recentItems : [{ label: '（空）', action: () => {} }] },
         { label: '保存项目', shortcut: 'Ctrl+S', action: () => saveProject(false) },
         { label: '项目另存为…', shortcut: 'Ctrl+Shift+S', action: () => saveProject(true) },
         '---',
         { label: '导出为 SVG', action: exportCurrentSVG },
         { label: '导出为 PNG', action: exportCurrentPNG },
         { label: '导出为 JPEG', action: exportCurrentJPEG },
+        { label: '导出为 PDF（直接导出）', action: exportCurrentPDF },
+        { label: '导出全部图表', submenu: [
+          { label: '全部导出为 SVG', action: exportAllSVG },
+          { label: '全部导出为 PNG', action: exportAllPNG },
+          { label: '全部导出为 JPEG', action: exportAllJPEG },
+          { label: '全部导出为 PDF', action: exportAllPDF },
+        ] },
         { label: '复制图表为图片', action: copyCurrentDiagram },
         { label: '打印 / 导出 PDF…', shortcut: 'Ctrl+P', action: printCurrentDiagram },
       ],
@@ -977,6 +1315,9 @@ function buildMenus() {
         '---',
         { label: '查找…', shortcut: 'Ctrl+F', action: openQuickFindPalette },
         { label: '命令面板…', shortcut: 'Ctrl+Shift+P', action: openCommandPalette },
+        '---',
+        { label: '在资源管理器中显示', disabled: !sel(), action: revealInExplorer },
+        { label: '在图表中定位', disabled: !sel(), action: locateInDiagram },
         '---',
         { label: '偏好设置…', shortcut: 'Ctrl+,', action: editPreferences },
       ],
@@ -1015,6 +1356,7 @@ function buildMenus() {
         { label: '添加包', action: () => addModelElement('UMLPackage') },
         '---',
         { label: '验证模型…', action: runValidation },
+        { label: '文档编辑器… (Markdown)', disabled: !sel(), action: openMarkdownEditor },
         '---',
         { label: '重命名…', shortcut: 'F2', disabled: !sel(), action: () => sel() && renameElement(sel()) },
       ],
@@ -1292,7 +1634,7 @@ function boot() {
       showContextMenu(pos.x, pos.y, elementContextItems(node, canvas));
     },
   });
-  app.editor = new PropertyEditor();
+  app.editor = new PropertyEditor(app);
 
   initToolbox(canvas);
   bindPanelUI();
@@ -1375,6 +1717,12 @@ function boot() {
     try { localStorage.setItem(PROJECT_KEY, serializeProject(repository.root)); } catch { /* ignore */ }
   });
   canvas.zoomFit();
+  // dismiss the splash screen once the app is interactive
+  const splash = document.getElementById('splash');
+  if (splash) {
+    splash.style.opacity = '0';
+    setTimeout(() => splash.remove(), 400);
+  }
 }
 
 function esc(s) {

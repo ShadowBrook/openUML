@@ -49,7 +49,12 @@ export function fmtAttribute(a, opts = {}) {
   const typePart = opts.showType === false || !a.type ? '' : `: ${a.type}`;
   const multPart = opts.showMultiplicity === false || !a.multiplicity ? '' : ` [${a.multiplicity}]`;
   const defPart = a.defaultValue ? ` = ${a.defaultValue}` : '';
-  return { text: `${vis}${a.name}${typePart}${multPart}${defPart}${fmtTags(a)}`, staticPrefix };
+  const props = [];
+  if (a.isReadOnly) props.push('readOnly');
+  if (a.isOrdered) props.push('ordered');
+  if (a.isUnique) props.push('unique');
+  const propPart = props.length ? ` {${props.join(', ')}}` : '';
+  return { text: `${vis}${a.name}${typePart}${multPart}${defPart}${propPart}${fmtTags(a)}`, staticPrefix };
 }
 
 export function fmtOperation(op, opts = {}) {
@@ -292,7 +297,9 @@ export function renderNode(g, view, model, kind) {
       const wrapChars = view.autoWrap ? Math.max(4, Math.floor((w - 10) / (fs * 0.62))) : 0;
       const nameLines = wrapChars ? wrapText(model.name, wrapChars) : [model.name];
       const namespace = view.showNamespace ? namespaceOf(model) : '';
-      const property = view.showProperty !== false ? fmtTags(model) : '';
+      // property string: tags plus UML {leaf} marker (StarUML getPropertyString)
+      let property = view.showProperty !== false ? fmtTags(model) : '';
+      if (model.isLeaf) property = `${property} {leaf}`.trim();
       const nameH = (stereotype ? fs + 2 : 0) + nameLines.length * (fs + 2)
         + (namespace ? fs + 1 : 0) + (property ? Math.max(9, fs - 2) + 1 : 0) + 6;
       const attrH = showAttrs ? compartmentHeight(attrs, fs, wrapChars) : 0;
@@ -325,7 +332,8 @@ export function renderNode(g, view, model, kind) {
       const nameW = w - (decorationShift(sd) ? SD_ICON_SIZE + SD_ICON_PAD * 2 : 0);
       // name compartment (tag values are the property string on their own line)
       drawNameBlock(g, x, contentTop + 4, nameW, {
-        fontSize: fs, color: fontColor, stereotype, italic: kind === 'datatype',
+        fontSize: fs, color: fontColor, stereotype,
+        italic: kind === 'datatype' || model.isAbstract === true,
         nameLines, namespace, property,
       });
       if (decorationShift(sd)) {

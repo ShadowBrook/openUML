@@ -154,3 +154,89 @@ export function printDiagram(canvas, title = 'Diagram') {
   }, 300);
   return true;
 }
+
+// ---------------- direct PDF export ----------------
+// Minimal single-pass PDF writer: each diagram becomes one page holding its
+// rasterized image (DCTDecode JPEG), so no browser print dialog is involved.
+
+function pdfEscape(s) { return String(s).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)'); }
+
+/**
+ * Build a PDF (as a Blob) from a list of rasterized pages.
+ * pages: [{ canvas: HTMLCanvasElement, title: string }]
+ */
+export async function buildPDF(pages) {
+  // JPEG bytes keep the PDF small; canvas.toBlob is async
+  const jpegs = [];
+  for (const p of pages) {
+    const blob = await canvasToBlob(p.canvas, 'image/jpeg', 0.92);
+    jpegs.push(new Uint8Array(await blob.arrayBuffer()));
+  }
+  const enc = new TextEncoder();
+  const chunks = [];
+  let offset = 0;
+  const offsets = [];
+  const push = (data) => {
+    const bytes = typeof data === 'string' ? enc.encode(data) : data;
+    chunks.push(bytes);
+    offset += bytes.length;
+  };
+  push('%PDF-1.4\n');
+  // objects: 1 catalog, 2 pages, then per page: page obj, content obj, image obj
+  const n = pages.length;
+  const pageObjIds = pages.map((_, i) => 3 + i * 3);
+  const objects = [];
+  const addObj = (body) => { objects.push(body); return objects.length; };
+  // reserve ids by pushing placeholders in order
+  addObj(null); // 1 catalog placeholder
+  addObj(null); // 2 pages placeholder
+  pages.forEach((p, i) => {
+    const wPts = Math.round(p.canvas.width * 72 / 96);
+    const hPts = Math.round(p.canvas.height * 72 / 96);
+    const contentId = pageObjIds[i] + 1;
+    const imageId = pageObjIds[i] + 2;
+    addObj(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${wPts} ${hPts}] `
+      + `/Resources << /XObject << /Im${i} ${imageId} 0 R >> /ProcSet [/PDF /ImageC] >> `
+      + `/Contents ${contentId} 0 R >>`);
+    addObj(`<< /Length ${`q ${wPts} 0 0 ${hPts} 0 0 cm /Im${i} Do Q`.length} >>\nstream\nq ${wPts} 0 0 ${hPts} 0 0 cm /Im${i} Do Q\nendstream`);
+    addObj(null); // image placeholder, filled below
+  });
+  // fill image placeholders now that ids are known
+  pages.forEach((p, i) => {
+    const imageId = pageObjIds[i] + 2;
+    const jpg = jpegs[i];
+    objects[imageId - 1] = {
+      dict: `<< /Type /XObject /Subtype /Image /Width ${p.canvas.width} /Height ${p.canvas.height} `
+        + `/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpg.length} >>`,
+      bytes: jpg,
+    };
+  });
+  objects[0] = '<< /Type /Catalog /Pages 2 0 R >>';
+  const kids = pageObjIds.map((id) => `${id} 0 R`).join(' ');
+  objects[1] = `<< /Type /Pages /Kids [${kids}] /Count ${n} >>`;
+  // emit objects sequentially
+  for (let i = 0; i < objects.length; i++) {
+    offsets.push(offset);
+    const o = objects[i];
+    push(`${i + 1} 0 obj\n`);
+    if (typeof o === 'string') push(o + '\n');
+    else { push(o.dict + '\nstream\n'); push(o.bytes); push('\nendstream\n'); }
+    push('endobj\n');
+  }
+  const xrefStart = offset;
+  push(`xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`);
+  for (const off of offsets) push(`${String(off).padStart(10, '0')} 00000 n \n`);
+  push(`trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF\n`);
+  return new Blob(chunks, { type: 'application/pdf' });
+}
+
+/** Export the active diagram as a direct PDF file download. */
+export async function downloadPDF(canvas, filename = 'diagram.pdf', scale = 2) {
+  const s = diagramToSVG(canvas, { transparent: false });
+  if (!s) return false;
+  const c = await svgToCanvas(s, scale, '#ffffff');
+  if (!c) return false;
+  const blob = await buildPDF([{ canvas: c, title: filename }]);
+  downloadBlob(blob, filename);
+  return true;
+}

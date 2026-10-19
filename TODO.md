@@ -81,23 +81,28 @@
 
 - [x] 偏好设置对话框（网格大小/显示/吸附、主题、导出缩放/透明背景、全局自动调整尺寸）
 - [x] 快速查找（Ctrl+F）与命令面板（Ctrl+Shift+P）
-- [ ] 项目模板：New From Template（UML Minimal / Conventional / 4+1 / Rational）
+- [x] 项目模板：New From Template（UML Minimal / Conventional / 4+1 View / Rational，
+        自动创建模型包结构、图表并打开首图）
 - [x] 页签管理：关闭当前 / 其他 / 全部图表，Ctrl+Alt+PageUp / Ctrl+Alt+PageDown 切换
-- [ ] 最近文件列表（浏览器环境下无法直接重开本地路径）
+- [x] 最近文件列表：File System Access API 句柄持久化到 IndexedDB，
+        打开时保留句柄供 Ctrl+S 直接写回原文件（不支持该 API 的浏览器回退为文件选择器）
 - [x] 剪切（Cut，Ctrl+X）
 - [x] 复制图表为图片（Clipboard API，失败时提示改用导出）
-- [ ] 全部图表批量导出（PNG / JPEG / SVG）
+- [x] 全部图表批量导出（PNG / JPEG / SVG / 单个多页 PDF）
 - [x] JPEG 导出
-- [ ] 直接 PDF 导出（当前通过浏览器打印对话框另存为 PDF）
-- [ ] 选择联动：在资源管理器中定位 / 在图中定位 / 打开子图
+- [x] 直接 PDF 导出（内置 PDF 写入器：图表栅格化后逐页嵌入 DCTDecode 图像，
+        无需打印对话框）
+- [x] 选择联动：在资源管理器中显示 / 在图表中定位（编辑菜单）
 - [x] 连线路径（直角 / 斜线 / 圆角 / 曲线）、阴影、按元素 Auto Resize
-- [ ] 样式继承（Inherit Style）
-- [ ] 属性面板深化：每类元素的完整属性集（visibility / isStatic / isAbstract /
-      isLeaf / isReadOnly / isOrdered / isUnique / isActive …）
+- [x] 样式继承（Inherit Style：样式面板一键应用到全部子视图，可撤销）
+- [x] 属性面板深化：分类器 isAbstract / isLeaf / isActive（抽象类名斜体、
+      `{leaf}` 属性串）；属性 isStatic / isReadOnly / isOrdered / isUnique
+      （渲染为 `{readOnly, ordered, unique}` 标记）
 - [x] 模型校验器 + 校验结果面板（重名、空名、悬空引用/端点/容器，点击定位）
-- [ ] Markdown 文档编辑器（带预览）
+- [x] Markdown 文档编辑器（实时预览，标题/列表/粗斜体/代码块/链接，
+      应用后写入元素 documentation）
 - [x] Toast 通知（复制 / 剪切 / 粘贴 / 导出）
-- [ ] 启动画面
+- [x] 启动画面（应用就绪后淡出）
 - [x] 面板显隐开关（侧栏 / 导航器 / 工具箱 / 工具栏 / 状态栏，持久化）
 
 ## P2 — 模型仓库与工程化

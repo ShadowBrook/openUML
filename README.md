@@ -194,6 +194,19 @@ samples/staruml/      StarUML UMLExample 转换样例、转换报告与 MIT 许�
 | 状态机/活动图（状态、伪状态、控制流） | `nodeviews.js` 各伪状态渲染 + `renderSelfLoop` |
 | Electron 壳 + IPC（`command` 通道等 43 个通道） | 纯浏览器运行，无需 IPC |
 
+## 编辑器能力
+
+- **项目模板**：文件 > 从模板新建（UML Minimal / Conventional / 4+1 View / Rational）
+- **最近文件 / 直接写回**：File System Access API（Chromium），句柄持久化于
+  IndexedDB，Ctrl+S 写回原文件；不支持的浏览器回退为文件选择器 + 下载
+- **导出**：SVG / PNG / JPEG / **直接 PDF**（内置写入器，多页嵌入）/
+  全部图表批量导出 / 复制到剪贴板 / 打印
+- **选择联动**：在资源管理器中显示 / 在图表中定位
+- **样式继承**：样式面板「继承到子视图」（可撤销）
+- **Markdown 文档编辑器**：模型 > 文档编辑器（实时预览）
+- 属性面板深化：isAbstract / isLeaf / isActive / isStatic / isReadOnly /
+  isOrdered / isUnique（含对应渲染记法）
+
 ## 已知边界
 
 - `.mdj` 仅通过离线转换器导入，应用内尚未提供直接打开；不支持的扩展区域、
