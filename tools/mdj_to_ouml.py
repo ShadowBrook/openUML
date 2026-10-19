@@ -358,6 +358,7 @@ class Converter:
             '$type': 'UMLAttribute',
             'name': clean_text(a.get('name')) or 'attribute',
             'type': self.resolve_name(a.get('type')),
+            'multiplicity': clean_text(a.get('multiplicity')),
             'visibility': a.get('visibility') or 'public',
             'defaultValue': clean_text(a.get('defaultValue')),
             'isStatic': bool(a.get('isStatic')),
@@ -827,9 +828,12 @@ class Converter:
                 view_model['name'] = label
         for flag in ('showVisibility', 'showType', 'showMultiplicity',
                      'showOperationSignature', 'suppressAttributes',
-                     'suppressOperations', 'suppressLiterals', 'shadow', 'autoResize'):
+                     'suppressOperations', 'suppressLiterals', 'showNamespace',
+                     'shadow', 'autoResize'):
             if flag in view:
                 v[flag] = bool(view[flag])
+        if view.get('wordWrap') or view.get('autoWrap'):
+            v['autoWrap'] = True
         if 'stereotypeDisplay' in view:
             v['stereotypeDisplay'] = 'none' if view.get('stereotypeDisplay') == 'none' else 'label'
         diagram['elements'].append(v)
@@ -1163,9 +1167,12 @@ class Converter:
             v['headArrow'] = 'open'
         for flag in ('showVisibility', 'showType', 'showMultiplicity',
                      'showOperationSignature', 'suppressAttributes',
-                     'suppressOperations', 'suppressLiterals', 'shadow', 'autoResize'):
+                     'suppressOperations', 'suppressLiterals', 'showNamespace',
+                     'shadow', 'autoResize'):
             if flag in view:
                 v[flag] = bool(view[flag])
+        if view.get('wordWrap') or view.get('autoWrap'):
+            v['autoWrap'] = True
         if 'stereotypeDisplay' in view:
             v['stereotypeDisplay'] = 'none' if view.get('stereotypeDisplay') == 'none' else 'label'
         diagram['elements'].append(v)

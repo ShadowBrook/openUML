@@ -173,6 +173,12 @@ export class PropertyEditor {
         (v) => this._setView(this.currentView, 'showType', v));
       this._checkRow(sec, '显示操作参数/返回类型', this.currentView.showOperationSignature !== false,
         (v) => this._setView(this.currentView, 'showOperationSignature', v));
+      this._checkRow(sec, '显示属性多重性', this.currentView.showMultiplicity !== false,
+        (v) => this._setView(this.currentView, 'showMultiplicity', v));
+      this._checkRow(sec, '自动换行', this.currentView.autoWrap === true,
+        (v) => this._setView(this.currentView, 'autoWrap', v));
+      this._checkRow(sec, '显示命名空间 (from …)', this.currentView.showNamespace === true,
+        (v) => this._setView(this.currentView, 'showNamespace', v));
       this._checkRow(sec, '抑制属性隔间', this.currentView.suppressAttributes === true,
         (v) => this._setView(this.currentView, 'suppressAttributes', v));
       this._checkRow(sec, '抑制操作隔间', this.currentView.suppressOperations === true,
@@ -182,6 +188,10 @@ export class PropertyEditor {
       const sec = this._section('显示 (Display)');
       this._checkRow(sec, '抑制字面量隔间', this.currentView.suppressLiterals === true,
         (v) => this._setView(this.currentView, 'suppressLiterals', v));
+      this._checkRow(sec, '自动换行', this.currentView.autoWrap === true,
+        (v) => this._setView(this.currentView, 'autoWrap', v));
+      this._checkRow(sec, '显示命名空间 (from …)', this.currentView.showNamespace === true,
+        (v) => this._setView(this.currentView, 'showNamespace', v));
     }
 
     // Template parameters (classifiers)
@@ -212,10 +222,11 @@ export class PropertyEditor {
       const sec = this._section('属性 (Attributes)');
       this._listEditor(sec, model, 'attributes', createAttribute, (a) => {
         const vis = VISIBILITY[a.visibility]?.symbol ?? '+';
-        return { vis, name: a.name, type: a.type };
+        return { vis, name: a.name + (a.multiplicity ? ` [${a.multiplicity}]` : ''), type: a.type };
       }, [
         { key: 'name', label: '名称' },
         { key: 'type', label: '类型' },
+        { key: 'multiplicity', label: '多重性' },
       ]);
     }
     // Operations

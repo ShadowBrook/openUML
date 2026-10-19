@@ -47,8 +47,9 @@ export function fmtAttribute(a, opts = {}) {
   const vis = opts.showVisibility === false ? '' : (VISIBILITY[a.visibility]?.symbol ?? '+');
   const staticPrefix = a.isStatic ? 'underline' : '';
   const typePart = opts.showType === false || !a.type ? '' : `: ${a.type}`;
+  const multPart = opts.showMultiplicity === false || !a.multiplicity ? '' : ` [${a.multiplicity}]`;
   const defPart = a.defaultValue ? ` = ${a.defaultValue}` : '';
-  return { text: `${vis}${a.name}${typePart}${defPart}${fmtTags(a)}`, staticPrefix };
+  return { text: `${vis}${a.name}${typePart}${multPart}${defPart}${fmtTags(a)}`, staticPrefix };
 }
 
 export function fmtOperation(op, opts = {}) {
@@ -83,24 +84,95 @@ function drawName(g, x, y, w, text, { fontSize = 12, bold = true, italic = false
   return lines;
 }
 
-function drawCompartmentList(g, items, box, fontSize, color) {
+/** Greedy word wrap; overlong words are split at the character limit. */
+function wrapText(text, maxChars) {
+  const raw = String(text ?? '');
+  if (!maxChars || maxChars < 4 || raw.length <= maxChars) return [raw];
+  const lines = [];
+  let cur = '';
+  for (const word of raw.split(/\s+/)) {
+    if (!word) continue;
+    let rest = word;
+    while (rest.length > maxChars) {
+      if (cur) { lines.push(cur); cur = ''; }
+      lines.push(rest.slice(0, maxChars));
+      rest = rest.slice(maxChars);
+    }
+    if (!cur) cur = rest;
+    else if ((cur + ' ' + rest).length <= maxChars) cur += ' ' + rest;
+    else { lines.push(cur); cur = rest; }
+  }
+  if (cur) lines.push(cur);
+  return lines.length ? lines : [''];
+}
+
+/** Nearest named owner (package/model) for `(from X)` notation. */
+function namespaceOf(model) {
+  let p = model && model.__parent;
+  while (p) {
+    if (p.type !== 'Project' && p.name) return p.name;
+    p = p.__parent;
+  }
+  return '';
+}
+
+function drawNameBlock(g, x, y, w, {
+  fontSize = 12, bold = true, italic = false, color = '#353535',
+  stereotype = null, nameLines = [''], namespace = '',
+} = {}) {
+  let yy = y;
+  if (stereotype) {
+    const st = svgEl('text', {
+      x: x + w / 2, y: yy + fontSize, 'text-anchor': 'middle',
+      'font-size': fontSize, 'font-style': 'italic', fill: color, 'font-family': 'inherit',
+    }, g);
+    st.textContent = stereotype;
+    yy += fontSize + 2;
+  }
+  for (const line of nameLines) {
+    const t = svgEl('text', {
+      x: x + w / 2, y: yy + fontSize, 'text-anchor': 'middle',
+      'font-size': fontSize, 'font-weight': bold ? 700 : 400,
+      'font-style': italic ? 'italic' : 'normal', fill: color, 'font-family': 'inherit',
+    }, g);
+    t.textContent = line;
+    yy += fontSize + 2;
+  }
+  if (namespace) {
+    const t = svgEl('text', {
+      x: x + w / 2, y: yy + fontSize - 1, 'text-anchor': 'middle',
+      'font-size': Math.max(9, fontSize - 2), 'font-style': 'italic',
+      fill: '#6b7272', 'font-family': 'inherit',
+    }, g);
+    t.textContent = `(from ${namespace})`;
+    yy += fontSize;
+  }
+  return yy - y;
+}
+
+function drawCompartmentList(g, items, box, fontSize, color, wrapChars = 0) {
   const out = [];
   let y = box.y + 4;
   for (const it of items) {
-    const t = svgEl('text', {
-      x: box.x + 6, y: y + fontSize, 'font-size': fontSize, fill: color, 'font-family': 'inherit',
-    }, g);
-    t.textContent = it.text;
-    if (it.staticPrefix === 'underline') t.setAttribute('text-decoration', 'underline');
-    out.push({ el: t, y: y + fontSize });
-    y += fontSize + 4;
+    const lines = wrapChars ? wrapText(it.text, wrapChars) : [it.text];
+    lines.forEach((line, idx) => {
+      const t = svgEl('text', {
+        x: box.x + 6, y: y + fontSize, 'font-size': fontSize, fill: color, 'font-family': 'inherit',
+      }, g);
+      t.textContent = line;
+      if (idx === 0 && it.staticPrefix === 'underline') t.setAttribute('text-decoration', 'underline');
+      out.push({ el: t, y: y + fontSize });
+      y += fontSize + 4;
+    });
   }
   return out;
 }
 
-function compartmentHeight(items, fontSize) {
+function compartmentHeight(items, fontSize, wrapChars = 0) {
   if (!items.length) return 12;
-  return items.length * (fontSize + 4) + 4;
+  let rows = 0;
+  for (const it of items) rows += wrapChars ? wrapText(it.text, wrapChars).length : 1;
+  return rows * (fontSize + 4) + 4;
 }
 
 /**
@@ -130,6 +202,7 @@ export function renderNode(g, view, model, kind) {
         showVisibility: view.showVisibility !== false,
         showType: view.showType !== false,
         showOperationSignature: view.showOperationSignature !== false,
+        showMultiplicity: view.showMultiplicity !== false,
       };
       const attrs = showAttrs ? (model.attributes || []).map((a) => fmtAttribute(a, memberOpts)) : [];
       const ops = showOps ? (model.operations || []).map((o) => fmtOperation(o, memberOpts)) : [];
@@ -141,9 +214,13 @@ export function renderNode(g, view, model, kind) {
         signal: '«signal»',
       }[kind];
       const stereotype = forced || (view.stereotypeDisplay === 'none' ? null : (model.stereotype || null));
-      const nameH = (stereotype ? fs + 2 : 0) + fs + 10;
-      const attrH = showAttrs ? compartmentHeight(attrs, fs) : 0;
-      const opH = showOps ? compartmentHeight(ops, fs) : 0;
+      const wrapChars = view.autoWrap ? Math.max(4, Math.floor((w - 10) / (fs * 0.62))) : 0;
+      const nameLines = wrapChars ? wrapText(model.name + fmtTags(model), wrapChars) : [model.name + fmtTags(model)];
+      const namespace = view.showNamespace ? namespaceOf(model) : '';
+      const nameH = (stereotype ? fs + 2 : 0) + nameLines.length * (fs + 2)
+        + (namespace ? fs + 1 : 0) + 6;
+      const attrH = showAttrs ? compartmentHeight(attrs, fs, wrapChars) : 0;
+      const opH = showOps ? compartmentHeight(ops, fs, wrapChars) : 0;
       // template parameters sit in a compartment overlapping the top-right corner;
       // the name/attribute/operation area is shifted down by its height (StarUML layout)
       const tps = (model.templateParameters || []).filter((p) => p && p.name);
@@ -158,7 +235,10 @@ export function renderNode(g, view, model, kind) {
       // frame
       svgEl('rect', { x, y, width: w, height: hEff, fill, stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
       // name compartment (tag values are appended like StarUML property strings)
-      drawName(g, x, y + tpShift + 4, w, model.name + fmtTags(model), { fontSize: fs, color: fontColor, stereotype, italic: kind === 'datatype' });
+      drawNameBlock(g, x, y + tpShift + 4, w, {
+        fontSize: fs, color: fontColor, stereotype, italic: kind === 'datatype',
+        nameLines, namespace,
+      });
       // template parameter compartment at the top-right corner
       if (tpItems.length) {
         const bx = x + w - tpBoxW, by = y;
@@ -177,13 +257,13 @@ export function renderNode(g, view, model, kind) {
       if (showAttrs) {
         svgEl('line', { x1: x, y1: yy, x2: x + w, y2: yy, stroke: line, 'stroke-width': 1 }, g);
         meta.compartments.attributes = new Rect(x + 1, yy, w - 2, attrH);
-        drawCompartmentList(g, attrs, { x, y: yy, width: w }, fs, fontColor);
+        drawCompartmentList(g, attrs, { x, y: yy, width: w }, fs, fontColor, wrapChars);
         yy += attrH;
       }
       if (showOps) {
         svgEl('line', { x1: x, y1: yy, x2: x + w, y2: yy, stroke: line, 'stroke-width': 1 }, g);
         meta.compartments.operations = new Rect(x + 1, yy, w - 2, opH);
-        drawCompartmentList(g, ops, { x, y: yy, width: w }, fs, fontColor);
+        drawCompartmentList(g, ops, { x, y: yy, width: w }, fs, fontColor, wrapChars);
         yy += opH;
       }
       if ((showAttrs || showOps) && yy < y + hEff - 1) {
@@ -240,18 +320,23 @@ export function renderNode(g, view, model, kind) {
     case 'enumeration': {
       const showLits = !view.suppressLiterals;
       const lits = showLits ? (model.literals || []).map((l) => ({ text: l.name })) : [];
-      const nameH = fs + 10;
-      const litH = showLits ? compartmentHeight(lits, fs) : 0;
+      const wrapChars = view.autoWrap ? Math.max(4, Math.floor((w - 10) / (fs * 0.62))) : 0;
+      const nameLines = wrapChars ? wrapText(model.name + fmtTags(model), wrapChars) : [model.name + fmtTags(model)];
+      const namespace = view.showNamespace ? namespaceOf(model) : '';
+      const nameH = (fs + 2) + nameLines.length * (fs + 2) + (namespace ? fs + 1 : 0) + 6;
+      const litH = showLits ? compartmentHeight(lits, fs, wrapChars) : 0;
       const requiredH = nameH + litH;
       const hEff = Math.max(h, requiredH);
       meta.autoHeight = requiredH;
       svgEl('rect', { x, y, width: w, height: hEff, fill, stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
-      drawName(g, x, y + 4, w, model.name, { fontSize: fs, color: fontColor, stereotype: '«enumeration»' });
+      drawNameBlock(g, x, y + 4, w, {
+        fontSize: fs, color: fontColor, stereotype: '«enumeration»', nameLines, namespace,
+      });
       if (showLits) {
         const yy = y + nameH;
         svgEl('line', { x1: x, y1: yy, x2: x + w, y2: yy, stroke: line }, g);
         meta.compartments.literals = new Rect(x + 1, yy, w - 2, litH);
-        drawCompartmentList(g, lits, { x, y: yy, width: w }, fs, fontColor);
+        drawCompartmentList(g, lits, { x, y: yy, width: w }, fs, fontColor, wrapChars);
       }
       meta.textSlots.name = { box: new Rect(x, y, w, nameH), text: model.name, field: 'name', align: 'center' };
       break;

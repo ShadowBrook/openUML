@@ -66,7 +66,7 @@ export function createModel(type, name, extra = {}) {
 }
 
 export function createAttribute(name = 'attribute', type = '', visibility = 'public') {
-  return { _id: genId('a'), $type: 'UMLAttribute', name, type, visibility, defaultValue: '', isStatic: false };
+  return { _id: genId('a'), $type: 'UMLAttribute', name, type, multiplicity: '', visibility, defaultValue: '', isStatic: false };
 }
 export function createOperation(name = 'operation', params = [], returnType = '', visibility = 'public') {
   return { _id: genId('o'), $type: 'UMLOperation', name, parameters: params, returnType, visibility, isStatic: false };
