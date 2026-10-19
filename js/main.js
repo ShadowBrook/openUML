@@ -1044,13 +1044,33 @@ async function importMdjFile() {
         commandStack.undoStack.length = 0;
         commandStack.redoStack.length = 0;
         markDirty(true);
-        const first = findFirstDiagram(project);
+        // open the first diagram that actually has content — an empty first
+        // diagram (common in StarUML projects) would look like a failed import
+        const allDiagrams = [];
+        repository.walk((n) => { if (n.type?.endsWith('Diagram')) allDiagrams.push(n); });
+        const first = allDiagrams.find((d) => (d.elements || []).length > 0) || allDiagrams[0];
         if (first) openDiagram(first); else app.canvas.setDiagram(null);
         app.explorer.render();
         storeProject(serializeProject(project), { quiet: true });
         const skipCount = Object.values(skipped).reduce((a, b) => a + b, 0);
         app.canvas.setStatusMessage(`已导入 ${f.name}：${models} 个模型、${diagrams} 张图表`
           + (skipCount ? `（跳过 ${skipCount} 项不支持元素）` : ''));
+        if (!allDiagrams.length) {
+          showAlertDialog({
+            title: '导入完成',
+            message: `已导入 ${models} 个模型元素，但没有可转换的图表。`
+              + (skipCount ? `有 ${skipCount} 项元素不被支持已跳过（详情见浏览器控制台）。` : ''),
+          });
+        } else if (allDiagrams.every((d) => !(d.elements || []).length)) {
+          const top = Object.entries(skipped).sort((a, b) => b[1] - a[1]).slice(0, 5)
+            .map(([k, v]) => `${v} × ${k}`).join('、');
+          showAlertDialog({
+            title: '导入完成',
+            message: `已导入 ${diagrams} 张图表，但全部为空。`
+              + (top ? `最常被跳过的元素：${top}。` : ''),
+          });
+        }
+        if (skipCount) console.info('[OpenUML 导入] 跳过的元素:', skipped);
         showToast(`已导入 ${f.name}`);
       } catch (err) {
         showAlertDialog({ title: '导入失败', message: `无法解析 .mdj 文件: ${err.message}` });
