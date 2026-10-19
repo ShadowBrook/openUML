@@ -2,6 +2,19 @@
 // Only the UML notation OpenUML renders is mapped; unsupported views are
 // reported and skipped. The file is plain JSON — nothing executes.
 
+// StarUML extension diagram families map onto the closest OpenUML diagram type
+const DIAGRAM_TYPE_MAP = {
+  ERDDiagram: 'UMLClassDiagram',
+  FCFlowchartDiagram: 'UMLActivityDiagram',
+  MMMindmapDiagram: 'UMLClassDiagram',
+  DFDDiagram: 'UMLActivityDiagram',
+  BPMNDiagram: 'UMLActivityDiagram',
+  AWSDiagram: 'UMLComponentDiagram',
+  AzureDiagram: 'UMLComponentDiagram',
+  GCPDiagram: 'UMLComponentDiagram',
+  WFWireframeDiagram: 'UMLClassDiagram',
+};
+
 const DIAGRAM_TYPES = new Set([
   'UMLClassDiagram', 'UMLUseCaseDiagram', 'UMLSequenceDiagram',
   'UMLStatechartDiagram', 'UMLActivityDiagram', 'UMLComponentDiagram',
@@ -15,6 +28,15 @@ const CONTAINER_MAP = {
   UMLModel: 'UMLModel',
   UMLPackage: 'UMLPackage',
   UMLSubsystem: 'UMLSubsystem',
+  // extension roots behave like models
+  ERDDataModel: 'UMLModel',
+  FCFlowchart: 'UMLModel',
+  MMMindmap: 'UMLModel',
+  DFDDataFlowModel: 'UMLModel',
+  WFWireframe: 'UMLModel',
+  AWSModel: 'UMLModel',
+  AzureModel: 'UMLModel',
+  GCPModel: 'UMLModel',
 };
 
 const WRAPPER_TYPES = new Set(['UMLInteraction', 'UMLStateMachine', 'UMLActivity', 'UMLRegion']);
@@ -44,6 +66,58 @@ const SIMPLE_MODEL_MAP = {
   UMLMergeNode: 'UMLMergeNode', UMLForkNode: 'UMLForkNode', UMLJoinNode: 'UMLJoinNode',
   UMLTimeConstraint: 'UMLTimeConstraint', UMLDurationConstraint: 'UMLDurationConstraint',
   UMLNote: 'UMLNote',
+  // StarUML extension families → closest UML primitives
+  ERDEntity: 'UMLClass',
+  FCProcess: 'UMLAction',
+  FCTerminator: 'UMLState',
+  FCDecision: 'UMLDecisionNode',
+  FCPredefinedProcess: 'UMLStructuredActivityNode',
+  FCData: 'UMLObjectNode',
+  FCDocument: 'UMLNote',
+  FCDatabase: 'UMLDataStoreNode',
+  DFDProcess: 'UMLAction',
+  DFDExternalEntity: 'UMLClass',
+  DFDDataStore: 'UMLDataStoreNode',
+  BPMNTask: 'UMLAction',
+  BPMNManualTask: 'UMLAction', BPMNScriptTask: 'UMLAction', BPMNServiceTask: 'UMLAction',
+  BPMNUserTask: 'UMLAction', BPMNReceiveTask: 'UMLAction', BPMNSendTask: 'UMLAction',
+  BPMNBusinessRuleTask: 'UMLAction', BPMNChoreographyTask: 'UMLAction',
+  BPMNSubProcess: 'UMLStructuredActivityNode',
+  BPMNGateway: 'UMLDecisionNode',
+  BPMNExclusiveGateway: 'UMLDecisionNode', BPMNParallelGateway: 'UMLDecisionNode',
+  BPMNInclusiveGateway: 'UMLDecisionNode', BPMNComplexGateway: 'UMLDecisionNode',
+  BPMNEventBasedGateway: 'UMLDecisionNode',
+  BPMNStartEvent: 'UMLInitialNode',
+  BPMNEndEvent: 'UMLActivityFinalNode',
+  BPMNIntermediateEvent: 'UMLAcceptSignal',
+  BPMNBoundaryEvent: 'UMLAcceptSignal',
+  BPMNIntermediateCatchEvent: 'UMLAcceptSignal',
+  BPMNIntermediateThrowEvent: 'UMLAcceptSignal',
+  BPMNEvent: 'UMLAcceptSignal',
+  BPMNParticipant: 'UMLPackage',
+  BPMNPool: 'UMLPackage',
+  BPMNProcess: 'UMLPackage',
+  BPMNLane: 'UMLPackage',
+  BPMNTextAnnotation: 'UMLNote',
+  BPMNConversation: 'UMLPackage',
+  BPMNMessage: 'UMLClass',
+  AWSResource: 'UMLComponent',
+  AWSGeneralResource: 'UMLComponent',
+  AWSGroup: 'UMLPackage',
+  AWSCallout: 'UMLNote',
+  AzureResource: 'UMLComponent',
+  AzureGeneralResource: 'UMLComponent',
+  AzureGroup: 'UMLPackage',
+  AzureCallout: 'UMLNote',
+  GCPResource: 'UMLComponent',
+  GCPGeneralResource: 'UMLComponent',
+  GCPProduct: 'UMLComponent',
+  GCPService: 'UMLComponent',
+  GCPZone: 'UMLPackage',
+  GCPUser: 'UMLActor',
+  GCPGroup: 'UMLPackage',
+  GCPCallout: 'UMLNote',
+  GCPPath: 'UMLDependency',
 };
 
 const RELATIONSHIP_MAP = {
@@ -55,6 +129,19 @@ const RELATIONSHIP_MAP = {
   UMLCommunicationPath: 'UMLCommunicationPath', UMLLink: 'UMLLink',
   UMLConnector: 'UMLConnector', UMLTransition: 'UMLTransition',
   UMLControlFlow: 'UMLControlFlow', UMLObjectFlow: 'UMLObjectFlow',
+  ERDRelationship: 'UMLAssociation',
+  FCFlow: 'UMLControlFlow',
+  MMEdge: 'UMLLink',
+  DFDDataFlow: 'UMLObjectFlow',
+  BPMNSequenceFlow: 'UMLControlFlow',
+  BPMNConversationLink: 'UMLDependency',
+  BPMNMessageFlow: 'UMLDependency',
+  BPMNMessageLink: 'UMLDependency',
+  BPMNDataAssociation: 'UMLObjectFlow',
+  BPMNAssociation: 'UMLDependency',
+  AWSArrow: 'UMLDependency',
+  AzureArrow: 'UMLDependency',
+  GCPArrow: 'UMLDependency',
 };
 
 const NODE_VIEW_TYPES = new Set([
@@ -77,6 +164,20 @@ const NODE_VIEW_TYPES = new Set([
   'UMLTimeConstraintView', 'UMLDurationConstraintView', 'UMLInteractionUseView',
   'UMLInteractionInlineView', 'UMLCombinedFragmentView', 'UMLNoteView',
   'UMLTextView', 'UMLTextBoxView', 'UMLStructuredActivityNodeView',
+  // extension view families
+  'ERDEntityView',
+  'FCProcessView', 'FCTerminatorView', 'FCDecisionView', 'FCPredefinedProcessView',
+  'FCDataView', 'FCDocumentView', 'FCDatabaseView',
+  'MMNodeView',
+  'DFDProcessView', 'DFDExternalEntityView', 'DFDDataStoreView',
+  'WFPanelView', 'WFButtonView', 'WFRadioView', 'WFInputView', 'WFImageView', 'WFCheckboxView',
+  'BPMNTaskView', 'BPMNSubProcessView', 'BPMNGatewayView', 'BPMNEventView',
+  'BPMNPoolView', 'BPMNLaneView', 'BPMNConversationView', 'BPMNMessageView',
+  'BPMNChoreographyTaskView', 'BPMNTextAnnotationView',
+  'AWSResourceView', 'AWSGeneralResourceView', 'AWSGroupView', 'AWSCalloutView',
+  'AzureResourceView', 'AzureGeneralResourceView', 'AzureGroupView', 'AzureCalloutView',
+  'GCPResourceView', 'GCPGeneralResourceView', 'GCPGroupView', 'GCPCalloutView',
+  'GCPProductView', 'GCPServiceView', 'GCPZoneView', 'GCPUserView',
 ]);
 
 const EDGE_VIEW_TYPES = new Set([
@@ -87,9 +188,14 @@ const EDGE_VIEW_TYPES = new Set([
   'UMLCommunicationPathView', 'UMLDeploymentView', 'UMLInformationFlowView',
   'UMLNoteLinkView', 'UMLContainmentView', 'UMLLinkView',
   'UMLSeqMessageView', 'UMLTimingMessageView', 'UMLCommMessageView',
+  'ERDRelationshipView', 'FCFlowView', 'MMEdgeView', 'DFDDataFlowView',
+  'BPMNSequenceFlowView', 'BPMNConversationLinkView', 'BPMNMessageFlowView',
+  'BPMNMessageLinkView', 'BPMNDataAssociationView', 'BPMNAssociationView',
+  'AWSArrowView', 'AzureArrowView', 'GCPArrowView', 'GCPPathView',
 ]);
 
-const VIEW_ONLY_NODES = new Set(['UMLTextView', 'UMLTextBoxView', 'UMLTimeTickView', 'UMLSwimlaneView']);
+const VIEW_ONLY_NODES = new Set(['UMLTextView', 'UMLTextBoxView', 'UMLTimeTickView', 'UMLSwimlaneView',
+  'MMNodeView', 'WFPanelView', 'WFButtonView', 'WFRadioView', 'WFInputView', 'WFImageView', 'WFCheckboxView']);
 
 const MESSAGE_SORT = {
   synchCall: 'UMLMessage+sync',
@@ -261,6 +367,19 @@ export class MdjConverter {
       documentation: clean(sm.documentation), tags: [], ownedElements: [],
     };
     this.modelMap.set(sm._id, model);
+    if (sm._type === 'ERDEntity') {
+      // ERD columns become attribute lines `name : type` ({PK} for keys)
+      model.attributes = (sm.columns || [])
+        .filter((c) => c && typeof c === 'object')
+        .map((c) => ({
+          _id: this.nid('a'), $type: 'UMLAttribute',
+          name: clean(c.name) || 'column',
+          type: typeof c.type === 'string' ? clean(c.type) : this.resolveName(c.type),
+          multiplicity: '', visibility: 'public',
+          defaultValue: '', isStatic: false,
+          ...(c.primaryKey ? { isStatic: false, tags: [{ _id: this.nid('t'), name: 'PK', value: '' }] } : {}),
+        }));
+    }
     if (['UMLClass', 'UMLInterface', 'UMLDataType', 'UMLPrimitiveType', 'UMLInformationItem',
       'UMLCollaboration', 'UMLStereotype'].includes(ourType)) {
       model.attributes = (sm.attributes || [])
@@ -347,7 +466,7 @@ export class MdjConverter {
     for (const child of sm.ownedElements || []) {
       if (!child || typeof child !== 'object') continue;
       const t = child._type;
-      if (DIAGRAM_TYPES.has(t)) this.convertDiagram(child, ownerModel);
+      if (DIAGRAM_TYPES.has(t) || DIAGRAM_TYPE_MAP[t]) this.convertDiagram(child, ownerModel);
       else if (t === 'UMLProfile' || CONTAINER_MAP[t]) this.convertContainer(child, ownerModel);
       else if (WRAPPER_TYPES.has(t)) this.convertChildrenInto(ownerModel, child);
       else if (SIMPLE_MODEL_MAP[t] || RELATIONSHIP_MAP[t]) {
@@ -376,9 +495,9 @@ export class MdjConverter {
   }
 
   convertDiagram(sm, owner) {
-    const dtype = sm._type;
+    const dtype = DIAGRAM_TYPE_MAP[sm._type] || sm._type;
     if (!DIAGRAM_TYPES.has(dtype)) {
-      this._skip(`diagram:${dtype}`);
+      this._skip(`diagram:${sm._type}`);
       return null;
     }
     const d = {
@@ -477,6 +596,37 @@ export class MdjConverter {
         ? 'UMLInteractionUseInOverview' : 'UMLInteractionUse';
     }
     if (t === 'UMLTextView' || t === 'UMLTextBoxView') return 'UMLTextView';
+    // extension families → closest rendered primitive
+    const extNodes = {
+      ERDEntityView: 'UMLClass',
+      FCProcessView: 'UMLAction', FCTerminatorView: 'UMLState', FCDecisionView: 'UMLDecisionNode',
+      FCPredefinedProcessView: 'UMLStructuredActivityNode', FCDataView: 'UMLObjectNode',
+      FCDocumentView: 'UMLNote', FCDatabaseView: 'UMLDataStoreNode',
+      MMNodeView: 'UMLTextView',
+      DFDProcessView: 'UMLAction', DFDExternalEntityView: 'UMLClass', DFDDataStoreView: 'UMLDataStoreNode',
+      WFPanelView: 'UMLRectView', WFButtonView: 'UMLTextView', WFTextView: 'UMLTextView',
+      WFRadioView: 'UMLTextView', WFInputView: 'UMLTextView', WFCheckboxView: 'UMLTextView',
+      WFImageView: 'UMLTextView',
+      BPMNTaskView: 'UMLAction', BPMNSubProcessView: 'UMLStructuredActivityNode',
+      BPMNGatewayView: 'UMLDecisionNode',
+      BPMNPoolView: 'UMLPackage', BPMNLaneView: 'UMLPackage',
+      BPMNConversationView: 'UMLPackage', BPMNMessageView: 'UMLClass',
+      BPMNChoreographyTaskView: 'UMLAction', BPMNTextAnnotationView: 'UMLNote',
+      AWSResourceView: 'UMLComponent', AWSGeneralResourceView: 'UMLComponent',
+      AWSGroupView: 'UMLPackage', AWSCalloutView: 'UMLNote',
+      AzureResourceView: 'UMLComponent', AzureGeneralResourceView: 'UMLComponent',
+      AzureGroupView: 'UMLPackage', AzureCalloutView: 'UMLNote',
+      GCPResourceView: 'UMLComponent', GCPGeneralResourceView: 'UMLComponent',
+      GCPGroupView: 'UMLPackage', GCPCalloutView: 'UMLNote',
+      GCPProductView: 'UMLComponent', GCPServiceView: 'UMLComponent',
+      GCPZoneView: 'UMLPackage', GCPUserView: 'UMLActor',
+    };
+    if (t === 'BPMNEventView') {
+      if (mt === 'BPMNStartEvent') return 'UMLInitialNode';
+      if (mt === 'BPMNEndEvent') return 'UMLActivityFinalNode';
+      return 'UMLAcceptSignal';
+    }
+    if (extNodes[t]) return extNodes[t];
     return null;
   }
 
@@ -529,7 +679,9 @@ export class MdjConverter {
     } else if (t === 'UMLSwimlaneView') {
       v.laneName = label || 'Partition';
     } else if (t === 'UMLTextView' || t === 'UMLTextBoxView') {
-      v.text = label || clean(view.text) || '';
+      // wireframe/mindmap nodes carry their text in the model name
+      const rawName = clean((this.byId.get(ref(view.model)) || {}).name);
+      v.text = label || clean(view.text) || rawName || '';
       v.width = Math.max(w, 60);
       v.height = Math.max(h, 24);
     } else if (t === 'UMLNoteView') {
@@ -660,7 +812,23 @@ export class MdjConverter {
     if (t === 'UMLNoteLinkView') return 'UMLNoteLink';
     if (t === 'UMLContainmentView') return 'UMLContainment';
     if (t === 'UMLLinkView') return 'UMLLink';
-    return null;
+    const extEdges = {
+      ERDRelationshipView: 'UMLAssociation',
+      FCFlowView: 'UMLControlFlow',
+      MMEdgeView: 'UMLLink',
+      DFDDataFlowView: 'UMLObjectFlow',
+      BPMNSequenceFlowView: 'UMLControlFlow',
+      BPMNConversationLinkView: 'UMLDependency',
+      BPMNMessageFlowView: 'UMLDependency',
+      BPMNMessageLinkView: 'UMLDependency',
+      BPMNDataAssociationView: 'UMLObjectFlow',
+      BPMNAssociationView: 'UMLDependency',
+      AWSArrowView: 'UMLDependency',
+      AzureArrowView: 'UMLDependency',
+      GCPArrowView: 'UMLDependency',
+      GCPPathView: 'UMLDependency',
+    };
+    return extEdges[t] || null;
   }
 
   parsePoints(view) {
@@ -826,6 +994,11 @@ export class MdjConverter {
       'showNamespace', 'shadow', 'autoResize']) {
       if (flag in view) v[flag] = !!view[flag];
     }
+    // explicit colors travel as-is (extension families style their shapes)
+    for (const key of ['fillColor', 'lineColor', 'fontColor']) {
+      const val = clean(view[key]);
+      if (val && val.startsWith('#')) v[key] = val;
+    }
     if (view.wordWrap || view.autoWrap) v.autoWrap = true;
     if ('stereotypeDisplay' in view) {
       v.stereotypeDisplay = view.stereotypeDisplay === 'none' ? 'none' : 'label';
@@ -873,7 +1046,7 @@ export class MdjConverter {
       this.rootModel = project.ownedElements.find((m) => ['UMLModel', 'UMLPackage', 'UMLSubsystem'].includes(m.type)) || null;
     }
     for (const obj of this.byId.values()) {
-      if (DIAGRAM_TYPES.has(obj._type) && !this.diagramMap.has(obj._id)) {
+      if ((DIAGRAM_TYPES.has(obj._type) || DIAGRAM_TYPE_MAP[obj._type]) && !this.diagramMap.has(obj._id)) {
         const owner = this.findOwner(obj) || this.rootModel;
         if (owner) this.convertDiagram(obj, owner);
       }

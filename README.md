@@ -213,7 +213,9 @@ samples/staruml/      StarUML UMLExample 转换样例、转换报告与 MIT 许�
 
 ## 工程化
 
-- **应用内 .mdj 导入**：文件 > 导入 StarUML 项目（`js/io/mdj.js`，与离线转换器同源逻辑）
+- **应用内 .mdj 导入**：文件 > 导入 StarUML 项目（`js/io/mdj.js`，与离线转换器同源逻辑）；
+  除 UML 全类型外支持 StarUML **扩展图家族**——ERD、流程图、思维导图、DFD、BPMN、
+  AWS/Azure/GCP 云架构、涂鸦框架（映射到最近的 UML 原语渲染，跳过项计数上报）
 - **.mfj 片段**：选中模型导出/导入（文件菜单）
 - **代码生成**：模型 > 代码生成…（内置 Java 模板，`registerTemplate` 可扩展）
 - **插件 API**：`window.openuml`（repository / 命令栈 / 工厂 / 命令面板注册）

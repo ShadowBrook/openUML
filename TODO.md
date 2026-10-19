@@ -115,6 +115,9 @@
 - [x] 应用内 `.mdj` 导入（`js/io/mdj.js`：离线转换器的浏览器移植，
       UMLExample 3MB 实测 13ms，744 模型 / 28 图与 Python 版结果一致）
       （样例 `.mdj` 已附于 samples/staruml/ 供验证）
+- [x] StarUML **扩展图家族**导入（ERD / 流程图 / 思维导图 / DFD / BPMN /
+      AWS·Azure·GCP 云架构 / 涂鸦框架）：映射到最近的 UML 渲染原语
+      （官方 14 个样例文件全部可导入并渲染，BPMN 397 模型 / 8 图）
 - [x] `.mfj` 片段导入导出（选中模型子树导出为片段文件，导入时重建新 id 并合并；
       StarUML 原生 `.mfj` 元素映射视内容而定）
 - [x] 插件 API（`window.openuml`：repository 读写、命令栈、模型工厂、

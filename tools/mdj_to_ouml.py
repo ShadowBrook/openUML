@@ -26,10 +26,30 @@ DIAGRAM_TYPES = {
     'UMLTimingDiagram',
 }
 
+DIAGRAM_TYPE_MAP = {
+    'ERDDiagram': 'UMLClassDiagram',
+    'FCFlowchartDiagram': 'UMLActivityDiagram',
+    'MMMindmapDiagram': 'UMLClassDiagram',
+    'DFDDiagram': 'UMLActivityDiagram',
+    'BPMNDiagram': 'UMLActivityDiagram',
+    'AWSDiagram': 'UMLComponentDiagram',
+    'AzureDiagram': 'UMLComponentDiagram',
+    'GCPDiagram': 'UMLComponentDiagram',
+    'WFWireframeDiagram': 'UMLClassDiagram',
+}
+
 CONTAINER_MAP = {
     'UMLModel': 'UMLModel',
     'UMLPackage': 'UMLPackage',
     'UMLSubsystem': 'UMLSubsystem',
+    'ERDDataModel': 'UMLModel',
+    'FCFlowchart': 'UMLModel',
+    'MMMindmap': 'UMLModel',
+    'DFDDataFlowModel': 'UMLModel',
+    'WFWireframe': 'UMLModel',
+    'AWSModel': 'UMLModel',
+    'AzureModel': 'UMLModel',
+    'GCPModel': 'UMLModel',
 }
 
 WRAPPER_TYPES = {'UMLInteraction', 'UMLStateMachine', 'UMLActivity', 'UMLRegion'}
@@ -84,6 +104,57 @@ SIMPLE_MODEL_MAP = {
     'UMLTimeConstraint': 'UMLTimeConstraint',
     'UMLDurationConstraint': 'UMLDurationConstraint',
     'UMLNote': 'UMLNote',
+    # StarUML extension families → closest UML primitives
+    'ERDEntity': 'UMLClass',
+    'FCProcess': 'UMLAction',
+    'FCTerminator': 'UMLState',
+    'FCDecision': 'UMLDecisionNode',
+    'FCPredefinedProcess': 'UMLStructuredActivityNode',
+    'FCData': 'UMLObjectNode',
+    'FCDocument': 'UMLNote',
+    'FCDatabase': 'UMLDataStoreNode',
+    'DFDProcess': 'UMLAction',
+    'DFDExternalEntity': 'UMLClass',
+    'DFDDataStore': 'UMLDataStoreNode',
+    'BPMNTask': 'UMLAction',
+    'BPMNManualTask': 'UMLAction', 'BPMNScriptTask': 'UMLAction', 'BPMNServiceTask': 'UMLAction',
+    'BPMNUserTask': 'UMLAction', 'BPMNReceiveTask': 'UMLAction', 'BPMNSendTask': 'UMLAction',
+    'BPMNBusinessRuleTask': 'UMLAction', 'BPMNChoreographyTask': 'UMLAction',
+    'BPMNSubProcess': 'UMLStructuredActivityNode',
+    'BPMNGateway': 'UMLDecisionNode',
+    'BPMNExclusiveGateway': 'UMLDecisionNode', 'BPMNParallelGateway': 'UMLDecisionNode',
+    'BPMNInclusiveGateway': 'UMLDecisionNode', 'BPMNComplexGateway': 'UMLDecisionNode',
+    'BPMNEventBasedGateway': 'UMLDecisionNode',
+    'BPMNStartEvent': 'UMLInitialNode',
+    'BPMNEndEvent': 'UMLActivityFinalNode',
+    'BPMNIntermediateEvent': 'UMLAcceptSignal',
+    'BPMNBoundaryEvent': 'UMLAcceptSignal',
+    'BPMNIntermediateCatchEvent': 'UMLAcceptSignal',
+    'BPMNIntermediateThrowEvent': 'UMLAcceptSignal',
+    'BPMNEvent': 'UMLAcceptSignal',
+    'BPMNParticipant': 'UMLPackage',
+    'BPMNPool': 'UMLPackage',
+    'BPMNProcess': 'UMLPackage',
+    'BPMNLane': 'UMLPackage',
+    'BPMNConversation': 'UMLPackage',
+    'BPMNMessage': 'UMLClass',
+    'BPMNTextAnnotation': 'UMLNote',
+    'AWSResource': 'UMLComponent',
+    'AWSGeneralResource': 'UMLComponent',
+    'AWSGroup': 'UMLPackage',
+    'AWSCallout': 'UMLNote',
+    'AzureResource': 'UMLComponent',
+    'AzureGeneralResource': 'UMLComponent',
+    'AzureGroup': 'UMLPackage',
+    'AzureCallout': 'UMLNote',
+    'GCPResource': 'UMLComponent',
+    'GCPGeneralResource': 'UMLComponent',
+    'GCPProduct': 'UMLComponent',
+    'GCPService': 'UMLComponent',
+    'GCPZone': 'UMLPackage',
+    'GCPUser': 'UMLActor',
+    'GCPGroup': 'UMLPackage',
+    'GCPCallout': 'UMLNote',
 }
 
 RELATIONSHIP_MAP = {
@@ -102,6 +173,20 @@ RELATIONSHIP_MAP = {
     'UMLTransition': 'UMLTransition',
     'UMLControlFlow': 'UMLControlFlow',
     'UMLObjectFlow': 'UMLObjectFlow',
+    'ERDRelationship': 'UMLAssociation',
+    'FCFlow': 'UMLControlFlow',
+    'MMEdge': 'UMLLink',
+    'DFDDataFlow': 'UMLObjectFlow',
+    'BPMNSequenceFlow': 'UMLControlFlow',
+    'BPMNConversationLink': 'UMLDependency',
+    'BPMNMessageFlow': 'UMLDependency',
+    'BPMNMessageLink': 'UMLDependency',
+    'BPMNDataAssociation': 'UMLObjectFlow',
+    'BPMNAssociation': 'UMLDependency',
+    'AWSArrow': 'UMLDependency',
+    'AzureArrow': 'UMLDependency',
+    'GCPArrow': 'UMLDependency',
+    'GCPPath': 'UMLDependency',
 }
 
 CLASSIFIER_TYPES = {
@@ -134,6 +219,19 @@ NODE_VIEW_TYPES = {
     'UMLInteractionUseView', 'UMLInteractionInlineView',
     'UMLCombinedFragmentView', 'UMLNoteView', 'UMLTextView',
     'UMLTextBoxView', 'UMLStructuredActivityNodeView',
+    'ERDEntityView',
+    'FCProcessView', 'FCTerminatorView', 'FCDecisionView', 'FCPredefinedProcessView',
+    'FCDataView', 'FCDocumentView', 'FCDatabaseView',
+    'MMNodeView',
+    'DFDProcessView', 'DFDExternalEntityView', 'DFDDataStoreView',
+    'WFPanelView', 'WFButtonView', 'WFRadioView', 'WFInputView', 'WFImageView', 'WFCheckboxView',
+    'BPMNTaskView', 'BPMNSubProcessView', 'BPMNGatewayView', 'BPMNEventView',
+    'BPMNPoolView', 'BPMNLaneView', 'BPMNConversationView', 'BPMNMessageView',
+    'BPMNChoreographyTaskView', 'BPMNTextAnnotationView',
+    'AWSResourceView', 'AWSGeneralResourceView', 'AWSGroupView', 'AWSCalloutView',
+    'AzureResourceView', 'AzureGeneralResourceView', 'AzureGroupView', 'AzureCalloutView',
+    'GCPResourceView', 'GCPGeneralResourceView', 'GCPGroupView', 'GCPCalloutView',
+    'GCPProductView', 'GCPServiceView', 'GCPZoneView', 'GCPUserView',
 }
 
 EDGE_VIEW_TYPES = {
@@ -145,9 +243,14 @@ EDGE_VIEW_TYPES = {
     'UMLInformationFlowView', 'UMLNoteLinkView', 'UMLContainmentView',
     'UMLLinkView', 'UMLSeqMessageView', 'UMLTimingMessageView',
     'UMLCommMessageView',
+    'ERDRelationshipView', 'FCFlowView', 'MMEdgeView', 'DFDDataFlowView',
+    'BPMNSequenceFlowView', 'BPMNConversationLinkView', 'BPMNMessageFlowView',
+    'BPMNMessageLinkView', 'BPMNDataAssociationView', 'BPMNAssociationView',
+    'AWSArrowView', 'AzureArrowView', 'GCPArrowView', 'GCPPathView',
 }
 
-VIEW_ONLY_NODES = {'UMLTextView', 'UMLTextBoxView', 'UMLTimeTickView', 'UMLSwimlaneView'}
+VIEW_ONLY_NODES = {'UMLTextView', 'UMLTextBoxView', 'UMLTimeTickView', 'UMLSwimlaneView',
+    'MMNodeView', 'WFPanelView', 'WFButtonView', 'WFRadioView', 'WFInputView', 'WFImageView', 'WFCheckboxView'}
 
 MESSAGE_SORT = {
     'synchCall': 'UMLMessage+sync',
@@ -343,6 +446,11 @@ class Converter:
             return 'UMLMessage'
         if view_type == 'UMLNoteView':
             return 'UMLNote'
+        if view_type in ('MMNodeView', 'WFPanelView', 'WFButtonView', 'WFRadioView',
+                         'WFInputView', 'WFImageView', 'WFCheckboxView'):
+            return None
+        if t in ('MMNode', 'WFText', 'WFButton', 'WFRadio', 'WFInput', 'WFImage', 'WFCheckbox', 'WFPanel'):
+            return None
         if t == 'UMLStateInvariant':
             return 'UMLTimeSegment'
         if t == 'UMLConstraint':
@@ -407,6 +515,18 @@ class Converter:
         }
         # cache before resolving references that may point back to this model
         self.model_map[sm_id] = model
+        if sm.get('_type') == 'ERDEntity':
+            model['attributes'] = [
+                {
+                    '_id': self.nid('a'), '$type': 'UMLAttribute',
+                    'name': clean_text(c.get('name')) or 'column',
+                    'type': c.get('type') if isinstance(c.get('type'), str) else self.resolve_name(c.get('type')),
+                    'multiplicity': '',
+                    'visibility': 'public',
+                    'defaultValue': '', 'isStatic': False,
+                }
+                for c in sm.get('columns') or [] if isinstance(c, dict)
+            ]
         if our_type in ('UMLClass', 'UMLInterface', 'UMLDataType', 'UMLPrimitiveType',
                         'UMLInformationItem', 'UMLCollaboration', 'UMLStereotype'):
             model['attributes'] = [
@@ -517,7 +637,7 @@ class Converter:
             if not isinstance(child, dict):
                 continue
             t = child.get('_type')
-            if t in DIAGRAM_TYPES:
+            if t in DIAGRAM_TYPES or t in DIAGRAM_TYPE_MAP:
                 self.convert_diagram(child, owner_model)
             elif t == 'UMLProfile' or t in CONTAINER_MAP:
                 self.convert_container(child, owner_model)
@@ -552,9 +672,9 @@ class Converter:
 
     # ---------------- diagrams ----------------
     def convert_diagram(self, sm, owner):
-        dtype = sm.get('_type')
+        dtype = DIAGRAM_TYPE_MAP.get(sm.get('_type')) or sm.get('_type')
         if dtype not in DIAGRAM_TYPES:
-            self.skipped[f'diagram:{dtype}'] += 1
+            self.skipped[f'diagram:{sm.get("_type")}'] += 1
             return None
         d = {
             '_id': self.nid('d'),
@@ -746,7 +866,37 @@ class Converter:
             return 'UMLTextView'
         if t == 'UMLStructuredActivityNodeView':
             return 'UMLStructuredActivityNode'
-        return None
+        ext_nodes = {
+            'ERDEntityView': 'UMLClass',
+            'FCProcessView': 'UMLAction', 'FCTerminatorView': 'UMLState', 'FCDecisionView': 'UMLDecisionNode',
+            'FCPredefinedProcessView': 'UMLStructuredActivityNode', 'FCDataView': 'UMLObjectNode',
+            'FCDocumentView': 'UMLNote', 'FCDatabaseView': 'UMLDataStoreNode',
+            'MMNodeView': 'UMLTextView',
+            'DFDProcessView': 'UMLAction', 'DFDExternalEntityView': 'UMLClass', 'DFDDataStoreView': 'UMLDataStoreNode',
+            'WFPanelView': 'UMLRectView', 'WFButtonView': 'UMLTextView', 'WFTextView': 'UMLTextView',
+            'WFRadioView': 'UMLTextView', 'WFInputView': 'UMLTextView', 'WFCheckboxView': 'UMLTextView',
+            'WFImageView': 'UMLTextView',
+            'BPMNTaskView': 'UMLAction', 'BPMNSubProcessView': 'UMLStructuredActivityNode',
+            'BPMNGatewayView': 'UMLDecisionNode',
+            'BPMNPoolView': 'UMLPackage', 'BPMNLaneView': 'UMLPackage',
+            'BPMNConversationView': 'UMLPackage', 'BPMNMessageView': 'UMLClass',
+            'BPMNChoreographyTaskView': 'UMLAction', 'BPMNTextAnnotationView': 'UMLNote',
+            'AWSResourceView': 'UMLComponent', 'AWSGeneralResourceView': 'UMLComponent',
+            'AWSGroupView': 'UMLPackage', 'AWSCalloutView': 'UMLNote',
+            'AzureResourceView': 'UMLComponent', 'AzureGeneralResourceView': 'UMLComponent',
+            'AzureGroupView': 'UMLPackage', 'AzureCalloutView': 'UMLNote',
+            'GCPResourceView': 'UMLComponent', 'GCPGeneralResourceView': 'UMLComponent',
+            'GCPGroupView': 'UMLPackage', 'GCPCalloutView': 'UMLNote',
+            'GCPProductView': 'UMLComponent', 'GCPServiceView': 'UMLComponent',
+            'GCPZoneView': 'UMLPackage', 'GCPUserView': 'UMLActor',
+        }
+        if t == 'BPMNEventView':
+            if mt == 'BPMNStartEvent':
+                return 'UMLInitialNode'
+            if mt == 'BPMNEndEvent':
+                return 'UMLActivityFinalNode'
+            return 'UMLAcceptSignal'
+        return ext_nodes.get(t)
 
     def convert_node_view(self, view, diagram):
         our_type = self.view_type_for(view)
@@ -807,7 +957,8 @@ class Converter:
         elif t == 'UMLSwimlaneView':
             v['laneName'] = label or 'Partition'
         elif t in ('UMLTextView', 'UMLTextBoxView'):
-            v['text'] = label or clean_text(view.get('text')) or ''
+            raw_name = clean_text((self.by_id.get(ref(view.get('model'))) or {}).get('name'))
+            v['text'] = label or clean_text(view.get('text')) or raw_name or ''
             v['width'] = round(max(w, 60), 2)
             v['height'] = round(max(h, 24), 2)
         elif t == 'UMLNoteView':
@@ -843,6 +994,10 @@ class Converter:
                      'shadow', 'autoResize'):
             if flag in view:
                 v[flag] = bool(view[flag])
+        for key in ('fillColor', 'lineColor', 'fontColor'):
+            val = clean_text(view.get(key))
+            if val.startswith('#'):
+                v[key] = val
         if view.get('wordWrap') or view.get('autoWrap'):
             v['autoWrap'] = True
         if 'stereotypeDisplay' in view:
@@ -999,7 +1154,23 @@ class Converter:
             return 'UMLContainment'
         if t == 'UMLLinkView':
             return 'UMLLink'
-        return None
+        ext_edges = {
+            'ERDRelationshipView': 'UMLAssociation',
+            'FCFlowView': 'UMLControlFlow',
+            'MMEdgeView': 'UMLLink',
+            'DFDDataFlowView': 'UMLObjectFlow',
+            'BPMNSequenceFlowView': 'UMLControlFlow',
+            'BPMNConversationLinkView': 'UMLDependency',
+            'BPMNMessageFlowView': 'UMLDependency',
+            'BPMNMessageLinkView': 'UMLDependency',
+            'BPMNDataAssociationView': 'UMLObjectFlow',
+            'BPMNAssociationView': 'UMLDependency',
+            'AWSArrowView': 'UMLDependency',
+            'AzureArrowView': 'UMLDependency',
+            'GCPArrowView': 'UMLDependency',
+            'GCPPathView': 'UMLDependency',
+        }
+        return ext_edges.get(t)
 
     def parse_points(self, view):
         raw = view.get('points')
@@ -1182,6 +1353,10 @@ class Converter:
                      'shadow', 'autoResize'):
             if flag in view:
                 v[flag] = bool(view[flag])
+        for key in ('fillColor', 'lineColor', 'fontColor'):
+            val = clean_text(view.get(key))
+            if val.startswith('#'):
+                v[key] = val
         if view.get('wordWrap') or view.get('autoWrap'):
             v['autoWrap'] = True
         if 'stereotypeDisplay' in view:
@@ -1240,7 +1415,7 @@ class Converter:
         for obj in self.by_id.values():
             if not isinstance(obj, dict):
                 continue
-            if obj.get('_type') in DIAGRAM_TYPES and obj.get('_id') not in self.diagram_map:
+            if (obj.get('_type') in DIAGRAM_TYPES or obj.get('_type') in DIAGRAM_TYPE_MAP) and obj.get('_id') not in self.diagram_map:
                 owner = self.find_owner(obj) or self.root_model
                 if owner:
                     self.convert_diagram(obj, owner)
