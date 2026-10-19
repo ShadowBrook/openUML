@@ -5,6 +5,15 @@
 > 交互概览图 / Timing 时序图）与主要编辑能力，详见 README。
 > 另已支持 **ERD / PDM**（实体表、列 PK/NN/UK、引用 FK、基数标签）与
 > **PDM → SQL**（MySQL / PostgreSQL / SQLite / ANSI 四方言，模型菜单 "ERD / PDM 转 SQL…"）。
+
+### ERD / PDM 待办
+
+- [x] CDM→PDM 自动转换：按关系基数自动在子表生成 FK 列（菜单入口，
+      单条撤销/重做，含 FK 徽标渲染与中文表名列名支持）
+- [x] 索引定义：表级 INDEX / UNIQUE INDEX（属性面板 + SQL 生成）
+- [x] VIEW 图元：SQL 文本编辑 + 渲染 + 生成 CREATE VIEW
+- [x] SQL 反向导入 PDM：离线解析 CREATE TABLE / ALTER（不连数据库，
+      支持 MySQL/PostgreSQL/SQLite 方言差异、行内与表级约束、注释保留）
 > 本文件只记录**尚未复刻或复刻不到位**的项，按优先级排列。
 
 ## P0 — 缺陷与回归风险

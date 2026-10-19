@@ -265,6 +265,24 @@
               "name": "entity",
               "value": "Order"
             }
+          ],
+          "columns": [
+            {
+              "_id": "c-fix1",
+              "name": "订单ID",
+              "type": "INT",
+              "primaryKey": true,
+              "notNull": true,
+              "unique": false
+            },
+            {
+              "_id": "c-fix2",
+              "name": "金额",
+              "type": "DECIMAL",
+              "primaryKey": false,
+              "notNull": false,
+              "unique": false
+            }
           ]
         },
         {
@@ -2598,6 +2616,334 @@
           "tags": [],
           "ownedElements": [],
           "classifier": "AppServer"
+        },
+        {
+          "_id": "d-2-p7d9m",
+          "type": "ERDDiagram",
+          "name": "PDM 订单库",
+          "ownedElements": [],
+          "elements": [
+            {
+              "_id": "v-4-mryam",
+              "$type": "ERDEntity",
+              "modelRef": "m-3-z2xaz",
+              "x": 60,
+              "y": 60,
+              "width": 220,
+              "height": 60,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12
+            },
+            {
+              "_id": "v-6-ha637",
+              "$type": "ERDEntity",
+              "modelRef": "m-5-029y9",
+              "x": 480,
+              "y": 60,
+              "width": 220,
+              "height": 60,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12
+            },
+            {
+              "_id": "e-8-hxulj",
+              "$type": "ERDReference",
+              "isEdge": true,
+              "isMessage": false,
+              "modelRef": "m-7-l2mjh",
+              "tail": "v-6-ha637",
+              "head": "v-4-mryam",
+              "points": [],
+              "lineStyle": "solid",
+              "tailArrow": "none",
+              "headArrow": "none",
+              "stereotype": "",
+              "nameVisible": true,
+              "tailRoleName": "",
+              "tailMultiplicity": "",
+              "headRoleName": "",
+              "headMultiplicity": "",
+              "fkColumns": "user_id",
+              "parentColumns": "id",
+              "onDelete": "CASCADE",
+              "onUpdate": "RESTRICT",
+              "tailCardinality": "n",
+              "headCardinality": "1"
+            }
+          ],
+          "defaultDiagram": false
+        },
+        {
+          "_id": "m-7-l2mjh",
+          "type": "ERDReference",
+          "name": "",
+          "stereotype": "",
+          "documentation": "",
+          "tags": [],
+          "ownedElements": []
+        },
+        {
+          "_id": "m-2-0zr55",
+          "type": "ERDEntity",
+          "name": "客户",
+          "stereotype": "",
+          "documentation": "",
+          "tags": [],
+          "ownedElements": [],
+          "indexes": [],
+          "columns": [
+            {
+              "name": "客户ID",
+              "type": "INT",
+              "primaryKey": true,
+              "notNull": true
+            }
+          ]
+        },
+        {
+          "_id": "m-3-dc727",
+          "type": "ERDEntity",
+          "name": "订单",
+          "stereotype": "",
+          "documentation": "",
+          "tags": [],
+          "ownedElements": [],
+          "indexes": [
+            {
+              "name": "idx_order_user",
+              "columns": "客户ID",
+              "unique": false
+            }
+          ],
+          "columns": [
+            {
+              "_id": "c-o1",
+              "name": "订单ID",
+              "type": "INT",
+              "primaryKey": true,
+              "notNull": true
+            },
+            {
+              "_id": "c-o2",
+              "name": "金额",
+              "type": "DECIMAL",
+              "notNull": true
+            },
+            {
+              "_id": "c-o3",
+              "name": "客户_客户ID",
+              "type": "INT",
+              "notNull": true,
+              "foreignKey": true
+            }
+          ]
+        },
+        {
+          "_id": "d-4-9i7ao",
+          "type": "ERDDiagram",
+          "name": "CDM 演示",
+          "ownedElements": [],
+          "elements": [
+            {
+              "_id": "v-5-w9i7l",
+              "$type": "ERDEntity",
+              "modelRef": "m-2-0zr55",
+              "x": 80,
+              "y": 80,
+              "width": 120,
+              "height": 60,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12
+            },
+            {
+              "_id": "v-6-no02d",
+              "$type": "ERDEntity",
+              "modelRef": "m-3-dc727",
+              "x": 420,
+              "y": 80,
+              "width": 120,
+              "height": 60,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12
+            },
+            {
+              "_id": "e-8-2wfcc",
+              "$type": "ERDRelationship",
+              "isEdge": true,
+              "isMessage": false,
+              "modelRef": "m-7-5zf7v",
+              "tail": "v-5-w9i7l",
+              "head": "v-6-no02d",
+              "points": [],
+              "lineStyle": "solid",
+              "tailArrow": "none",
+              "headArrow": "none",
+              "stereotype": "",
+              "nameVisible": true,
+              "tailRoleName": "",
+              "tailMultiplicity": "",
+              "headRoleName": "",
+              "headMultiplicity": "",
+              "tailCardinality": "1,1",
+              "headCardinality": "0..n"
+            },
+            {
+              "_id": "v-f-d6aga",
+              "$type": "ERDEntity",
+              "modelRef": "m-a-lyrtq",
+              "x": 80,
+              "y": 80,
+              "width": 120,
+              "height": 60,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12
+            },
+            {
+              "_id": "v-g-482c1",
+              "$type": "ERDEntity",
+              "modelRef": "m-4-5jm51",
+              "x": 420,
+              "y": 80,
+              "width": 120,
+              "height": 60,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12
+            },
+            {
+              "_id": "v-3-wor5u",
+              "$type": "ERDView",
+              "modelRef": "m-2-tuknl",
+              "x": 480,
+              "y": 420,
+              "width": 340,
+              "height": 100,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12
+            }
+          ],
+          "defaultDiagram": false
+        },
+        {
+          "_id": "m-7-5zf7v",
+          "type": "ERDRelationship",
+          "name": "下单",
+          "stereotype": "",
+          "documentation": "",
+          "tags": [],
+          "ownedElements": []
+        },
+        {
+          "_id": "d-9-87yyz",
+          "type": "ERDDiagram",
+          "name": "Reverse Demo",
+          "ownedElements": [],
+          "elements": [
+            {
+              "_id": "v-a-jjgbg",
+              "$type": "ERDEntity",
+              "modelRef": "e-es4kie9e",
+              "x": 60,
+              "y": 60,
+              "width": 220,
+              "height": 60,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12
+            },
+            {
+              "_id": "v-b-yt1uj",
+              "$type": "ERDEntity",
+              "modelRef": "e-volkxieq",
+              "x": 360,
+              "y": 60,
+              "width": 220,
+              "height": 60,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12
+            },
+            {
+              "_id": "e-c-th4mo",
+              "$type": "ERDReference",
+              "isEdge": true,
+              "isMessage": false,
+              "modelRef": "r-37a6z6o9",
+              "tail": "v-b-yt1uj",
+              "head": "v-a-jjgbg",
+              "points": [],
+              "lineStyle": "solid",
+              "tailArrow": "none",
+              "headArrow": "none",
+              "stereotype": "",
+              "nameVisible": true,
+              "tailRoleName": "",
+              "tailMultiplicity": "",
+              "headRoleName": "",
+              "headMultiplicity": "",
+              "fkColumns": "user_id",
+              "parentColumns": "id",
+              "onDelete": "RESTRICT",
+              "onUpdate": "RESTRICT"
+            },
+            {
+              "_id": "v-e-4wnxt",
+              "$type": "ERDView",
+              "modelRef": "m-d-zna18",
+              "x": 60,
+              "y": 480,
+              "width": 300,
+              "height": 90,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12
+            }
+          ],
+          "defaultDiagram": false
+        },
+        {
+          "_id": "r-37a6z6o9",
+          "type": "ERDReference",
+          "name": "",
+          "stereotype": "",
+          "documentation": "",
+          "ownedElements": []
+        },
+        {
+          "_id": "m-d-zna18",
+          "type": "ERDView",
+          "name": "v_order_summary",
+          "stereotype": "",
+          "documentation": "",
+          "tags": [],
+          "ownedElements": [],
+          "sql": "SELECT 客户ID, COUNT(*) FROM 订单 GROUP BY 客户ID"
+        },
+        {
+          "_id": "m-2-tuknl",
+          "type": "ERDView",
+          "name": "v_客户订单",
+          "stereotype": "",
+          "documentation": "",
+          "tags": [],
+          "ownedElements": [],
+          "sql": "SELECT 客户.客户ID, 订单.金额 FROM 客户 JOIN 订单 ON 客户.客户ID = 订单.客户ID"
         }
       ]
     }

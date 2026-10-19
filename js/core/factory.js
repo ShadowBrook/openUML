@@ -69,6 +69,12 @@ export function createModel(type, name, extra = {}) {
   if (type === 'UMLTimeConstraint' || type === 'UMLDurationConstraint') {
     el.name = extra.name ?? (type === 'UMLTimeConstraint' ? '{t=0}' : '{d=0}');
   }
+  if (type === 'ERDEntity') {
+    el.indexes = [];
+  }
+  if (type === 'ERDView') {
+    el.sql = 'SELECT ...';
+  }
   if (type === 'UMLCombinedFragment') {
     el.operator = 'alt';
     el.operands = [{ guard: '' }, { guard: '' }];

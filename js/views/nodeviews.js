@@ -1162,6 +1162,22 @@ export function renderNode(g, view, model, kind) {
       break;
     }
     case 'note':
+    case 'erdview': {
+      const headH = fs + 12;
+      svgEl('rect', { x, y, width: w, height: h, fill: view.fillColor || '#eafaf2', stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
+      svgEl('rect', { x, y, width: w, height: headH, fill: '#d9f2e6', stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
+      const t = svgEl('text', { x: x + w / 2, y: y + headH - 5, 'text-anchor': 'middle', 'font-size': fs, 'font-weight': 700, fill: fontColor }, g);
+      t.textContent = (model.stereotype ? '«' + model.stereotype + '» ' : '') + (model.name || '');
+      const sqlLines = (model.sql || '').split('\n').slice(0, Math.max(0, Math.floor((h - headH - 8) / (fs + 3))));
+      let by = y + headH + 6 + fs;
+      for (const ln of sqlLines) {
+        const bt = svgEl('text', { x: x + 6, y: by, 'font-size': fs - 1, fill: fontColor, 'font-family': 'monospace' }, g);
+        bt.textContent = ln;
+        by += fs + 3;
+      }
+      meta.textSlots.name = { box: new Rect(x, y, w, headH), text: model.name, field: 'name', align: 'center' };
+      break;
+    }
     case 'erdentity': {
       // ERD table/entity: header band + column rows (PK badge, type right-aligned)
       const cols = (model.columns || []);

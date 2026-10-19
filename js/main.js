@@ -3,7 +3,7 @@
 import { repository } from './core/repository.js';
 import { commandStack, compound, serializeProject, deserializeProject } from './core/commands.js';
 import {
-  createProject, createDiagram, createModel, createNodeView,
+  createProject, createDiagram, createModel, createNodeView, createEdgeView,
 } from './core/factory.js';
 import { diagramIcon, ModelKinds } from './core/metamodel.js';
 import { DiagramCanvas } from './views/canvas.js';
@@ -23,6 +23,8 @@ import { convertMdj } from './io/mdj.js';
 import { initPluginApi } from './plugins.js';
 import { generate, CODEGEN_TEMPLATES } from './codegen.js';
 import { generateSQL, collectERD, SQL_DIALECTS } from './sql.js';
+import { cdmToPDM } from './sql.js';
+import { importSQLToDiagram, parseSQL } from './sql.js';
 import { t, setLang, availableLangs, getLang } from './ui/i18n.js';
 
 const DIAGRAM_TYPE_LABELS = {
@@ -962,15 +964,86 @@ function safeName(s) {
 
 // ---------------- code generation ----------------
 
+function openSQLImportDialog() {
+  const diagram = app.canvas.diagram;
+  if (!diagram || diagram.type !== 'ERDDiagram') { showToast('请先打开一张 ERD / PDM 图'); return; }
+  const overlay = document.createElement('div');
+  overlay.className = 'dialog-overlay';
+  overlay.innerHTML = `<div class="dialog" style="width:720px;height:520px;display:flex;flex-direction:column">
+    <div class="dialog-title">从 SQL 反向导入 PDM（离线解析，不连接数据库）</div>
+    <div class="dialog-body" style="flex:1;display:flex;flex-direction:column;gap:6px;min-height:0">
+      <label style="color:var(--text-dim)">粘贴 CREATE TABLE / ALTER TABLE 语句（支持 MySQL / PostgreSQL / SQLite 方言）</label>
+      <textarea id="sqlimp-in" placeholder="CREATE TABLE users (\n  id BIGINT PRIMARY KEY,\n  name VARCHAR(100) NOT NULL\n);" style="flex:1;font-family:monospace;white-space:pre;resize:none"></textarea>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn primary" id="sqlimp-run">导入到当前图</button>
+      <button class="btn" id="sqlimp-close">关闭</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#sqlimp-close').onclick = () => overlay.remove();
+  overlay.querySelector('#sqlimp-run').onclick = () => {
+    const text = overlay.querySelector('#sqlimp-in').value;
+    if (!text.trim()) return;
+    const created = importSQLToDiagram(diagram, text,
+      (m) => repository.addChild(model0(), m),
+      (type, ref, x, y, extra) => window.__internals.createNodeView(type, ref, x, y, extra),
+      (type, ref, a, b) => window.__internals.createEdgeView(type, ref, a, b));
+    if (!created.length) { showToast('未能从该 SQL 解析出表'); return; }
+    const c = app.canvas;
+    compound('sql import', [{
+      redo: () => { for (const v of created) { if (!diagram.elements.includes(v)) diagram.elements.push(v); } repository._reindex(); c.requestRender(); },
+      undo: () => {
+        for (const v of [...created].reverse()) {
+          const i = diagram.elements.indexOf(v);
+          if (i >= 0) diagram.elements.splice(i, 1);
+        }
+        repository._reindex(); c.requestRender();
+      },
+    }]);
+    // run the redo manually since exec was recorded but not executed
+    for (const v of created) { if (!diagram.elements.includes(v)) diagram.elements.push(v); }
+    repository._reindex();
+    c.requestRender();
+    overlay.remove();
+    showToast(`已导入 ${created.filter(v => !v.isEdge).length} 表 / ${created.filter(v => v.isEdge).length} 引用`);
+  };
+}
+
+function runCDMtoPDM() {
+  const diagram = app.canvas.diagram;
+  if (!diagram || diagram.type !== 'ERDDiagram') { showToast('请先打开一张 ERD 图'); return; }
+  const changes = cdmToPDM(diagram, false);
+  if (!changes.length) { showToast('没有可转换的关系（父表需有主键列，且子表未含同名 FK 列）'); return; }
+  const desc = changes.map((ch) => `${ch.child.name} ← ${ch.parent.name}（新增 ${ch.cols.length} 列）`).join('；');
+  compound('cdm-to-pdm', [{
+    redo: () => {
+      for (const ch of changes) {
+        ch.child.columns = [...(ch.child.columns || []), ...ch.cols];
+        for (const col of ch.cols) col.foreignKey = true;
+      }
+    },
+    undo: () => {
+      for (const ch of changes) {
+        ch.child.columns = (ch.child.columns || []).filter((c) => !ch.cols.includes(c));
+      }
+    },
+  }]);
+  app.canvas.setStatusMessage(`CDM→PDM：${desc}`);
+  showToast(`已生成 ${changes.reduce((n, ch) => n + ch.cols.length, 0)} 个外键列`);
+}
+
 function openERDSQLDialog() {
   const diagram = app.canvas.diagram;
   if (!diagram || diagram.type !== 'ERDDiagram') { showToast('请先打开一张 ERD / PDM 图'); return; }
   const { entities, references } = collectERD(diagram);
+  const views = (diagram.elements || []).filter((v) => v.$type === 'ERDView')
+    .map((v) => ({ name: v.name, sql: v.sql })).filter((v) => v.name);
   if (!entities.length) { showToast('当前图中没有实体/表'); return; }
   const overlay = document.createElement('div');
   overlay.className = 'dialog-overlay';
   overlay.innerHTML = `<div class="dialog" style="width:760px;height:560px;display:flex;flex-direction:column">
-    <div class="dialog-title">PDM → SQL — ${entities.length} 表 / ${references.length} 引用</div>
+    <div class="dialog-title">PDM → SQL — ${entities.length} 表 / ${references.length} 引用 / ${views.length} 视图</div>
     <div class="dialog-body" style="flex:1;display:flex;flex-direction:column;gap:6px;min-height:0">
       <div style="display:flex;gap:8px;align-items:center">
         <label style="color:var(--text-dim)">方言</label>
@@ -989,7 +1062,7 @@ function openERDSQLDialog() {
   document.body.appendChild(overlay);
   const dialectSel = overlay.querySelector('#sql-dialect');
   const out = overlay.querySelector('#sql-out');
-  const regen = () => { out.value = generateSQL(entities, references, dialectSel.value); };
+  const regen = () => { out.value = generateSQL(entities, references, dialectSel.value, views); };
   dialectSel.onchange = regen;
   regen();
   overlay.querySelector('#sql-copy').onclick = async () => {
@@ -1655,6 +1728,8 @@ function buildMenus() {
         { label: '文档编辑器… (Markdown)', disabled: !sel(), action: openMarkdownEditor },
         { label: '代码生成…', action: openCodegenDialog },
         { label: 'ERD / PDM 转 SQL…', action: openERDSQLDialog },
+        { label: 'CDM → PDM 自动转换（生成外键列）', action: runCDMtoPDM },
+        { label: '从 SQL 反向导入 PDM…', action: openSQLImportDialog },
         '---',
         { label: '重命名…', shortcut: 'F2', disabled: !sel(), action: () => sel() && renameElement(sel()) },
       ],
@@ -1956,7 +2031,7 @@ function boot() {
   canvas.snapToGrid = prefs.snapToGrid;
   canvas.autoResize = prefs.autoResize;
   canvas.autoRoute = prefs.autoRoute !== false;
-  window.__internals = { createNodeView, createModel, createDiagram, app, openDiagram };
+  window.__internals = { createNodeView, createModel, createDiagram, createEdgeView, app, openDiagram };
 
   app.explorer = new ModelExplorer(document.getElementById('model-explorer'), {
     onSelect: (node) => {

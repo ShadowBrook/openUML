@@ -247,6 +247,23 @@ export class PropertyEditor {
       }
     }
 
+    // ERD entity: indexes (INDEX / UNIQUE INDEX)
+    if (model.type === 'ERDEntity') {
+      const idxSec = this._section('索引 (Indexes)');
+      this._listEditor(idxSec, model, 'indexes',
+        () => ({ _id: 'idx-' + Math.random().toString(36).slice(2, 9), name: 'idx_' + (model.name || 'tbl'), columns: '', unique: false }),
+        (ix) => ({ vis: ix.unique ? 'U' : 'I', name: ix.name, type: ix.columns }),
+        [
+          { key: 'name', label: '索引名' },
+          { key: 'columns', label: '列 (逗号分隔)' },
+          { key: 'unique', label: 'UNIQUE', bool: true },
+        ]);
+    }
+    // ERD view: SQL text
+    if (model.type === 'ERDView') {
+      const vSec = this._section('视图 SQL');
+      this._row(vSec, 'SQL', model.sql || '', (v) => this._set(model, 'sql', v), 'textarea');
+    }
     // ERD entity: column list with type / PK / NOT NULL / UNIQUE
     if (model.type === 'ERDEntity') {
       const sec = this._section('列 (Columns)');

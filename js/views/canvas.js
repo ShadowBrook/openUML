@@ -197,6 +197,7 @@ export class DiagramCanvas {
       : v.$type === 'UMLAcceptSignal' ? 'acceptsignal'
       : v.$type === 'UMLCombinedFragment' ? 'fragment'
       : v.$type === 'ERDEntity' ? 'erdentity'
+      : v.$type === 'ERDView' ? 'erdview'
       : v.$type === 'UMLInteractionUse' ? 'ref'
       : v.$type === 'UMLInteractionUseInOverview' ? 'ref'
       : v.$type === 'UMLInteractionInOverview' ? 'interactionOverview'
@@ -1911,6 +1912,9 @@ export class DiagramCanvas {
     } else if (nodeType === 'Subject') {
       model = createModel('UMLUseCaseSubject', 'System');
       view = createNodeView('Subject', model._id, x, y, { width: 340, height: 300 });
+    } else if (nodeType === 'ERDView') {
+      model = createModel('ERDView', 'View');
+      view = createNodeView('ERDView', model._id, x, y);
     } else if (nodeType === 'UMLTextView' || nodeType === 'UMLRectView' || nodeType === 'UMLRoundRectView' || nodeType === 'UMLEllipseView') {
       // view-only annotation shapes: no model element behind them
       model = null;
