@@ -2045,16 +2045,27 @@ export class DiagramCanvas {
       }
       const view = createEdgeView(edgeType, '', tailId, headId);
       view.messages = requested === 'UMLLinkMessage' ? [{ text: '', direction: 'forward' }] : [];
-      if (edgeType === 'UMLLinkObject') view.name = 'link';
-      compound('connect', [{
-        redo: () => { diagram.elements.push(view); view.__diagram = diagram; repository._reindex(); },
-        undo: () => {
-          const i = diagram.elements.indexOf(view);
-          if (i >= 0) diagram.elements.splice(i, 1);
-          repository._reindex();
+      let linkObjectModel = null;
+      if (edgeType === 'UMLLinkObject') {
+        // a link object carries real object semantics: classifier + slots
+        linkObjectModel = createModel('UMLObject', 'link');
+        linkObjectModel.classifier = '';
+        linkObjectModel.slots = [];
+        view.modelRef = linkObjectModel._id;
+      }
+      const parentModel = linkObjectModel ? this._defaultOwnerFor(linkObjectModel) : null;
+      compound('connect', [
+        ...(linkObjectModel ? [{ redo: () => repository.addChild(parentModel, linkObjectModel), undo: () => repository.removeChild(linkObjectModel) }] : []),
+        {
+          redo: () => { diagram.elements.push(view); view.__diagram = diagram; repository._reindex(); },
+          undo: () => {
+            const i = diagram.elements.indexOf(view);
+            if (i >= 0) diagram.elements.splice(i, 1);
+            repository._reindex();
+          },
         },
-      }]);
-      repository.select([view._id], null);
+      ]);
+      repository.select([view._id], linkObjectModel);
       this.setStatusMessage(requested === 'UMLLinkMessage' || requested === 'UMLConnector'
         ? '已添加链接（双击连线编辑消息）'
         : '已连接');

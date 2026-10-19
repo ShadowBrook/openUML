@@ -93,7 +93,7 @@ export function renderSelfLoop(g, edge, model, rect) {
   }
   const labelParts = [];
   if (edge.stereotype) labelParts.push(edge.stereotype);
-  if (edge.nameVisible !== false && model?.name) labelParts.push(model.name);
+  if (edge.$type !== 'UMLLinkObject' && edge.nameVisible !== false && model?.name) labelParts.push(model.name);
   if (model?.type === 'UMLInformationFlow' && (model.conveyed || []).length) {
     const conveyed = model.conveyed.map((c) => c.name).filter(Boolean);
     if (conveyed.length) labelParts.push(conveyed.join(', '));
@@ -440,7 +440,7 @@ export function renderEdge(g, edge, model, tailRect, headRect, opts = {}) {
   const mid = { x: baseMid.x + (off.dx || 0), y: baseMid.y + (off.dy || 0) };
   const labelParts = [];
   if (edge.stereotype) labelParts.push(edge.stereotype);
-  if (edge.nameVisible !== false && model?.name) labelParts.push(model.name);
+  if (edge.$type !== 'UMLLinkObject' && edge.nameVisible !== false && model?.name) labelParts.push(model.name);
   if (model?.type === 'UMLInformationFlow' && (model.conveyed || []).length) {
     const conveyed = model.conveyed.map((c) => c.name).filter(Boolean);
     if (conveyed.length) labelParts.push(conveyed.join(', '));
@@ -463,20 +463,32 @@ export function renderEdge(g, edge, model, tailRect, headRect, opts = {}) {
       box: new Rect(mid.x - textW / 2 - 3, mid.y - fs - 9, textW + 6, fs + 7),
     });
   }
-  // object-diagram link object: a small underlined object box on the link midpoint
+  // object-diagram link object: a full object box (instance notation + slots)
+  // sitting on the link midpoint, backed by a UMLObject model
   if (edge.$type === 'UMLLinkObject') {
-    const name = edge.name || '';
-    const bw = Math.max(70, name.length * fs * 0.6 + 18);
-    const bh = fs + 14;
+    const slots = (model && model.slots) || [];
+    const cls = (model && model.classifier) || '';
+    const name = (model && model.name) || edge.name || '';
+    const title = cls ? `${name} : ${cls}` : name;
+    const lines = [title, ...slots.map((s) => `${s.name} = ${s.value}`)];
+    const bw = Math.max(80, ...lines.map((l) => l.length * fs * 0.6 + 18));
+    const bh = fs + 12 + slots.length * (fs + 4) + 6;
     svgEl('rect', {
       x: mid.x - bw / 2, y: mid.y - bh / 2, width: bw, height: bh,
       fill: edge.fillColor || '#ffffff', stroke: line, 'stroke-width': 1, class: 'node-frame',
     }, g);
     const t = svgEl('text', {
-      x: mid.x, y: mid.y + fs * 0.35, 'text-anchor': 'middle', 'font-size': fs,
+      x: mid.x, y: mid.y - bh / 2 + fs + 6, 'text-anchor': 'middle', 'font-size': fs,
       fill: fontColor, 'text-decoration': 'underline',
     }, g);
-    t.textContent = name;
+    t.textContent = title;
+    slots.forEach((s, i) => {
+      const st = svgEl('text', {
+        x: mid.x - bw / 2 + 8, y: mid.y - bh / 2 + fs + 6 + (i + 1) * (fs + 4) + 2,
+        'font-size': fs - 1, fill: fontColor,
+      }, g);
+      st.textContent = `${s.name} = ${s.value}`;
+    });
   }
 
   const showEndLabels = model?.type === 'UMLAssociation'

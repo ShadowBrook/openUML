@@ -454,7 +454,9 @@ export class PropertyEditor {
     if (this.currentView && this.currentView.isEdge) {
       const sec = this._section('连接');
       if (this.currentView.$type === 'UMLLinkObject') {
-        this._row(sec, 'name', this.currentView.name || '', (val) => this._setView(this.currentView, 'name', val));
+        // modern link objects carry a UMLObject model; legacy ones stay view-only
+        this._row(sec, 'name', model.name || this.currentView.name || '',
+          (val) => this._set(model, 'name', val.trim()));
       }
       if (this.currentView.$type === 'UMLRoleBinding') {
         this._row(sec, 'role name', this.currentView.roleName || '', (val) => this._setView(this.currentView, 'roleName', val));
