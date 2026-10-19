@@ -290,6 +290,11 @@ export class PropertyEditor {
       sec.appendChild(ctrl);
     }
 
+    if (model.type === 'UMLSubmachineState') {
+      const sec = this._section('子机状态 (Submachine)');
+      this._row(sec, 'submachine', model.submachine || '', (v) => this._set(model, 'submachine', v.trim()));
+    }
+
     // Instance: classifier (the type being instantiated)
     if (['UMLObject', 'UMLArtifactInstance', 'UMLComponentInstance', 'UMLNodeInstance'].includes(model.type)) {
       const sec = this._section('实例 (Instance)');

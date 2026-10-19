@@ -11,6 +11,8 @@ const ViewableModelTypes = new Set([
   'UMLObjectNode', 'UMLSendSignal', 'UMLAcceptSignal', 'UMLLifeLine', 'UMLNote',
   'UMLArtifactInstance', 'UMLComponentInstance', 'UMLNodeInstance', 'UMLConstraint',
   'UMLSignal', 'UMLPrimitiveType', 'UMLFrame', 'UMLAssociationClass',
+  'UMLOrthogonalState', 'UMLRegion', 'UMLSubmachineState', 'UMLTerminate',
+  'UMLEntryPoint', 'UMLExitPoint', 'UMLConnectionPointReference',
   'UMLCentralBufferNode', 'UMLDataStoreNode', 'UMLActivityParameterNode',
   'UMLInputPin', 'UMLOutputPin', 'UMLStructuredActivityNode',
   'UMLInterruptibleRegion', 'UMLAcceptTimeEvent',

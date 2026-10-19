@@ -1,6 +1,6 @@
 {
   "source": "UMLExample.mdj",
-  "models": 743,
+  "models": 744,
   "diagrams": [
     {
       "id": "d-3",
@@ -132,40 +132,40 @@
       "id": "d-1407",
       "type": "UMLStatechartDiagram",
       "name": "Bank ATM State Model",
-      "elements": 30
+      "elements": 31
     },
     {
-      "id": "d-1474",
+      "id": "d-1476",
       "type": "UMLTimingDiagram",
       "name": "Website Timing",
       "elements": 49
     },
     {
-      "id": "d-1577",
+      "id": "d-1579",
       "type": "UMLInteractionOverviewDiagram",
       "name": "Submit Comments",
       "elements": 21
     },
     {
-      "id": "d-1620",
+      "id": "d-1622",
       "type": "UMLSequenceDiagram",
       "name": "Post Comments",
       "elements": 16
     },
     {
-      "id": "d-1662",
+      "id": "d-1664",
       "type": "UMLInformationFlowDiagram",
       "name": "Information Flows",
       "elements": 13
     },
     {
-      "id": "d-1690",
+      "id": "d-1692",
       "type": "UMLDeploymentDiagram",
       "name": "Book Club Web Application",
       "elements": 6
     },
     {
-      "id": "d-1704",
+      "id": "d-1706",
       "type": "UMLClassDiagram",
       "name": "Annotations on Diagram",
       "elements": 3

@@ -55,6 +55,13 @@ SIMPLE_MODEL_MAP = {
     'UMLStereotype': 'UMLStereotype',
     'UMLState': 'UMLState',
     'UMLFinalState': 'UMLFinalState',
+    'UMLRegion': 'UMLRegion',
+    'UMLOrthogonalState': 'UMLOrthogonalState',
+    'UMLSubmachineState': 'UMLSubmachineState',
+    'UMLEntryPoint': 'UMLEntryPoint',
+    'UMLExitPoint': 'UMLExitPoint',
+    'UMLTerminate': 'UMLTerminate',
+    'UMLConnectionPointReference': 'UMLConnectionPointReference',
     'UMLAction': 'UMLAction',
     'UMLObjectNode': 'UMLObjectNode',
     'UMLCentralBufferNode': 'UMLCentralBufferNode',
@@ -113,6 +120,9 @@ NODE_VIEW_TYPES = {
     'UMLCollaborationUseView', 'UMLPartView', 'UMLPortView',
     'UMLInformationItemView', 'UMLMetaClassView', 'UMLStereotypeView',
     'UMLStateView', 'UMLPseudostateView', 'UMLFinalStateView',
+    'UMLOrthogonalStateView', 'UMLRegionView', 'UMLSubmachineStateView',
+    'UMLEntryPointView', 'UMLExitPointView', 'UMLTerminateView',
+    'UMLConnectionPointReferenceView',
     'UMLActionView', 'UMLControlNodeView', 'UMLObjectNodeView',
     'UMLCentralBufferNodeView', 'UMLDataStoreNodeView',
     'UMLActivityParameterNodeView', 'UMLInputPinView', 'UMLOutputPinView',
@@ -309,6 +319,22 @@ class Converter:
             return 'UMLInterruptibleRegion'
         if view_type == 'UMLAcceptTimeEventView':
             return 'UMLAcceptTimeEvent'
+        if view_type in ('UMLCompositeState',):
+            return 'UMLCompositeState'
+        if view_type in ('UMLOrthogonalStateView', 'UMLOrthogonalState'):
+            return 'UMLOrthogonalState'
+        if view_type in ('UMLSubmachineStateView', 'UMLSubmachineState'):
+            return 'UMLSubmachineState'
+        if view_type == 'UMLRegionView':
+            return 'UMLRegion'
+        if view_type == 'UMLEntryPointView':
+            return 'UMLEntryPoint'
+        if view_type == 'UMLExitPointView':
+            return 'UMLExitPoint'
+        if view_type == 'UMLTerminateView':
+            return 'UMLTerminate'
+        if view_type == 'UMLConnectionPointReferenceView':
+            return 'UMLConnectionPointReference'
         if view_type == 'UMLInteractionUseView':
             return 'UMLInteractionUse'
         if view_type == 'UMLInteractionInlineView':
@@ -440,6 +466,9 @@ class Converter:
             lo, hi = sm.get('min'), sm.get('max')
             if lo or hi:
                 model['name'] = f"{{{lo or '0'}..{hi or '∞'}}}"
+        if our_type == 'UMLSubmachineState':
+            target = self.by_id.get(ref(sm.get('submachine')))
+            model['submachine'] = clean_text(target.get('name')) if target else ''
         if our_type == 'UMLNote':
             model['documentation'] = clean_text(sm.get('documentation'))
         if our_type == 'UMLMessage':
@@ -603,6 +632,13 @@ class Converter:
         if t == 'UMLStereotypeView':
             return 'UMLStereotype'
         if t == 'UMLStateView':
+            if model.get('submachine'):
+                return 'UMLSubmachineState'
+            regions = [sub for sub in view.get('subViews') or [] if sub.get('_type') == 'UMLRegionView']
+            if len(regions) >= 2:
+                return 'UMLOrthogonalState'
+            if regions:
+                return 'UMLCompositeState'
             return 'UMLState'
         if t == 'UMLPseudostateView':
             kind = model.get('kind')
@@ -636,6 +672,20 @@ class Converter:
             return 'UMLInterruptibleRegion'
         if t == 'UMLAcceptTimeEventView':
             return 'UMLAcceptTimeEvent'
+        if t == 'UMLOrthogonalStateView':
+            return 'UMLOrthogonalState'
+        if t == 'UMLRegionView':
+            return 'UMLRegion'
+        if t == 'UMLSubmachineStateView':
+            return 'UMLSubmachineState'
+        if t == 'UMLEntryPointView':
+            return 'UMLEntryPoint'
+        if t == 'UMLExitPointView':
+            return 'UMLExitPoint'
+        if t == 'UMLTerminateView':
+            return 'UMLTerminate'
+        if t == 'UMLConnectionPointReferenceView':
+            return 'UMLConnectionPointReference'
         if t == 'UMLSendSignalView':
             return 'UMLSendSignal'
         if t == 'UMLAcceptSignalView':
@@ -759,7 +809,8 @@ class Converter:
                    'UMLClassView', 'UMLInterfaceView', 'UMLEnumerationView',
                    'UMLCentralBufferNodeView', 'UMLDataStoreNodeView',
                    'UMLActivityParameterNodeView', 'UMLStructuredActivityNodeView',
-                   'UMLInterruptibleActivityRegionView', 'UMLAcceptTimeEventView'):
+                   'UMLInterruptibleActivityRegionView', 'UMLAcceptTimeEventView',
+                   'UMLOrthogonalStateView', 'UMLRegionView', 'UMLSubmachineStateView'):
             if view_model and not view_model.get('name') and label:
                 view_model['name'] = label
         for flag in ('showVisibility', 'showType', 'showMultiplicity',
@@ -788,13 +839,21 @@ class Converter:
             'UMLTimeTick': {'UMLTimingLifeline'},
             'UMLInputPin': {'UMLAction', 'UMLStructuredActivityNode'},
             'UMLOutputPin': {'UMLAction', 'UMLStructuredActivityNode'},
+            'UMLRegion': {'UMLState', 'UMLCompositeState', 'UMLOrthogonalState', 'UMLSubmachineState'},
+            'UMLEntryPoint': {'UMLState', 'UMLCompositeState', 'UMLOrthogonalState', 'UMLSubmachineState'},
+            'UMLExitPoint': {'UMLState', 'UMLCompositeState', 'UMLOrthogonalState', 'UMLSubmachineState'},
+            'UMLConnectionPointReference': {'UMLState', 'UMLCompositeState', 'UMLOrthogonalState', 'UMLSubmachineState'},
         }
         for v in nodes:
             if v.get('container'):
                 continue
             allowed = containers.get(v.get('$type'))
             if not allowed:
-                if v.get('$type') not in ('UMLAction', 'UMLObjectNode', 'UMLSendSignal',
+                if v.get('$type') in ('UMLState', 'UMLCompositeState', 'UMLOrthogonalState',
+                                      'UMLSubmachineState', 'UMLInitialState', 'UMLFinalState',
+                                      'UMLChoice', 'UMLJunction', 'UMLShallowHistory', 'UMLDeepHistory'):
+                    allowed = {'UMLCompositeState', 'UMLOrthogonalState', 'UMLRegion', 'UMLSubmachineState'}
+                elif v.get('$type') not in ('UMLAction', 'UMLObjectNode', 'UMLSendSignal',
                                           'UMLAcceptSignal', 'UMLInitialNode',
                                           'UMLActivityFinalNode', 'UMLFlowFinalNode',
                                           'UMLDecisionNode', 'UMLMergeNode', 'UMLForkNode',
@@ -803,8 +862,9 @@ class Converter:
                                           'UMLAcceptTimeEvent', 'UMLStructuredActivityNode',
                                           'UMLInterruptibleRegion'):
                     continue
-                allowed = {'UMLSwimlaneVert', 'UMLSwimlaneHorz',
-                           'UMLStructuredActivityNode', 'UMLInterruptibleRegion'}
+                else:
+                    allowed = {'UMLSwimlaneVert', 'UMLSwimlaneHorz',
+                               'UMLStructuredActivityNode', 'UMLInterruptibleRegion'}
             cx = v['x'] + v['width'] / 2
             cy = v['y'] + v['height'] / 2
             best = None

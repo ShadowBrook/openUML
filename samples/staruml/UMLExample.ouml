@@ -17940,7 +17940,8 @@
                   "fillColor": "",
                   "lineColor": "",
                   "fontColor": "",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "container": "v-1433"
                 },
                 {
                   "_id": "v-1423",
@@ -17953,7 +17954,8 @@
                   "fillColor": "",
                   "lineColor": "",
                   "fontColor": "",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "container": "v-1433"
                 },
                 {
                   "_id": "v-1425",
@@ -17966,7 +17968,8 @@
                   "fillColor": "",
                   "lineColor": "",
                   "fontColor": "",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "container": "v-1433"
                 },
                 {
                   "_id": "v-1427",
@@ -17979,11 +17982,12 @@
                   "fillColor": "",
                   "lineColor": "",
                   "fontColor": "",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "container": "v-1433"
                 },
                 {
                   "_id": "v-1429",
-                  "$type": "UMLState",
+                  "$type": "UMLSubmachineState",
                   "modelRef": "m-1428",
                   "x": 224.0,
                   "y": 424.0,
@@ -17993,11 +17997,12 @@
                   "lineColor": "",
                   "fontColor": "",
                   "fontSize": 12,
-                  "showType": false
+                  "showType": false,
+                  "container": "v-1433"
                 },
                 {
                   "_id": "v-1431",
-                  "$type": "UMLState",
+                  "$type": "UMLSubmachineState",
                   "modelRef": "m-1430",
                   "x": 528.0,
                   "y": 424.0,
@@ -18007,23 +18012,22 @@
                   "lineColor": "",
                   "fontColor": "",
                   "fontSize": 12,
-                  "showType": false
+                  "showType": false,
+                  "container": "v-1433"
                 },
                 {
-                  "_id": "e-1432",
-                  "$type": "UMLTransition",
-                  "isEdge": true,
-                  "isMessage": false,
-                  "modelRef": "m-1433",
-                  "tail": "v-1411",
-                  "head": "v-1409",
-                  "points": [],
-                  "lineStyle": "solid",
-                  "tailArrow": "none",
-                  "headArrow": "open",
-                  "stereotype": "",
-                  "nameVisible": true,
-                  "showVisibility": true
+                  "_id": "v-1433",
+                  "$type": "UMLRegion",
+                  "modelRef": "m-1432",
+                  "x": 120.0,
+                  "y": 407.0,
+                  "width": 617.0,
+                  "height": 98.0,
+                  "fillColor": "",
+                  "lineColor": "",
+                  "fontColor": "",
+                  "fontSize": 12,
+                  "container": "v-1427"
                 },
                 {
                   "_id": "e-1434",
@@ -18031,7 +18035,7 @@
                   "isEdge": true,
                   "isMessage": false,
                   "modelRef": "m-1435",
-                  "tail": "v-1413",
+                  "tail": "v-1411",
                   "head": "v-1409",
                   "points": [],
                   "lineStyle": "solid",
@@ -18047,6 +18051,22 @@
                   "isEdge": true,
                   "isMessage": false,
                   "modelRef": "m-1437",
+                  "tail": "v-1413",
+                  "head": "v-1409",
+                  "points": [],
+                  "lineStyle": "solid",
+                  "tailArrow": "none",
+                  "headArrow": "open",
+                  "stereotype": "",
+                  "nameVisible": true,
+                  "showVisibility": true
+                },
+                {
+                  "_id": "e-1438",
+                  "$type": "UMLTransition",
+                  "isEdge": true,
+                  "isMessage": false,
+                  "modelRef": "m-1439",
                   "tail": "v-1409",
                   "head": "v-1415",
                   "points": [
@@ -18063,11 +18083,11 @@
                   "showVisibility": true
                 },
                 {
-                  "_id": "e-1438",
+                  "_id": "e-1440",
                   "$type": "UMLTransition",
                   "isEdge": true,
                   "isMessage": false,
-                  "modelRef": "m-1439",
+                  "modelRef": "m-1441",
                   "tail": "v-1417",
                   "head": "v-1415",
                   "points": [
@@ -18084,11 +18104,11 @@
                   "showVisibility": true
                 },
                 {
-                  "_id": "e-1440",
+                  "_id": "e-1442",
                   "$type": "UMLTransition",
                   "isEdge": true,
                   "isMessage": false,
-                  "modelRef": "m-1441",
+                  "modelRef": "m-1443",
                   "tail": "v-1417",
                   "head": "v-1419",
                   "points": [],
@@ -18100,11 +18120,11 @@
                   "showVisibility": true
                 },
                 {
-                  "_id": "e-1442",
+                  "_id": "e-1444",
                   "$type": "UMLTransition",
                   "isEdge": true,
                   "isMessage": false,
-                  "modelRef": "m-1443",
+                  "modelRef": "m-1445",
                   "tail": "v-1415",
                   "head": "v-1413",
                   "points": [
@@ -18125,28 +18145,12 @@
                   "showVisibility": true
                 },
                 {
-                  "_id": "e-1444",
-                  "$type": "UMLTransition",
-                  "isEdge": true,
-                  "isMessage": false,
-                  "modelRef": "m-1445",
-                  "tail": "v-1413",
-                  "head": "v-1417",
-                  "points": [],
-                  "lineStyle": "solid",
-                  "tailArrow": "none",
-                  "headArrow": "open",
-                  "stereotype": "",
-                  "nameVisible": true,
-                  "showVisibility": true
-                },
-                {
                   "_id": "e-1446",
                   "$type": "UMLTransition",
                   "isEdge": true,
                   "isMessage": false,
                   "modelRef": "m-1447",
-                  "tail": "v-1419",
+                  "tail": "v-1413",
                   "head": "v-1417",
                   "points": [],
                   "lineStyle": "solid",
@@ -18162,6 +18166,22 @@
                   "isEdge": true,
                   "isMessage": false,
                   "modelRef": "m-1449",
+                  "tail": "v-1419",
+                  "head": "v-1417",
+                  "points": [],
+                  "lineStyle": "solid",
+                  "tailArrow": "none",
+                  "headArrow": "open",
+                  "stereotype": "",
+                  "nameVisible": true,
+                  "showVisibility": true
+                },
+                {
+                  "_id": "e-1450",
+                  "$type": "UMLTransition",
+                  "isEdge": true,
+                  "isMessage": false,
+                  "modelRef": "m-1451",
                   "tail": "v-1415",
                   "head": "v-1419",
                   "points": [
@@ -18178,11 +18198,11 @@
                   "showVisibility": true
                 },
                 {
-                  "_id": "e-1450",
+                  "_id": "e-1452",
                   "$type": "UMLTransition",
                   "isEdge": true,
                   "isMessage": false,
-                  "modelRef": "m-1451",
+                  "modelRef": "m-1453",
                   "tail": "v-1419",
                   "head": "v-1409",
                   "points": [
@@ -18199,29 +18219,13 @@
                   "showVisibility": true
                 },
                 {
-                  "_id": "e-1452",
-                  "$type": "UMLTransition",
-                  "isEdge": true,
-                  "isMessage": false,
-                  "modelRef": "m-1453",
-                  "tail": "v-1421",
-                  "head": "v-1413",
-                  "points": [],
-                  "lineStyle": "solid",
-                  "tailArrow": "none",
-                  "headArrow": "open",
-                  "stereotype": "",
-                  "nameVisible": true,
-                  "showVisibility": true
-                },
-                {
                   "_id": "e-1454",
                   "$type": "UMLTransition",
                   "isEdge": true,
                   "isMessage": false,
                   "modelRef": "m-1455",
-                  "tail": "v-1413",
-                  "head": "v-1421",
+                  "tail": "v-1421",
+                  "head": "v-1413",
                   "points": [],
                   "lineStyle": "solid",
                   "tailArrow": "none",
@@ -18236,8 +18240,8 @@
                   "isEdge": true,
                   "isMessage": false,
                   "modelRef": "m-1457",
-                  "tail": "v-1421",
-                  "head": "v-1413",
+                  "tail": "v-1413",
+                  "head": "v-1421",
                   "points": [],
                   "lineStyle": "solid",
                   "tailArrow": "none",
@@ -18253,7 +18257,7 @@
                   "isMessage": false,
                   "modelRef": "m-1459",
                   "tail": "v-1421",
-                  "head": "v-1419",
+                  "head": "v-1413",
                   "points": [],
                   "lineStyle": "solid",
                   "tailArrow": "none",
@@ -18268,8 +18272,8 @@
                   "isEdge": true,
                   "isMessage": false,
                   "modelRef": "m-1461",
-                  "tail": "v-1423",
-                  "head": "v-1429",
+                  "tail": "v-1421",
+                  "head": "v-1419",
                   "points": [],
                   "lineStyle": "solid",
                   "tailArrow": "none",
@@ -18284,8 +18288,8 @@
                   "isEdge": true,
                   "isMessage": false,
                   "modelRef": "m-1463",
-                  "tail": "v-1429",
-                  "head": "v-1427",
+                  "tail": "v-1423",
+                  "head": "v-1429",
                   "points": [],
                   "lineStyle": "solid",
                   "tailArrow": "none",
@@ -18300,8 +18304,8 @@
                   "isEdge": true,
                   "isMessage": false,
                   "modelRef": "m-1465",
-                  "tail": "v-1427",
-                  "head": "v-1431",
+                  "tail": "v-1429",
+                  "head": "v-1427",
                   "points": [],
                   "lineStyle": "solid",
                   "tailArrow": "none",
@@ -18316,6 +18320,22 @@
                   "isEdge": true,
                   "isMessage": false,
                   "modelRef": "m-1467",
+                  "tail": "v-1427",
+                  "head": "v-1431",
+                  "points": [],
+                  "lineStyle": "solid",
+                  "tailArrow": "none",
+                  "headArrow": "open",
+                  "stereotype": "",
+                  "nameVisible": true,
+                  "showVisibility": true
+                },
+                {
+                  "_id": "e-1468",
+                  "$type": "UMLTransition",
+                  "isEdge": true,
+                  "isMessage": false,
+                  "modelRef": "m-1469",
                   "tail": "v-1431",
                   "head": "v-1425",
                   "points": [],
@@ -18438,8 +18458,8 @@
               "ownedElements": []
             },
             {
-              "_id": "m-1433",
-              "type": "UMLTransition",
+              "_id": "m-1432",
+              "type": "UMLRegion",
               "name": "",
               "stereotype": "",
               "documentation": "",
@@ -18449,7 +18469,7 @@
             {
               "_id": "m-1435",
               "type": "UMLTransition",
-              "name": "turn off / shutDown",
+              "name": "",
               "stereotype": "",
               "documentation": "",
               "tags": [],
@@ -18458,7 +18478,7 @@
             {
               "_id": "m-1437",
               "type": "UMLTransition",
-              "name": "turn on / startup",
+              "name": "turn off / shutDown",
               "stereotype": "",
               "documentation": "",
               "tags": [],
@@ -18467,7 +18487,7 @@
             {
               "_id": "m-1439",
               "type": "UMLTransition",
-              "name": "",
+              "name": "turn on / startup",
               "stereotype": "",
               "documentation": "",
               "tags": [],
@@ -18476,7 +18496,7 @@
             {
               "_id": "m-1441",
               "type": "UMLTransition",
-              "name": "failure",
+              "name": "",
               "stereotype": "",
               "documentation": "",
               "tags": [],
@@ -18485,7 +18505,7 @@
             {
               "_id": "m-1443",
               "type": "UMLTransition",
-              "name": "",
+              "name": "failure",
               "stereotype": "",
               "documentation": "",
               "tags": [],
@@ -18494,7 +18514,7 @@
             {
               "_id": "m-1445",
               "type": "UMLTransition",
-              "name": "service",
+              "name": "",
               "stereotype": "",
               "documentation": "",
               "tags": [],
@@ -18512,7 +18532,7 @@
             {
               "_id": "m-1449",
               "type": "UMLTransition",
-              "name": "failure",
+              "name": "service",
               "stereotype": "",
               "documentation": "",
               "tags": [],
@@ -18521,7 +18541,7 @@
             {
               "_id": "m-1451",
               "type": "UMLTransition",
-              "name": "turn off / shutDown",
+              "name": "failure",
               "stereotype": "",
               "documentation": "",
               "tags": [],
@@ -18530,7 +18550,7 @@
             {
               "_id": "m-1453",
               "type": "UMLTransition",
-              "name": "",
+              "name": "turn off / shutDown",
               "stereotype": "",
               "documentation": "",
               "tags": [],
@@ -18539,7 +18559,7 @@
             {
               "_id": "m-1455",
               "type": "UMLTransition",
-              "name": "cardInserted",
+              "name": "",
               "stereotype": "",
               "documentation": "",
               "tags": [],
@@ -18548,7 +18568,7 @@
             {
               "_id": "m-1457",
               "type": "UMLTransition",
-              "name": "cancel",
+              "name": "cardInserted",
               "stereotype": "",
               "documentation": "",
               "tags": [],
@@ -18557,7 +18577,7 @@
             {
               "_id": "m-1459",
               "type": "UMLTransition",
-              "name": "failure",
+              "name": "cancel",
               "stereotype": "",
               "documentation": "",
               "tags": [],
@@ -18566,7 +18586,7 @@
             {
               "_id": "m-1461",
               "type": "UMLTransition",
-              "name": "",
+              "name": "failure",
               "stereotype": "",
               "documentation": "",
               "tags": [],
@@ -18598,13 +18618,22 @@
               "documentation": "",
               "tags": [],
               "ownedElements": []
+            },
+            {
+              "_id": "m-1469",
+              "type": "UMLTransition",
+              "name": "",
+              "stereotype": "",
+              "documentation": "",
+              "tags": [],
+              "ownedElements": []
             }
           ]
         }
       ]
     },
     {
-      "_id": "m-1468",
+      "_id": "m-1470",
       "type": "UMLModel",
       "name": "Timing Diagram",
       "stereotype": "",
@@ -18612,7 +18641,7 @@
       "tags": [],
       "ownedElements": [
         {
-          "_id": "m-1469",
+          "_id": "m-1471",
           "type": "UMLCollaboration",
           "name": "Collaboration1",
           "stereotype": "",
@@ -18620,15 +18649,15 @@
           "tags": [],
           "ownedElements": [
             {
-              "_id": "d-1474",
+              "_id": "d-1476",
               "type": "UMLTimingDiagram",
               "name": "Website Timing",
               "ownedElements": [],
               "elements": [
                 {
-                  "_id": "v-1476",
+                  "_id": "v-1478",
                   "$type": "UMLTimingLifeline",
-                  "modelRef": "m-1475",
+                  "modelRef": "m-1477",
                   "x": 5.0,
                   "y": 27.0,
                   "width": 695.0,
@@ -18639,9 +18668,9 @@
                   "fontSize": 12
                 },
                 {
-                  "_id": "v-1478",
+                  "_id": "v-1480",
                   "$type": "UMLTimingLifeline",
-                  "modelRef": "m-1477",
+                  "modelRef": "m-1479",
                   "x": 5.0,
                   "y": 152.0,
                   "width": 695.0,
@@ -18652,9 +18681,9 @@
                   "fontSize": 12
                 },
                 {
-                  "_id": "v-1480",
+                  "_id": "v-1482",
                   "$type": "UMLTimingLifeline",
-                  "modelRef": "m-1479",
+                  "modelRef": "m-1481",
                   "x": 5.0,
                   "y": 255.92,
                   "width": 695.0,
@@ -18665,9 +18694,9 @@
                   "fontSize": 12
                 },
                 {
-                  "_id": "v-1482",
+                  "_id": "v-1484",
                   "$type": "UMLTimingLifeline",
-                  "modelRef": "m-1481",
+                  "modelRef": "m-1483",
                   "x": 5.0,
                   "y": 380.92,
                   "width": 695.0,
@@ -18678,9 +18707,9 @@
                   "fontSize": 12
                 },
                 {
-                  "_id": "v-1484",
+                  "_id": "v-1486",
                   "$type": "UMLTimingState",
-                  "modelRef": "m-1483",
+                  "modelRef": "m-1485",
                   "x": 37.0,
                   "y": 52.0,
                   "width": 663.0,
@@ -18689,12 +18718,12 @@
                   "lineColor": "",
                   "fontColor": "",
                   "fontSize": 12,
-                  "container": "v-1476"
+                  "container": "v-1478"
                 },
                 {
-                  "_id": "v-1486",
+                  "_id": "v-1488",
                   "$type": "UMLTimingState",
-                  "modelRef": "m-1485",
+                  "modelRef": "m-1487",
                   "x": 37.0,
                   "y": 77.0,
                   "width": 663.0,
@@ -18703,28 +18732,14 @@
                   "lineColor": "",
                   "fontColor": "",
                   "fontSize": 12,
-                  "container": "v-1476"
-                },
-                {
-                  "_id": "v-1488",
-                  "$type": "UMLTimingState",
-                  "modelRef": "m-1487",
-                  "x": 37.0,
-                  "y": 102.0,
-                  "width": 663.0,
-                  "height": 25.0,
-                  "fillColor": "",
-                  "lineColor": "",
-                  "fontColor": "",
-                  "fontSize": 12,
-                  "container": "v-1476"
+                  "container": "v-1478"
                 },
                 {
                   "_id": "v-1490",
                   "$type": "UMLTimingState",
                   "modelRef": "m-1489",
                   "x": 37.0,
-                  "y": 177.0,
+                  "y": 102.0,
                   "width": 663.0,
                   "height": 25.0,
                   "fillColor": "",
@@ -18738,21 +18753,21 @@
                   "$type": "UMLTimingState",
                   "modelRef": "m-1491",
                   "x": 37.0,
-                  "y": 202.0,
+                  "y": 177.0,
                   "width": 663.0,
                   "height": 25.0,
                   "fillColor": "",
                   "lineColor": "",
                   "fontColor": "",
                   "fontSize": 12,
-                  "container": "v-1478"
+                  "container": "v-1480"
                 },
                 {
                   "_id": "v-1494",
                   "$type": "UMLTimingState",
                   "modelRef": "m-1493",
                   "x": 37.0,
-                  "y": 280.92,
+                  "y": 202.0,
                   "width": 663.0,
                   "height": 25.0,
                   "fillColor": "",
@@ -18766,6 +18781,20 @@
                   "$type": "UMLTimingState",
                   "modelRef": "m-1495",
                   "x": 37.0,
+                  "y": 280.92,
+                  "width": 663.0,
+                  "height": 25.0,
+                  "fillColor": "",
+                  "lineColor": "",
+                  "fontColor": "",
+                  "fontSize": 12,
+                  "container": "v-1482"
+                },
+                {
+                  "_id": "v-1498",
+                  "$type": "UMLTimingState",
+                  "modelRef": "m-1497",
+                  "x": 37.0,
                   "y": 305.92,
                   "width": 663.0,
                   "height": 25.0,
@@ -18773,28 +18802,14 @@
                   "lineColor": "",
                   "fontColor": "",
                   "fontSize": 12,
-                  "container": "v-1480"
-                },
-                {
-                  "_id": "v-1498",
-                  "$type": "UMLTimingState",
-                  "modelRef": "m-1497",
-                  "x": 37.0,
-                  "y": 330.92,
-                  "width": 663.0,
-                  "height": 25.0,
-                  "fillColor": "",
-                  "lineColor": "",
-                  "fontColor": "",
-                  "fontSize": 12,
-                  "container": "v-1480"
+                  "container": "v-1482"
                 },
                 {
                   "_id": "v-1500",
                   "$type": "UMLTimingState",
                   "modelRef": "m-1499",
                   "x": 37.0,
-                  "y": 430.92,
+                  "y": 330.92,
                   "width": 663.0,
                   "height": 25.0,
                   "fillColor": "",
@@ -18808,6 +18823,20 @@
                   "$type": "UMLTimingState",
                   "modelRef": "m-1501",
                   "x": 37.0,
+                  "y": 430.92,
+                  "width": 663.0,
+                  "height": 25.0,
+                  "fillColor": "",
+                  "lineColor": "",
+                  "fontColor": "",
+                  "fontSize": 12,
+                  "container": "v-1484"
+                },
+                {
+                  "_id": "v-1504",
+                  "$type": "UMLTimingState",
+                  "modelRef": "m-1503",
+                  "x": 37.0,
                   "y": 405.92,
                   "width": 663.0,
                   "height": 25.0,
@@ -18815,12 +18844,12 @@
                   "lineColor": "",
                   "fontColor": "",
                   "fontSize": 12,
-                  "container": "v-1482"
+                  "container": "v-1484"
                 },
                 {
-                  "_id": "v-1504",
+                  "_id": "v-1506",
                   "$type": "UMLTimingState",
-                  "modelRef": "m-1503",
+                  "modelRef": "m-1505",
                   "x": 37.0,
                   "y": 455.92,
                   "width": 663.0,
@@ -18829,12 +18858,12 @@
                   "lineColor": "",
                   "fontColor": "",
                   "fontSize": 12,
-                  "container": "v-1482"
+                  "container": "v-1484"
                 },
                 {
-                  "_id": "v-1506",
+                  "_id": "v-1508",
                   "$type": "UMLTimeSegment",
-                  "modelRef": "m-1505",
+                  "modelRef": "m-1507",
                   "x": 207.81,
                   "y": 103.0,
                   "width": 213.2,
@@ -18843,29 +18872,15 @@
                   "lineColor": "",
                   "fontColor": "",
                   "fontSize": 12,
-                  "container": "v-1488"
-                },
-                {
-                  "_id": "v-1508",
-                  "$type": "UMLTimeSegment",
-                  "modelRef": "m-1507",
-                  "x": 421.01,
-                  "y": 78.0,
-                  "width": 49.0,
-                  "height": 25.0,
-                  "fillColor": "",
-                  "lineColor": "",
-                  "fontColor": "",
-                  "fontSize": 12,
-                  "container": "v-1486"
+                  "container": "v-1490"
                 },
                 {
                   "_id": "v-1510",
                   "$type": "UMLTimeSegment",
                   "modelRef": "m-1509",
-                  "x": 518.01,
-                  "y": 103.0,
-                  "width": 104.0,
+                  "x": 421.01,
+                  "y": 78.0,
+                  "width": 49.0,
                   "height": 25.0,
                   "fillColor": "",
                   "lineColor": "",
@@ -18877,37 +18892,9 @@
                   "_id": "v-1512",
                   "$type": "UMLTimeSegment",
                   "modelRef": "m-1511",
-                  "x": 470.01,
-                  "y": 53.0,
-                  "width": 48.0,
-                  "height": 25.0,
-                  "fillColor": "",
-                  "lineColor": "",
-                  "fontColor": "",
-                  "fontSize": 12,
-                  "container": "v-1484"
-                },
-                {
-                  "_id": "v-1514",
-                  "$type": "UMLTimeSegment",
-                  "modelRef": "m-1513",
-                  "x": 207.81,
-                  "y": 203.0,
-                  "width": 86.2,
-                  "height": 25.0,
-                  "fillColor": "",
-                  "lineColor": "",
-                  "fontColor": "",
-                  "fontSize": 12,
-                  "container": "v-1492"
-                },
-                {
-                  "_id": "v-1516",
-                  "$type": "UMLTimeSegment",
-                  "modelRef": "m-1515",
-                  "x": 294.01,
-                  "y": 178.0,
-                  "width": 56.0,
+                  "x": 518.01,
+                  "y": 103.0,
+                  "width": 104.0,
                   "height": 25.0,
                   "fillColor": "",
                   "lineColor": "",
@@ -18916,12 +18903,40 @@
                   "container": "v-1490"
                 },
                 {
+                  "_id": "v-1514",
+                  "$type": "UMLTimeSegment",
+                  "modelRef": "m-1513",
+                  "x": 470.01,
+                  "y": 53.0,
+                  "width": 48.0,
+                  "height": 25.0,
+                  "fillColor": "",
+                  "lineColor": "",
+                  "fontColor": "",
+                  "fontSize": 12,
+                  "container": "v-1486"
+                },
+                {
+                  "_id": "v-1516",
+                  "$type": "UMLTimeSegment",
+                  "modelRef": "m-1515",
+                  "x": 207.81,
+                  "y": 203.0,
+                  "width": 86.2,
+                  "height": 25.0,
+                  "fillColor": "",
+                  "lineColor": "",
+                  "fontColor": "",
+                  "fontSize": 12,
+                  "container": "v-1494"
+                },
+                {
                   "_id": "v-1518",
                   "$type": "UMLTimeSegment",
                   "modelRef": "m-1517",
-                  "x": 350.01,
-                  "y": 203.0,
-                  "width": 32.0,
+                  "x": 294.01,
+                  "y": 178.0,
+                  "width": 56.0,
                   "height": 25.0,
                   "fillColor": "",
                   "lineColor": "",
@@ -18933,6 +18948,20 @@
                   "_id": "v-1520",
                   "$type": "UMLTimeSegment",
                   "modelRef": "m-1519",
+                  "x": 350.01,
+                  "y": 203.0,
+                  "width": 32.0,
+                  "height": 25.0,
+                  "fillColor": "",
+                  "lineColor": "",
+                  "fontColor": "",
+                  "fontSize": 12,
+                  "container": "v-1494"
+                },
+                {
+                  "_id": "v-1522",
+                  "$type": "UMLTimeSegment",
+                  "modelRef": "m-1521",
                   "x": 207.81,
                   "y": 456.0,
                   "width": 46.2,
@@ -18941,29 +18970,15 @@
                   "lineColor": "",
                   "fontColor": "",
                   "fontSize": 12,
-                  "container": "v-1504"
-                },
-                {
-                  "_id": "v-1522",
-                  "$type": "UMLTimeSegment",
-                  "modelRef": "m-1521",
-                  "x": 254.01,
-                  "y": 431.0,
-                  "width": 352.0,
-                  "height": 25.0,
-                  "fillColor": "",
-                  "lineColor": "",
-                  "fontColor": "",
-                  "fontSize": 12,
-                  "container": "v-1500"
+                  "container": "v-1506"
                 },
                 {
                   "_id": "v-1524",
                   "$type": "UMLTimeSegment",
                   "modelRef": "m-1523",
-                  "x": 606.01,
-                  "y": 406.0,
-                  "width": 64.0,
+                  "x": 254.01,
+                  "y": 431.0,
+                  "width": 352.0,
                   "height": 25.0,
                   "fillColor": "",
                   "lineColor": "",
@@ -18975,6 +18990,20 @@
                   "_id": "v-1526",
                   "$type": "UMLTimeSegment",
                   "modelRef": "m-1525",
+                  "x": 606.01,
+                  "y": 406.0,
+                  "width": 64.0,
+                  "height": 25.0,
+                  "fillColor": "",
+                  "lineColor": "",
+                  "fontColor": "",
+                  "fontSize": 12,
+                  "container": "v-1504"
+                },
+                {
+                  "_id": "v-1528",
+                  "$type": "UMLTimeSegment",
+                  "modelRef": "m-1527",
                   "x": 207.81,
                   "y": 331.0,
                   "width": 54.2,
@@ -18983,12 +19012,12 @@
                   "lineColor": "",
                   "fontColor": "",
                   "fontSize": 12,
-                  "container": "v-1498"
+                  "container": "v-1500"
                 },
                 {
-                  "_id": "v-1528",
+                  "_id": "v-1530",
                   "$type": "UMLTimeSegment",
-                  "modelRef": "m-1527",
+                  "modelRef": "m-1529",
                   "x": 262.01,
                   "y": 306.0,
                   "width": 23.0,
@@ -18997,29 +19026,15 @@
                   "lineColor": "",
                   "fontColor": "",
                   "fontSize": 12,
-                  "container": "v-1496"
-                },
-                {
-                  "_id": "v-1530",
-                  "$type": "UMLTimeSegment",
-                  "modelRef": "m-1529",
-                  "x": 285.01,
-                  "y": 281.0,
-                  "width": 81.0,
-                  "height": 25.0,
-                  "fillColor": "",
-                  "lineColor": "",
-                  "fontColor": "",
-                  "fontSize": 12,
-                  "container": "v-1494"
+                  "container": "v-1498"
                 },
                 {
                   "_id": "v-1532",
                   "$type": "UMLTimeSegment",
                   "modelRef": "m-1531",
-                  "x": 366.01,
-                  "y": 306.0,
-                  "width": 56.0,
+                  "x": 285.01,
+                  "y": 281.0,
+                  "width": 81.0,
                   "height": 25.0,
                   "fillColor": "",
                   "lineColor": "",
@@ -19031,23 +19046,23 @@
                   "_id": "v-1534",
                   "$type": "UMLTimeSegment",
                   "modelRef": "m-1533",
-                  "x": 422.01,
-                  "y": 281.0,
-                  "width": 88.0,
+                  "x": 366.01,
+                  "y": 306.0,
+                  "width": 56.0,
                   "height": 25.0,
                   "fillColor": "",
                   "lineColor": "",
                   "fontColor": "",
                   "fontSize": 12,
-                  "container": "v-1494"
+                  "container": "v-1498"
                 },
                 {
                   "_id": "v-1536",
                   "$type": "UMLTimeSegment",
                   "modelRef": "m-1535",
-                  "x": 510.01,
-                  "y": 306.0,
-                  "width": 72.0,
+                  "x": 422.01,
+                  "y": 281.0,
+                  "width": 88.0,
                   "height": 25.0,
                   "fillColor": "",
                   "lineColor": "",
@@ -19059,9 +19074,9 @@
                   "_id": "v-1538",
                   "$type": "UMLTimeSegment",
                   "modelRef": "m-1537",
-                  "x": 582.01,
-                  "y": 331.0,
-                  "width": 87.0,
+                  "x": 510.01,
+                  "y": 306.0,
+                  "width": 72.0,
                   "height": 25.0,
                   "fillColor": "",
                   "lineColor": "",
@@ -19070,7 +19085,21 @@
                   "container": "v-1498"
                 },
                 {
-                  "_id": "v-1539",
+                  "_id": "v-1540",
+                  "$type": "UMLTimeSegment",
+                  "modelRef": "m-1539",
+                  "x": 582.01,
+                  "y": 331.0,
+                  "width": 87.0,
+                  "height": 25.0,
+                  "fillColor": "",
+                  "lineColor": "",
+                  "fontColor": "",
+                  "fontSize": 12,
+                  "container": "v-1500"
+                },
+                {
+                  "_id": "v-1541",
                   "$type": "UMLTimeTick",
                   "modelRef": "",
                   "x": 207.81,
@@ -19084,7 +19113,7 @@
                   "text": ""
                 },
                 {
-                  "_id": "v-1540",
+                  "_id": "v-1542",
                   "$type": "UMLTimeTick",
                   "modelRef": "",
                   "x": 254.01,
@@ -19098,7 +19127,7 @@
                   "text": ""
                 },
                 {
-                  "_id": "v-1541",
+                  "_id": "v-1543",
                   "$type": "UMLTimeTick",
                   "modelRef": "",
                   "x": 334.01,
@@ -19112,7 +19141,7 @@
                   "text": ""
                 },
                 {
-                  "_id": "v-1542",
+                  "_id": "v-1544",
                   "$type": "UMLTimeTick",
                   "modelRef": "",
                   "x": 398.01,
@@ -19126,7 +19155,7 @@
                   "text": ""
                 },
                 {
-                  "_id": "v-1543",
+                  "_id": "v-1545",
                   "$type": "UMLTimeTick",
                   "modelRef": "",
                   "x": 462.01,
@@ -19140,7 +19169,7 @@
                   "text": ""
                 },
                 {
-                  "_id": "v-1544",
+                  "_id": "v-1546",
                   "$type": "UMLTimeTick",
                   "modelRef": "",
                   "x": 542.01,
@@ -19154,7 +19183,7 @@
                   "text": ""
                 },
                 {
-                  "_id": "v-1545",
+                  "_id": "v-1547",
                   "$type": "UMLTimeTick",
                   "modelRef": "",
                   "x": 622.01,
@@ -19168,9 +19197,9 @@
                   "text": ""
                 },
                 {
-                  "_id": "v-1547",
+                  "_id": "v-1549",
                   "$type": "UMLDurationConstraint",
-                  "modelRef": "m-1546",
+                  "modelRef": "m-1548",
                   "x": 232.0,
                   "y": 176.0,
                   "width": 57.0,
@@ -19181,9 +19210,9 @@
                   "fontSize": 12
                 },
                 {
-                  "_id": "v-1549",
+                  "_id": "v-1551",
                   "$type": "UMLDurationConstraint",
-                  "modelRef": "m-1548",
+                  "modelRef": "m-1550",
                   "x": 360.0,
                   "y": 32.0,
                   "width": 97.0,
@@ -19194,9 +19223,9 @@
                   "fontSize": 12
                 },
                 {
-                  "_id": "v-1551",
+                  "_id": "v-1553",
                   "$type": "UMLDurationConstraint",
-                  "modelRef": "m-1550",
+                  "modelRef": "m-1552",
                   "x": 448.0,
                   "y": 280.0,
                   "width": 73.0,
@@ -19207,9 +19236,9 @@
                   "fontSize": 12
                 },
                 {
-                  "_id": "v-1553",
+                  "_id": "v-1555",
                   "$type": "UMLTimeConstraint",
-                  "modelRef": "m-1552",
+                  "modelRef": "m-1554",
                   "x": 352.0,
                   "y": 184.0,
                   "width": 69.39,
@@ -19220,13 +19249,13 @@
                   "fontSize": 12
                 },
                 {
-                  "_id": "e-1554",
+                  "_id": "e-1556",
                   "$type": "UMLTimeMessage",
                   "isEdge": true,
                   "isMessage": false,
-                  "modelRef": "m-1555",
-                  "tail": "v-1482",
-                  "head": "v-1480",
+                  "modelRef": "m-1557",
+                  "tail": "v-1484",
+                  "head": "v-1482",
                   "points": [],
                   "lineStyle": "solid",
                   "tailArrow": "none",
@@ -19238,13 +19267,13 @@
                   "showVisibility": true
                 },
                 {
-                  "_id": "e-1556",
+                  "_id": "e-1558",
                   "$type": "UMLTimeMessage",
                   "isEdge": true,
                   "isMessage": false,
-                  "modelRef": "m-1557",
-                  "tail": "v-1480",
-                  "head": "v-1478",
+                  "modelRef": "m-1559",
+                  "tail": "v-1482",
+                  "head": "v-1480",
                   "points": [],
                   "lineStyle": "solid",
                   "tailArrow": "none",
@@ -19256,13 +19285,13 @@
                   "showVisibility": true
                 },
                 {
-                  "_id": "e-1558",
+                  "_id": "e-1560",
                   "$type": "UMLTimeMessage",
                   "isEdge": true,
                   "isMessage": false,
-                  "modelRef": "m-1559",
-                  "tail": "v-1478",
-                  "head": "v-1480",
+                  "modelRef": "m-1561",
+                  "tail": "v-1480",
+                  "head": "v-1482",
                   "points": [],
                   "lineStyle": "solid",
                   "tailArrow": "none",
@@ -19274,13 +19303,13 @@
                   "showVisibility": true
                 },
                 {
-                  "_id": "e-1560",
+                  "_id": "e-1562",
                   "$type": "UMLTimeMessage",
                   "isEdge": true,
                   "isMessage": false,
-                  "modelRef": "m-1561",
-                  "tail": "v-1480",
-                  "head": "v-1476",
+                  "modelRef": "m-1563",
+                  "tail": "v-1482",
+                  "head": "v-1478",
                   "points": [],
                   "lineStyle": "solid",
                   "tailArrow": "none",
@@ -19292,13 +19321,13 @@
                   "showVisibility": true
                 },
                 {
-                  "_id": "e-1562",
+                  "_id": "e-1564",
                   "$type": "UMLTimeMessage",
                   "isEdge": true,
                   "isMessage": false,
-                  "modelRef": "m-1563",
-                  "tail": "v-1476",
-                  "head": "v-1480",
+                  "modelRef": "m-1565",
+                  "tail": "v-1478",
+                  "head": "v-1482",
                   "points": [],
                   "lineStyle": "solid",
                   "tailArrow": "none",
@@ -19310,13 +19339,13 @@
                   "showVisibility": true
                 },
                 {
-                  "_id": "e-1564",
+                  "_id": "e-1566",
                   "$type": "UMLTimeMessage",
                   "isEdge": true,
                   "isMessage": false,
-                  "modelRef": "m-1565",
-                  "tail": "v-1480",
-                  "head": "v-1482",
+                  "modelRef": "m-1567",
+                  "tail": "v-1482",
+                  "head": "v-1484",
                   "points": [],
                   "lineStyle": "solid",
                   "tailArrow": "none",
@@ -19333,7 +19362,7 @@
           ],
           "attributes": [
             {
-              "_id": "a-1470",
+              "_id": "a-1472",
               "$type": "UMLAttribute",
               "name": "Role1",
               "type": "Web Server",
@@ -19342,7 +19371,7 @@
               "isStatic": false
             },
             {
-              "_id": "a-1471",
+              "_id": "a-1473",
               "$type": "UMLAttribute",
               "name": "Role2",
               "type": "DNS Resolver",
@@ -19351,7 +19380,7 @@
               "isStatic": false
             },
             {
-              "_id": "a-1472",
+              "_id": "a-1474",
               "$type": "UMLAttribute",
               "name": "Role3",
               "type": "Web Browser",
@@ -19360,7 +19389,7 @@
               "isStatic": false
             },
             {
-              "_id": "a-1473",
+              "_id": "a-1475",
               "$type": "UMLAttribute",
               "name": "Role4",
               "type": "Web User",
@@ -19373,7 +19402,7 @@
           "templateParameters": []
         },
         {
-          "_id": "m-1475",
+          "_id": "m-1477",
           "type": "UMLTimingLifeline",
           "name": ": Web Server",
           "stereotype": "",
@@ -19382,7 +19411,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1477",
+          "_id": "m-1479",
           "type": "UMLTimingLifeline",
           "name": ": DNS Resolver",
           "stereotype": "",
@@ -19391,7 +19420,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1479",
+          "_id": "m-1481",
           "type": "UMLTimingLifeline",
           "name": ": Web Browser",
           "stereotype": "",
@@ -19400,7 +19429,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1481",
+          "_id": "m-1483",
           "type": "UMLTimingLifeline",
           "name": ": Web User",
           "stereotype": "",
@@ -19409,7 +19438,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1483",
+          "_id": "m-1485",
           "type": "UMLTimingState",
           "name": "Sending response",
           "stereotype": "",
@@ -19418,18 +19447,9 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1485",
-          "type": "UMLTimingState",
-          "name": "Processing",
-          "stereotype": "",
-          "documentation": "",
-          "tags": [],
-          "ownedElements": []
-        },
-        {
           "_id": "m-1487",
           "type": "UMLTimingState",
-          "name": "Waiting",
+          "name": "Processing",
           "stereotype": "",
           "documentation": "",
           "tags": [],
@@ -19438,7 +19458,7 @@
         {
           "_id": "m-1489",
           "type": "UMLTimingState",
-          "name": "Processing",
+          "name": "Waiting",
           "stereotype": "",
           "documentation": "",
           "tags": [],
@@ -19447,7 +19467,7 @@
         {
           "_id": "m-1491",
           "type": "UMLTimingState",
-          "name": "Idle",
+          "name": "Processing",
           "stereotype": "",
           "documentation": "",
           "tags": [],
@@ -19456,7 +19476,7 @@
         {
           "_id": "m-1493",
           "type": "UMLTimingState",
-          "name": "Waiting",
+          "name": "Idle",
           "stereotype": "",
           "documentation": "",
           "tags": [],
@@ -19465,7 +19485,7 @@
         {
           "_id": "m-1495",
           "type": "UMLTimingState",
-          "name": "Processing",
+          "name": "Waiting",
           "stereotype": "",
           "documentation": "",
           "tags": [],
@@ -19474,7 +19494,7 @@
         {
           "_id": "m-1497",
           "type": "UMLTimingState",
-          "name": "Idle",
+          "name": "Processing",
           "stereotype": "",
           "documentation": "",
           "tags": [],
@@ -19483,7 +19503,7 @@
         {
           "_id": "m-1499",
           "type": "UMLTimingState",
-          "name": "Waiting",
+          "name": "Idle",
           "stereotype": "",
           "documentation": "",
           "tags": [],
@@ -19492,7 +19512,7 @@
         {
           "_id": "m-1501",
           "type": "UMLTimingState",
-          "name": "Viewing",
+          "name": "Waiting",
           "stereotype": "",
           "documentation": "",
           "tags": [],
@@ -19501,7 +19521,7 @@
         {
           "_id": "m-1503",
           "type": "UMLTimingState",
-          "name": "Idle",
+          "name": "Viewing",
           "stereotype": "",
           "documentation": "",
           "tags": [],
@@ -19509,8 +19529,8 @@
         },
         {
           "_id": "m-1505",
-          "type": "UMLTimeSegment",
-          "name": "",
+          "type": "UMLTimingState",
+          "name": "Idle",
           "stereotype": "",
           "documentation": "",
           "tags": [],
@@ -19661,9 +19681,9 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1546",
-          "type": "UMLDurationConstraint",
-          "name": "{0..400ms}",
+          "_id": "m-1539",
+          "type": "UMLTimeSegment",
+          "name": "",
           "stereotype": "",
           "documentation": "",
           "tags": [],
@@ -19672,7 +19692,7 @@
         {
           "_id": "m-1548",
           "type": "UMLDurationConstraint",
-          "name": "{200..800ms}",
+          "name": "{0..400ms}",
           "stereotype": "",
           "documentation": "",
           "tags": [],
@@ -19681,7 +19701,7 @@
         {
           "_id": "m-1550",
           "type": "UMLDurationConstraint",
-          "name": "{100..500ms}",
+          "name": "{200..800ms}",
           "stereotype": "",
           "documentation": "",
           "tags": [],
@@ -19689,6 +19709,15 @@
         },
         {
           "_id": "m-1552",
+          "type": "UMLDurationConstraint",
+          "name": "{100..500ms}",
+          "stereotype": "",
+          "documentation": "",
+          "tags": [],
+          "ownedElements": []
+        },
+        {
+          "_id": "m-1554",
           "type": "UMLTimeConstraint",
           "name": "{50..200ms}",
           "stereotype": "",
@@ -19697,7 +19726,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1555",
+          "_id": "m-1557",
           "type": "UMLMessage",
           "name": "URL",
           "stereotype": "",
@@ -19706,7 +19735,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1557",
+          "_id": "m-1559",
           "type": "UMLMessage",
           "name": "Resolve URL",
           "stereotype": "",
@@ -19715,7 +19744,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1559",
+          "_id": "m-1561",
           "type": "UMLMessage",
           "name": "",
           "stereotype": "",
@@ -19724,7 +19753,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1561",
+          "_id": "m-1563",
           "type": "UMLMessage",
           "name": "HTTP request",
           "stereotype": "",
@@ -19733,7 +19762,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1563",
+          "_id": "m-1565",
           "type": "UMLMessage",
           "name": "HTTP response",
           "stereotype": "",
@@ -19742,7 +19771,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1565",
+          "_id": "m-1567",
           "type": "UMLMessage",
           "name": "Show page",
           "stereotype": "",
@@ -19751,7 +19780,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1566",
+          "_id": "m-1568",
           "type": "UMLClass",
           "name": "Web Server",
           "stereotype": "",
@@ -19763,7 +19792,7 @@
           "templateParameters": []
         },
         {
-          "_id": "m-1567",
+          "_id": "m-1569",
           "type": "UMLClass",
           "name": "DNS Resolver",
           "stereotype": "",
@@ -19775,7 +19804,7 @@
           "templateParameters": []
         },
         {
-          "_id": "m-1568",
+          "_id": "m-1570",
           "type": "UMLClass",
           "name": "Web Browser",
           "stereotype": "",
@@ -19787,7 +19816,7 @@
           "templateParameters": []
         },
         {
-          "_id": "m-1569",
+          "_id": "m-1571",
           "type": "UMLClass",
           "name": "Web User",
           "stereotype": "",
@@ -19801,7 +19830,7 @@
       ]
     },
     {
-      "_id": "m-1570",
+      "_id": "m-1572",
       "type": "UMLModel",
       "name": "Interaction Overview Diagram",
       "stereotype": "",
@@ -19809,7 +19838,7 @@
       "tags": [],
       "ownedElements": [
         {
-          "_id": "m-1571",
+          "_id": "m-1573",
           "type": "UMLCollaboration",
           "name": "Collaboration1",
           "stereotype": "",
@@ -19817,15 +19846,15 @@
           "tags": [],
           "ownedElements": [
             {
-              "_id": "d-1577",
+              "_id": "d-1579",
               "type": "UMLInteractionOverviewDiagram",
               "name": "Submit Comments",
               "ownedElements": [],
               "elements": [
                 {
-                  "_id": "v-1579",
+                  "_id": "v-1581",
                   "$type": "UMLInitialNode",
-                  "modelRef": "m-1578",
+                  "modelRef": "m-1580",
                   "x": 136.0,
                   "y": 48.0,
                   "width": 20.0,
@@ -19836,9 +19865,9 @@
                   "fontSize": 12
                 },
                 {
-                  "_id": "v-1581",
+                  "_id": "v-1583",
                   "$type": "UMLInteractionUseInOverview",
-                  "modelRef": "m-1580",
+                  "modelRef": "m-1582",
                   "x": 56.0,
                   "y": 104.0,
                   "width": 177.0,
@@ -19849,9 +19878,9 @@
                   "fontSize": 12
                 },
                 {
-                  "_id": "v-1583",
+                  "_id": "v-1585",
                   "$type": "UMLDecisionNode",
-                  "modelRef": "m-1582",
+                  "modelRef": "m-1584",
                   "x": 128.0,
                   "y": 224.0,
                   "width": 31.0,
@@ -19862,9 +19891,9 @@
                   "fontSize": 12
                 },
                 {
-                  "_id": "v-1585",
+                  "_id": "v-1587",
                   "$type": "UMLInteractionUseInOverview",
-                  "modelRef": "m-1584",
+                  "modelRef": "m-1586",
                   "x": 64.0,
                   "y": 616.0,
                   "width": 169.0,
@@ -19875,9 +19904,9 @@
                   "fontSize": 12
                 },
                 {
-                  "_id": "v-1587",
+                  "_id": "v-1589",
                   "$type": "UMLActivityFinalNode",
-                  "modelRef": "m-1586",
+                  "modelRef": "m-1588",
                   "x": 128.0,
                   "y": 720.0,
                   "width": 26.0,
@@ -19888,9 +19917,9 @@
                   "fontSize": 12
                 },
                 {
-                  "_id": "v-1589",
+                  "_id": "v-1591",
                   "$type": "UMLInteractionInOverview",
-                  "modelRef": "m-1588",
+                  "modelRef": "m-1590",
                   "x": 344.0,
                   "y": 104.0,
                   "width": 505.0,
@@ -19901,9 +19930,9 @@
                   "fontSize": 12
                 },
                 {
-                  "_id": "v-1591",
+                  "_id": "v-1593",
                   "$type": "UMLMergeNode",
-                  "modelRef": "m-1590",
+                  "modelRef": "m-1592",
                   "x": 128.0,
                   "y": 560.0,
                   "width": 31.0,
@@ -19914,9 +19943,9 @@
                   "fontSize": 12
                 },
                 {
-                  "_id": "v-1593",
+                  "_id": "v-1595",
                   "$type": "UMLDecisionNode",
-                  "modelRef": "m-1592",
+                  "modelRef": "m-1594",
                   "x": 544.0,
                   "y": 464.0,
                   "width": 31.0,
@@ -19927,9 +19956,9 @@
                   "fontSize": 12
                 },
                 {
-                  "_id": "v-1595",
+                  "_id": "v-1597",
                   "$type": "UMLMergeNode",
-                  "modelRef": "m-1594",
+                  "modelRef": "m-1596",
                   "x": 544.0,
                   "y": 560.0,
                   "width": 31.0,
@@ -19940,9 +19969,9 @@
                   "fontSize": 12
                 },
                 {
-                  "_id": "v-1597",
+                  "_id": "v-1599",
                   "$type": "UMLInteractionUseInOverview",
-                  "modelRef": "m-1596",
+                  "modelRef": "m-1598",
                   "x": 648.0,
                   "y": 496.0,
                   "width": 169.0,
@@ -19951,22 +19980,6 @@
                   "lineColor": "",
                   "fontColor": "",
                   "fontSize": 12
-                },
-                {
-                  "_id": "e-1598",
-                  "$type": "UMLControlFlow",
-                  "isEdge": true,
-                  "isMessage": false,
-                  "modelRef": "m-1599",
-                  "tail": "v-1579",
-                  "head": "v-1581",
-                  "points": [],
-                  "lineStyle": "solid",
-                  "tailArrow": "none",
-                  "headArrow": "open",
-                  "stereotype": "",
-                  "nameVisible": true,
-                  "showVisibility": true
                 },
                 {
                   "_id": "e-1600",
@@ -19991,7 +20004,7 @@
                   "isMessage": false,
                   "modelRef": "m-1603",
                   "tail": "v-1583",
-                  "head": "v-1589",
+                  "head": "v-1585",
                   "points": [],
                   "lineStyle": "solid",
                   "tailArrow": "none",
@@ -20006,7 +20019,7 @@
                   "isEdge": true,
                   "isMessage": false,
                   "modelRef": "m-1605",
-                  "tail": "v-1583",
+                  "tail": "v-1585",
                   "head": "v-1591",
                   "points": [],
                   "lineStyle": "solid",
@@ -20022,8 +20035,8 @@
                   "isEdge": true,
                   "isMessage": false,
                   "modelRef": "m-1607",
-                  "tail": "v-1591",
-                  "head": "v-1585",
+                  "tail": "v-1585",
+                  "head": "v-1593",
                   "points": [],
                   "lineStyle": "solid",
                   "tailArrow": "none",
@@ -20038,7 +20051,7 @@
                   "isEdge": true,
                   "isMessage": false,
                   "modelRef": "m-1609",
-                  "tail": "v-1585",
+                  "tail": "v-1593",
                   "head": "v-1587",
                   "points": [],
                   "lineStyle": "solid",
@@ -20054,8 +20067,8 @@
                   "isEdge": true,
                   "isMessage": false,
                   "modelRef": "m-1611",
-                  "tail": "v-1589",
-                  "head": "v-1593",
+                  "tail": "v-1587",
+                  "head": "v-1589",
                   "points": [],
                   "lineStyle": "solid",
                   "tailArrow": "none",
@@ -20070,8 +20083,24 @@
                   "isEdge": true,
                   "isMessage": false,
                   "modelRef": "m-1613",
-                  "tail": "v-1593",
-                  "head": "v-1597",
+                  "tail": "v-1591",
+                  "head": "v-1595",
+                  "points": [],
+                  "lineStyle": "solid",
+                  "tailArrow": "none",
+                  "headArrow": "open",
+                  "stereotype": "",
+                  "nameVisible": true,
+                  "showVisibility": true
+                },
+                {
+                  "_id": "e-1614",
+                  "$type": "UMLControlFlow",
+                  "isEdge": true,
+                  "isMessage": false,
+                  "modelRef": "m-1615",
+                  "tail": "v-1595",
+                  "head": "v-1599",
                   "points": [
                     {
                       "x": 732.0,
@@ -20086,13 +20115,13 @@
                   "showVisibility": true
                 },
                 {
-                  "_id": "e-1614",
+                  "_id": "e-1616",
                   "$type": "UMLControlFlow",
                   "isEdge": true,
                   "isMessage": false,
-                  "modelRef": "m-1615",
-                  "tail": "v-1593",
-                  "head": "v-1595",
+                  "modelRef": "m-1617",
+                  "tail": "v-1595",
+                  "head": "v-1597",
                   "points": [],
                   "lineStyle": "solid",
                   "tailArrow": "none",
@@ -20102,13 +20131,13 @@
                   "showVisibility": true
                 },
                 {
-                  "_id": "e-1616",
+                  "_id": "e-1618",
                   "$type": "UMLControlFlow",
                   "isEdge": true,
                   "isMessage": false,
-                  "modelRef": "m-1617",
-                  "tail": "v-1597",
-                  "head": "v-1595",
+                  "modelRef": "m-1619",
+                  "tail": "v-1599",
+                  "head": "v-1597",
                   "points": [
                     {
                       "x": 736.0,
@@ -20123,13 +20152,13 @@
                   "showVisibility": true
                 },
                 {
-                  "_id": "e-1618",
+                  "_id": "e-1620",
                   "$type": "UMLControlFlow",
                   "isEdge": true,
                   "isMessage": false,
-                  "modelRef": "m-1619",
-                  "tail": "v-1595",
-                  "head": "v-1591",
+                  "modelRef": "m-1621",
+                  "tail": "v-1597",
+                  "head": "v-1593",
                   "points": [],
                   "lineStyle": "solid",
                   "tailArrow": "none",
@@ -20142,15 +20171,15 @@
               "defaultDiagram": false
             },
             {
-              "_id": "d-1620",
+              "_id": "d-1622",
               "type": "UMLSequenceDiagram",
               "name": "Post Comments",
               "ownedElements": [],
               "elements": [
                 {
-                  "_id": "v-1622",
+                  "_id": "v-1624",
                   "$type": "UMLLifeLine",
-                  "modelRef": "m-1621",
+                  "modelRef": "m-1623",
                   "x": 80.0,
                   "y": 40.0,
                   "width": 77.64,
@@ -20162,9 +20191,9 @@
                   "lifeHeight": 246.0
                 },
                 {
-                  "_id": "v-1624",
+                  "_id": "v-1626",
                   "$type": "UMLLifeLine",
-                  "modelRef": "m-1623",
+                  "modelRef": "m-1625",
                   "x": 208.0,
                   "y": 40.0,
                   "width": 95.12,
@@ -20176,9 +20205,9 @@
                   "lifeHeight": 191.0
                 },
                 {
-                  "_id": "v-1626",
+                  "_id": "v-1628",
                   "$type": "UMLLifeLine",
-                  "modelRef": "m-1625",
+                  "modelRef": "m-1627",
                   "x": 336.0,
                   "y": 40.0,
                   "width": 150.03,
@@ -20190,9 +20219,9 @@
                   "lifeHeight": 281.0
                 },
                 {
-                  "_id": "v-1628",
+                  "_id": "v-1630",
                   "$type": "UMLLifeLine",
-                  "modelRef": "m-1627",
+                  "modelRef": "m-1629",
                   "x": 464.0,
                   "y": 156.0,
                   "width": 64.07,
@@ -20204,9 +20233,9 @@
                   "lifeHeight": 130.0
                 },
                 {
-                  "_id": "v-1630",
+                  "_id": "v-1632",
                   "$type": "UMLLifeLine",
-                  "modelRef": "m-1629",
+                  "modelRef": "m-1631",
                   "x": 568.0,
                   "y": 40.0,
                   "width": 108.89,
@@ -20218,9 +20247,9 @@
                   "lifeHeight": 222.0
                 },
                 {
-                  "_id": "v-1632",
+                  "_id": "v-1634",
                   "$type": "UMLDurationConstraint",
-                  "modelRef": "m-1631",
+                  "modelRef": "m-1633",
                   "x": 96.0,
                   "y": 240.0,
                   "width": 14.0,
@@ -20231,13 +20260,13 @@
                   "fontSize": 12
                 },
                 {
-                  "_id": "e-1633",
+                  "_id": "e-1635",
                   "$type": "UMLMessage+found",
                   "isEdge": true,
                   "isMessage": true,
-                  "modelRef": "m-1634",
+                  "modelRef": "m-1636",
                   "tail": null,
-                  "head": "v-1622",
+                  "head": "v-1624",
                   "y": 112.0,
                   "points": [],
                   "lineStyle": "solid",
@@ -20248,13 +20277,13 @@
                   "endpointX": 38.0
                 },
                 {
-                  "_id": "e-1635",
+                  "_id": "e-1637",
                   "$type": "UMLMessage+sync",
                   "isEdge": true,
                   "isMessage": true,
-                  "modelRef": "m-1636",
-                  "tail": "v-1622",
-                  "head": "v-1624",
+                  "modelRef": "m-1638",
+                  "tail": "v-1624",
+                  "head": "v-1626",
                   "y": 138.0,
                   "points": [],
                   "lineStyle": "solid",
@@ -20264,13 +20293,13 @@
                   "nameVisible": true
                 },
                 {
-                  "_id": "e-1637",
+                  "_id": "e-1639",
                   "$type": "UMLMessage+sync",
                   "isEdge": true,
                   "isMessage": true,
-                  "modelRef": "m-1638",
-                  "tail": "v-1624",
-                  "head": "v-1626",
+                  "modelRef": "m-1640",
+                  "tail": "v-1626",
+                  "head": "v-1628",
                   "y": 152.0,
                   "points": [],
                   "lineStyle": "solid",
@@ -20280,13 +20309,13 @@
                   "nameVisible": true
                 },
                 {
-                  "_id": "e-1639",
+                  "_id": "e-1641",
                   "$type": "UMLMessage+create",
                   "isEdge": true,
                   "isMessage": true,
-                  "modelRef": "m-1640",
-                  "tail": "v-1626",
-                  "head": "v-1628",
+                  "modelRef": "m-1642",
+                  "tail": "v-1628",
+                  "head": "v-1630",
                   "y": 176.0,
                   "points": [],
                   "lineStyle": "dashed",
@@ -20296,32 +20325,16 @@
                   "nameVisible": true
                 },
                 {
-                  "_id": "e-1641",
+                  "_id": "e-1643",
                   "$type": "UMLMessage+async",
                   "isEdge": true,
                   "isMessage": true,
-                  "modelRef": "m-1642",
-                  "tail": "v-1626",
-                  "head": "v-1628",
+                  "modelRef": "m-1644",
+                  "tail": "v-1628",
+                  "head": "v-1630",
                   "y": 215.0,
                   "points": [],
                   "lineStyle": "solid",
-                  "tailArrow": "none",
-                  "headArrow": "open",
-                  "stereotype": "",
-                  "nameVisible": true
-                },
-                {
-                  "_id": "e-1643",
-                  "$type": "UMLMessage+reply",
-                  "isEdge": true,
-                  "isMessage": true,
-                  "modelRef": "m-1644",
-                  "tail": "v-1626",
-                  "head": "v-1624",
-                  "y": 224.0,
-                  "points": [],
-                  "lineStyle": "dashed",
                   "tailArrow": "none",
                   "headArrow": "open",
                   "stereotype": "",
@@ -20333,9 +20346,9 @@
                   "isEdge": true,
                   "isMessage": true,
                   "modelRef": "m-1646",
-                  "tail": "v-1624",
-                  "head": "v-1622",
-                  "y": 232.0,
+                  "tail": "v-1628",
+                  "head": "v-1626",
+                  "y": 224.0,
                   "points": [],
                   "lineStyle": "dashed",
                   "tailArrow": "none",
@@ -20345,12 +20358,28 @@
                 },
                 {
                   "_id": "e-1647",
-                  "$type": "UMLMessage+sync",
+                  "$type": "UMLMessage+reply",
                   "isEdge": true,
                   "isMessage": true,
                   "modelRef": "m-1648",
-                  "tail": "v-1628",
-                  "head": "v-1630",
+                  "tail": "v-1626",
+                  "head": "v-1624",
+                  "y": 232.0,
+                  "points": [],
+                  "lineStyle": "dashed",
+                  "tailArrow": "none",
+                  "headArrow": "open",
+                  "stereotype": "",
+                  "nameVisible": true
+                },
+                {
+                  "_id": "e-1649",
+                  "$type": "UMLMessage+sync",
+                  "isEdge": true,
+                  "isMessage": true,
+                  "modelRef": "m-1650",
+                  "tail": "v-1630",
+                  "head": "v-1632",
                   "y": 232.0,
                   "points": [],
                   "lineStyle": "solid",
@@ -20360,13 +20389,13 @@
                   "nameVisible": true
                 },
                 {
-                  "_id": "e-1649",
+                  "_id": "e-1651",
                   "$type": "UMLMessage+reply",
                   "isEdge": true,
                   "isMessage": true,
-                  "modelRef": "m-1650",
-                  "tail": "v-1630",
-                  "head": "v-1628",
+                  "modelRef": "m-1652",
+                  "tail": "v-1632",
+                  "head": "v-1630",
                   "y": 264.0,
                   "points": [],
                   "lineStyle": "dashed",
@@ -20376,13 +20405,13 @@
                   "nameVisible": true
                 },
                 {
-                  "_id": "e-1651",
+                  "_id": "e-1653",
                   "$type": "UMLMessage+sync",
                   "isEdge": true,
                   "isMessage": true,
-                  "modelRef": "m-1652",
-                  "tail": "v-1628",
-                  "head": "v-1622",
+                  "modelRef": "m-1654",
+                  "tail": "v-1630",
+                  "head": "v-1624",
                   "y": 280.0,
                   "points": [],
                   "lineStyle": "solid",
@@ -20397,7 +20426,7 @@
           ],
           "attributes": [
             {
-              "_id": "a-1572",
+              "_id": "a-1574",
               "$type": "UMLAttribute",
               "name": "Role1",
               "type": "Window",
@@ -20406,7 +20435,7 @@
               "isStatic": false
             },
             {
-              "_id": "a-1573",
+              "_id": "a-1575",
               "$type": "UMLAttribute",
               "name": "Role2",
               "type": "Comments",
@@ -20415,7 +20444,7 @@
               "isStatic": false
             },
             {
-              "_id": "a-1574",
+              "_id": "a-1576",
               "$type": "UMLAttribute",
               "name": "Role3",
               "type": "PluckRequestBatch",
@@ -20424,7 +20453,7 @@
               "isStatic": false
             },
             {
-              "_id": "a-1575",
+              "_id": "a-1577",
               "$type": "UMLAttribute",
               "name": "Role4",
               "type": "Proxy",
@@ -20433,7 +20462,7 @@
               "isStatic": false
             },
             {
-              "_id": "a-1576",
+              "_id": "a-1578",
               "$type": "UMLAttribute",
               "name": "Role5",
               "type": "PluckService",
@@ -20446,7 +20475,7 @@
           "templateParameters": []
         },
         {
-          "_id": "m-1578",
+          "_id": "m-1580",
           "type": "UMLInitialNode",
           "name": "InitialNode1",
           "stereotype": "",
@@ -20455,7 +20484,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1580",
+          "_id": "m-1582",
           "type": "UMLInteractionUse",
           "name": "Action1",
           "stereotype": "",
@@ -20464,7 +20493,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1582",
+          "_id": "m-1584",
           "type": "UMLDecisionNode",
           "name": "DecisionNode1",
           "stereotype": "",
@@ -20473,7 +20502,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1584",
+          "_id": "m-1586",
           "type": "UMLInteractionUse",
           "name": "Action2",
           "stereotype": "",
@@ -20482,7 +20511,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1586",
+          "_id": "m-1588",
           "type": "UMLActivityFinalNode",
           "name": "ActivityFinalNode1",
           "stereotype": "",
@@ -20491,7 +20520,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1588",
+          "_id": "m-1590",
           "type": "UMLInteractionInOverview",
           "name": "Actions1",
           "stereotype": "",
@@ -20500,7 +20529,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1590",
+          "_id": "m-1592",
           "type": "UMLMergeNode",
           "name": "MergeNode1",
           "stereotype": "",
@@ -20509,7 +20538,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1592",
+          "_id": "m-1594",
           "type": "UMLDecisionNode",
           "name": "DecisionNode2",
           "stereotype": "",
@@ -20518,7 +20547,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1594",
+          "_id": "m-1596",
           "type": "UMLMergeNode",
           "name": "MergeNode2",
           "stereotype": "",
@@ -20527,18 +20556,9 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1596",
+          "_id": "m-1598",
           "type": "UMLInteractionUse",
           "name": "Action3",
-          "stereotype": "",
-          "documentation": "",
-          "tags": [],
-          "ownedElements": []
-        },
-        {
-          "_id": "m-1599",
-          "type": "UMLControlFlow",
-          "name": "",
           "stereotype": "",
           "documentation": "",
           "tags": [],
@@ -20556,7 +20576,7 @@
         {
           "_id": "m-1603",
           "type": "UMLControlFlow",
-          "name": "[no validation errors]",
+          "name": "",
           "stereotype": "",
           "documentation": "",
           "tags": [],
@@ -20565,7 +20585,7 @@
         {
           "_id": "m-1605",
           "type": "UMLControlFlow",
-          "name": "[validation errors]",
+          "name": "[no validation errors]",
           "stereotype": "",
           "documentation": "",
           "tags": [],
@@ -20574,7 +20594,7 @@
         {
           "_id": "m-1607",
           "type": "UMLControlFlow",
-          "name": "",
+          "name": "[validation errors]",
           "stereotype": "",
           "documentation": "",
           "tags": [],
@@ -20601,7 +20621,7 @@
         {
           "_id": "m-1613",
           "type": "UMLControlFlow",
-          "name": "[errors]",
+          "name": "",
           "stereotype": "",
           "documentation": "",
           "tags": [],
@@ -20610,7 +20630,7 @@
         {
           "_id": "m-1615",
           "type": "UMLControlFlow",
-          "name": "[no errors]",
+          "name": "[errors]",
           "stereotype": "",
           "documentation": "",
           "tags": [],
@@ -20619,7 +20639,7 @@
         {
           "_id": "m-1617",
           "type": "UMLControlFlow",
-          "name": "",
+          "name": "[no errors]",
           "stereotype": "",
           "documentation": "",
           "tags": [],
@@ -20636,8 +20656,8 @@
         },
         {
           "_id": "m-1621",
-          "type": "UMLLifeLine",
-          "name": ": Window",
+          "type": "UMLControlFlow",
+          "name": "",
           "stereotype": "",
           "documentation": "",
           "tags": [],
@@ -20646,8 +20666,8 @@
         {
           "_id": "m-1623",
           "type": "UMLLifeLine",
-          "name": "«javascript»",
-          "stereotype": "javascript",
+          "name": ": Window",
+          "stereotype": "",
           "documentation": "",
           "tags": [],
           "ownedElements": []
@@ -20664,6 +20684,15 @@
         {
           "_id": "m-1627",
           "type": "UMLLifeLine",
+          "name": "«javascript»",
+          "stereotype": "javascript",
+          "documentation": "",
+          "tags": [],
+          "ownedElements": []
+        },
+        {
+          "_id": "m-1629",
+          "type": "UMLLifeLine",
           "name": "«ajax»",
           "stereotype": "ajax",
           "documentation": "",
@@ -20671,7 +20700,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1629",
+          "_id": "m-1631",
           "type": "UMLLifeLine",
           "name": "«service»",
           "stereotype": "service",
@@ -20680,7 +20709,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1631",
+          "_id": "m-1633",
           "type": "UMLDurationConstraint",
           "name": "{1s..4s}",
           "stereotype": "",
@@ -20689,7 +20718,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1634",
+          "_id": "m-1636",
           "type": "UMLMessage",
           "name": "Message1",
           "stereotype": "",
@@ -20698,7 +20727,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1636",
+          "_id": "m-1638",
           "type": "UMLMessage",
           "name": "post_comments()",
           "stereotype": "",
@@ -20707,7 +20736,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1638",
+          "_id": "m-1640",
           "type": "UMLMessage",
           "name": "BeginRequest()",
           "stereotype": "",
@@ -20716,7 +20745,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1640",
+          "_id": "m-1642",
           "type": "UMLMessage",
           "name": "«create»",
           "stereotype": "",
@@ -20725,19 +20754,10 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1642",
+          "_id": "m-1644",
           "type": "UMLMessage",
           "name": "«ajax»",
           "stereotype": "ajax",
-          "documentation": "",
-          "tags": [],
-          "ownedElements": []
-        },
-        {
-          "_id": "m-1644",
-          "type": "UMLMessage",
-          "name": "",
-          "stereotype": "",
           "documentation": "",
           "tags": [],
           "ownedElements": []
@@ -20754,7 +20774,7 @@
         {
           "_id": "m-1648",
           "type": "UMLMessage",
-          "name": "postComments()",
+          "name": "",
           "stereotype": "",
           "documentation": "",
           "tags": [],
@@ -20763,6 +20783,15 @@
         {
           "_id": "m-1650",
           "type": "UMLMessage",
+          "name": "postComments()",
+          "stereotype": "",
+          "documentation": "",
+          "tags": [],
+          "ownedElements": []
+        },
+        {
+          "_id": "m-1652",
+          "type": "UMLMessage",
           "name": "«json»",
           "stereotype": "json",
           "documentation": "",
@@ -20770,7 +20799,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1652",
+          "_id": "m-1654",
           "type": "UMLMessage",
           "name": "«callback»",
           "stereotype": "callback",
@@ -20779,7 +20808,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1653",
+          "_id": "m-1655",
           "type": "UMLClass",
           "name": "Window",
           "stereotype": "",
@@ -20791,7 +20820,7 @@
           "templateParameters": []
         },
         {
-          "_id": "m-1654",
+          "_id": "m-1656",
           "type": "UMLClass",
           "name": "Comments",
           "stereotype": "",
@@ -20801,7 +20830,7 @@
           "attributes": [],
           "operations": [
             {
-              "_id": "o-1655",
+              "_id": "o-1657",
               "$type": "UMLOperation",
               "name": "post_comments",
               "parameters": [],
@@ -20813,7 +20842,7 @@
           "templateParameters": []
         },
         {
-          "_id": "m-1656",
+          "_id": "m-1658",
           "type": "UMLClass",
           "name": "PluckRequestBatch",
           "stereotype": "",
@@ -20823,7 +20852,7 @@
           "attributes": [],
           "operations": [
             {
-              "_id": "o-1657",
+              "_id": "o-1659",
               "$type": "UMLOperation",
               "name": "BeginRequest",
               "parameters": [],
@@ -20835,7 +20864,7 @@
           "templateParameters": []
         },
         {
-          "_id": "m-1658",
+          "_id": "m-1660",
           "type": "UMLClass",
           "name": "PluckService",
           "stereotype": "",
@@ -20845,7 +20874,7 @@
           "attributes": [],
           "operations": [
             {
-              "_id": "o-1659",
+              "_id": "o-1661",
               "$type": "UMLOperation",
               "name": "postComments",
               "parameters": [],
@@ -20857,7 +20886,7 @@
           "templateParameters": []
         },
         {
-          "_id": "m-1660",
+          "_id": "m-1662",
           "type": "UMLClass",
           "name": "Proxy",
           "stereotype": "",
@@ -20871,7 +20900,7 @@
       ]
     },
     {
-      "_id": "m-1661",
+      "_id": "m-1663",
       "type": "UMLModel",
       "name": "Information Flow Diagram",
       "stereotype": "",
@@ -20879,15 +20908,15 @@
       "tags": [],
       "ownedElements": [
         {
-          "_id": "d-1662",
+          "_id": "d-1664",
           "type": "UMLInformationFlowDiagram",
           "name": "Information Flows",
           "ownedElements": [],
           "elements": [
             {
-              "_id": "v-1664",
+              "_id": "v-1666",
               "$type": "UMLActor",
-              "modelRef": "m-1663",
+              "modelRef": "m-1665",
               "x": 42.0,
               "y": 112.0,
               "width": 70.68,
@@ -20900,9 +20929,9 @@
               "suppressOperations": true
             },
             {
-              "_id": "v-1666",
+              "_id": "v-1668",
               "$type": "UMLClass",
-              "modelRef": "m-1665",
+              "modelRef": "m-1667",
               "x": 224.0,
               "y": 48.0,
               "width": 125.57,
@@ -20915,9 +20944,9 @@
               "suppressOperations": true
             },
             {
-              "_id": "v-1668",
+              "_id": "v-1670",
               "$type": "UMLClass",
-              "modelRef": "m-1667",
+              "modelRef": "m-1669",
               "x": 224.0,
               "y": 208.0,
               "width": 129.0,
@@ -20930,9 +20959,9 @@
               "suppressOperations": true
             },
             {
-              "_id": "v-1670",
+              "_id": "v-1672",
               "$type": "UMLClass",
-              "modelRef": "m-1669",
+              "modelRef": "m-1671",
               "x": 464.0,
               "y": 48.0,
               "width": 129.0,
@@ -20945,25 +20974,10 @@
               "suppressOperations": true
             },
             {
-              "_id": "v-1672",
-              "$type": "UMLInformationItem",
-              "modelRef": "m-1671",
-              "x": 40.0,
-              "y": 344.0,
-              "width": 115.45,
-              "height": 49.0,
-              "fillColor": "",
-              "lineColor": "",
-              "fontColor": "",
-              "fontSize": 12,
-              "suppressAttributes": true,
-              "suppressOperations": true
-            },
-            {
               "_id": "v-1674",
               "$type": "UMLInformationItem",
               "modelRef": "m-1673",
-              "x": 192.0,
+              "x": 40.0,
               "y": 344.0,
               "width": 115.45,
               "height": 49.0,
@@ -20978,7 +20992,7 @@
               "_id": "v-1676",
               "$type": "UMLInformationItem",
               "modelRef": "m-1675",
-              "x": 336.0,
+              "x": 192.0,
               "y": 344.0,
               "width": 115.45,
               "height": 49.0,
@@ -20993,6 +21007,21 @@
               "_id": "v-1678",
               "$type": "UMLInformationItem",
               "modelRef": "m-1677",
+              "x": 336.0,
+              "y": 344.0,
+              "width": 115.45,
+              "height": 49.0,
+              "fillColor": "",
+              "lineColor": "",
+              "fontColor": "",
+              "fontSize": 12,
+              "suppressAttributes": true,
+              "suppressOperations": true
+            },
+            {
+              "_id": "v-1680",
+              "$type": "UMLInformationItem",
+              "modelRef": "m-1679",
               "x": 480.0,
               "y": 344.0,
               "width": 115.45,
@@ -21005,38 +21034,17 @@
               "suppressOperations": true
             },
             {
-              "_id": "e-1679",
-              "$type": "UMLInformationFlow",
-              "isEdge": true,
-              "isMessage": false,
-              "modelRef": "m-1680",
-              "tail": "v-1664",
-              "head": "v-1666",
-              "points": [
-                {
-                  "x": 76.0,
-                  "y": 64.0
-                }
-              ],
-              "lineStyle": "dotted",
-              "tailArrow": "none",
-              "headArrow": "open",
-              "stereotype": "«flow»",
-              "nameVisible": true,
-              "showVisibility": true
-            },
-            {
               "_id": "e-1681",
               "$type": "UMLInformationFlow",
               "isEdge": true,
               "isMessage": false,
               "modelRef": "m-1682",
-              "tail": "v-1668",
-              "head": "v-1664",
+              "tail": "v-1666",
+              "head": "v-1668",
               "points": [
                 {
                   "x": 76.0,
-                  "y": 232.0
+                  "y": 64.0
                 }
               ],
               "lineStyle": "dotted",
@@ -21052,9 +21060,14 @@
               "isEdge": true,
               "isMessage": false,
               "modelRef": "m-1684",
-              "tail": "v-1666",
-              "head": "v-1668",
-              "points": [],
+              "tail": "v-1670",
+              "head": "v-1666",
+              "points": [
+                {
+                  "x": 76.0,
+                  "y": 232.0
+                }
+              ],
               "lineStyle": "dotted",
               "tailArrow": "none",
               "headArrow": "open",
@@ -21068,7 +21081,7 @@
               "isEdge": true,
               "isMessage": false,
               "modelRef": "m-1686",
-              "tail": "v-1666",
+              "tail": "v-1668",
               "head": "v-1670",
               "points": [],
               "lineStyle": "dotted",
@@ -21084,8 +21097,24 @@
               "isEdge": true,
               "isMessage": false,
               "modelRef": "m-1688",
-              "tail": "v-1670",
-              "head": "v-1668",
+              "tail": "v-1668",
+              "head": "v-1672",
+              "points": [],
+              "lineStyle": "dotted",
+              "tailArrow": "none",
+              "headArrow": "open",
+              "stereotype": "«flow»",
+              "nameVisible": true,
+              "showVisibility": true
+            },
+            {
+              "_id": "e-1689",
+              "$type": "UMLInformationFlow",
+              "isEdge": true,
+              "isMessage": false,
+              "modelRef": "m-1690",
+              "tail": "v-1672",
+              "head": "v-1670",
               "points": [
                 {
                   "x": 520.0,
@@ -21103,7 +21132,7 @@
           "defaultDiagram": false
         },
         {
-          "_id": "m-1663",
+          "_id": "m-1665",
           "type": "UMLActor",
           "name": "Customer",
           "stereotype": "",
@@ -21112,7 +21141,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1665",
+          "_id": "m-1667",
           "type": "UMLClass",
           "name": "Billing Department",
           "stereotype": "",
@@ -21124,7 +21153,7 @@
           "templateParameters": []
         },
         {
-          "_id": "m-1667",
+          "_id": "m-1669",
           "type": "UMLClass",
           "name": "Accounting Department",
           "stereotype": "",
@@ -21136,7 +21165,7 @@
           "templateParameters": []
         },
         {
-          "_id": "m-1669",
+          "_id": "m-1671",
           "type": "UMLClass",
           "name": "Inventory Department",
           "stereotype": "",
@@ -21148,21 +21177,9 @@
           "templateParameters": []
         },
         {
-          "_id": "m-1671",
-          "type": "UMLInformationItem",
-          "name": "sales order",
-          "stereotype": "",
-          "documentation": "",
-          "tags": [],
-          "ownedElements": [],
-          "attributes": [],
-          "operations": [],
-          "templateParameters": []
-        },
-        {
           "_id": "m-1673",
           "type": "UMLInformationItem",
-          "name": "invoice",
+          "name": "sales order",
           "stereotype": "",
           "documentation": "",
           "tags": [],
@@ -21174,7 +21191,7 @@
         {
           "_id": "m-1675",
           "type": "UMLInformationItem",
-          "name": "open order",
+          "name": "invoice",
           "stereotype": "",
           "documentation": "",
           "tags": [],
@@ -21186,6 +21203,18 @@
         {
           "_id": "m-1677",
           "type": "UMLInformationItem",
+          "name": "open order",
+          "stereotype": "",
+          "documentation": "",
+          "tags": [],
+          "ownedElements": [],
+          "attributes": [],
+          "operations": [],
+          "templateParameters": []
+        },
+        {
+          "_id": "m-1679",
+          "type": "UMLInformationItem",
           "name": "fulfilled order",
           "stereotype": "",
           "documentation": "",
@@ -21196,18 +21225,9 @@
           "templateParameters": []
         },
         {
-          "_id": "m-1680",
-          "type": "UMLInformationFlow",
-          "name": "sales order",
-          "stereotype": "",
-          "documentation": "",
-          "tags": [],
-          "ownedElements": []
-        },
-        {
           "_id": "m-1682",
           "type": "UMLInformationFlow",
-          "name": "invoice",
+          "name": "sales order",
           "stereotype": "",
           "documentation": "",
           "tags": [],
@@ -21216,7 +21236,7 @@
         {
           "_id": "m-1684",
           "type": "UMLInformationFlow",
-          "name": "open order",
+          "name": "invoice",
           "stereotype": "",
           "documentation": "",
           "tags": [],
@@ -21225,7 +21245,7 @@
         {
           "_id": "m-1686",
           "type": "UMLInformationFlow",
-          "name": "sales order",
+          "name": "open order",
           "stereotype": "",
           "documentation": "",
           "tags": [],
@@ -21233,6 +21253,15 @@
         },
         {
           "_id": "m-1688",
+          "type": "UMLInformationFlow",
+          "name": "sales order",
+          "stereotype": "",
+          "documentation": "",
+          "tags": [],
+          "ownedElements": []
+        },
+        {
+          "_id": "m-1690",
           "type": "UMLInformationFlow",
           "name": "fulfilled order",
           "stereotype": "",
@@ -21243,7 +21272,7 @@
       ]
     },
     {
-      "_id": "m-1689",
+      "_id": "m-1691",
       "type": "UMLModel",
       "name": "Deployment Diagram",
       "stereotype": "",
@@ -21251,15 +21280,15 @@
       "tags": [],
       "ownedElements": [
         {
-          "_id": "d-1690",
+          "_id": "d-1692",
           "type": "UMLDeploymentDiagram",
           "name": "Book Club Web Application",
           "ownedElements": [],
           "elements": [
             {
-              "_id": "v-1692",
+              "_id": "v-1694",
               "$type": "UMLNode",
-              "modelRef": "m-1691",
+              "modelRef": "m-1693",
               "x": 88.0,
               "y": 96.0,
               "width": 305.0,
@@ -21272,9 +21301,9 @@
               "suppressOperations": true
             },
             {
-              "_id": "v-1694",
+              "_id": "v-1696",
               "$type": "UMLNode",
-              "modelRef": "m-1693",
+              "modelRef": "m-1695",
               "x": 544.0,
               "y": 96.0,
               "width": 209.0,
@@ -21287,9 +21316,9 @@
               "suppressOperations": true
             },
             {
-              "_id": "v-1696",
+              "_id": "v-1698",
               "$type": "UMLNode",
-              "modelRef": "m-1695",
+              "modelRef": "m-1697",
               "x": 112.0,
               "y": 160.0,
               "width": 249.0,
@@ -21302,9 +21331,9 @@
               "suppressOperations": true
             },
             {
-              "_id": "v-1698",
+              "_id": "v-1700",
               "$type": "UMLNode",
-              "modelRef": "m-1697",
+              "modelRef": "m-1699",
               "x": 144.0,
               "y": 224.0,
               "width": 179.09,
@@ -21317,9 +21346,9 @@
               "suppressOperations": true
             },
             {
-              "_id": "v-1700",
+              "_id": "v-1702",
               "$type": "UMLNode",
-              "modelRef": "m-1699",
+              "modelRef": "m-1701",
               "x": 576.0,
               "y": 168.0,
               "width": 137.0,
@@ -21332,13 +21361,13 @@
               "suppressOperations": true
             },
             {
-              "_id": "e-1701",
+              "_id": "e-1703",
               "$type": "UMLCommunicationPath",
               "isEdge": true,
               "isMessage": false,
-              "modelRef": "m-1702",
-              "tail": "v-1692",
-              "head": "v-1694",
+              "modelRef": "m-1704",
+              "tail": "v-1694",
+              "head": "v-1696",
               "points": [],
               "lineStyle": "solid",
               "tailArrow": "none",
@@ -21351,7 +21380,7 @@
           "defaultDiagram": false
         },
         {
-          "_id": "m-1691",
+          "_id": "m-1693",
           "type": "UMLNode",
           "name": "Sun Fire X4150 Server",
           "stereotype": "device",
@@ -21360,7 +21389,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1693",
+          "_id": "m-1695",
           "type": "UMLNode",
           "name": "Sun SPARC Server",
           "stereotype": "device",
@@ -21369,7 +21398,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1695",
+          "_id": "m-1697",
           "type": "UMLNode",
           "name": "Tomcat 7",
           "stereotype": "JSP server",
@@ -21378,7 +21407,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1697",
+          "_id": "m-1699",
           "type": "UMLNode",
           "name": "Catalina Servlet Constainer",
           "stereotype": "executionEnvironment",
@@ -21387,7 +21416,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1699",
+          "_id": "m-1701",
           "type": "UMLNode",
           "name": "Oracle 10g",
           "stereotype": "database system",
@@ -21396,7 +21425,7 @@
           "ownedElements": []
         },
         {
-          "_id": "m-1702",
+          "_id": "m-1704",
           "type": "UMLCommunicationPath",
           "name": "+TCP/IP",
           "stereotype": "protocol",
@@ -21407,7 +21436,7 @@
       ]
     },
     {
-      "_id": "m-1703",
+      "_id": "m-1705",
       "type": "UMLModel",
       "name": "Annotations",
       "stereotype": "",
@@ -21415,13 +21444,13 @@
       "tags": [],
       "ownedElements": [
         {
-          "_id": "d-1704",
+          "_id": "d-1706",
           "type": "UMLClassDiagram",
           "name": "Annotations on Diagram",
           "ownedElements": [],
           "elements": [
             {
-              "_id": "v-1705",
+              "_id": "v-1707",
               "$type": "UMLTextView",
               "modelRef": "",
               "x": 40.0,
@@ -21435,7 +21464,7 @@
               "text": "TextBox"
             },
             {
-              "_id": "v-1706",
+              "_id": "v-1708",
               "$type": "UMLTextView",
               "modelRef": "",
               "x": 40.0,
@@ -21449,7 +21478,7 @@
               "text": "Freelines"
             },
             {
-              "_id": "v-1707",
+              "_id": "v-1709",
               "$type": "UMLTextView",
               "modelRef": "",
               "x": 32.0,

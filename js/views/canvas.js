@@ -120,7 +120,8 @@ export class DiagramCanvas {
     }
     // draw nodes first (backdrops below their children), then edges on top.
     const isBackdrop = (v) => v.$type === 'UMLSwimlaneVert' || v.$type === 'UMLSwimlaneHorz' || v.$type === 'UMLCompositeState' || v.$type === 'UMLCombinedFragment' || v.$type === 'UMLFrame' || v.$type === 'UMLStructuredActivityNode' || v.$type === 'UMLInterruptibleRegion'
-      || v.$type === 'UMLNode' || v.$type === 'UMLNodeInstance';
+      || v.$type === 'UMLNode' || v.$type === 'UMLNodeInstance'
+      || v.$type === 'UMLOrthogonalState' || v.$type === 'UMLRegion';
     const nodes = views.filter((v) => !v.isEdge)
       .sort((a, b) => {
         const pa = isBackdrop(a) ? 0 : 1, pb = isBackdrop(b) ? 0 : 1;
@@ -197,6 +198,13 @@ export class DiagramCanvas {
       : v.$type === 'UMLFrame' ? 'frame'
       : v.$type === 'UMLNaryAssociation' ? 'nary'
       : v.$type === 'UMLAssociationClass' ? 'class'
+      : v.$type === 'UMLOrthogonalState' ? 'orthogonal'
+      : v.$type === 'UMLRegion' ? 'region'
+      : v.$type === 'UMLSubmachineState' ? 'submachine'
+      : v.$type === 'UMLEntryPoint' ? 'entryPoint'
+      : v.$type === 'UMLExitPoint' ? 'exitPoint'
+      : v.$type === 'UMLTerminate' ? 'terminate'
+      : v.$type === 'UMLConnectionPointReference' ? 'connectionPoint'
       : v.$type === 'UMLProvidedInterface' ? 'providedInterface'
       : v.$type === 'UMLRequiredInterface' ? 'requiredInterface'
       : v.$type === 'UMLMetaClass' ? 'metaclass'
@@ -487,7 +495,9 @@ export class DiagramCanvas {
     if (repository.selections.length === 1) {
       const r = this.renderers.get(repository.selections[0]);
       if (r && r.kind === 'node' && r.view.$type !== 'UMLPort' && r.view.$type !== 'UMLTimeTick'
-        && r.view.$type !== 'UMLInputPin' && r.view.$type !== 'UMLOutputPin') {
+        && r.view.$type !== 'UMLInputPin' && r.view.$type !== 'UMLOutputPin'
+        && r.view.$type !== 'UMLEntryPoint' && r.view.$type !== 'UMLExitPoint'
+        && r.view.$type !== 'UMLConnectionPointReference' && r.view.$type !== 'UMLTerminate') {
         const v = r.view;
         const w = viewW(v), h = viewH(v);
         const hs = { nw: [v.x, v.y], n: [v.x + w / 2, v.y], ne: [v.x + w, v.y], w: [v.x, v.y + h / 2], e: [v.x + w, v.y + h / 2], sw: [v.x, v.y + h], s: [v.x + w / 2, v.y + h], se: [v.x + w, v.y + h] };
@@ -556,7 +566,8 @@ export class DiagramCanvas {
 
   // ---------------- containment (swimlanes / composite states) ----------------
   static CONTAINER_TYPES = ['UMLSwimlaneVert', 'UMLSwimlaneHorz', 'UMLCompositeState', 'UMLFrame',
-    'UMLStructuredActivityNode', 'UMLInterruptibleRegion', 'UMLNode', 'UMLNodeInstance'];
+    'UMLStructuredActivityNode', 'UMLInterruptibleRegion', 'UMLNode', 'UMLNodeInstance',
+    'UMLOrthogonalState', 'UMLRegion'];
   // structural containers used by composite-structure / timing diagrams
   static STRUCTURAL_CONTAINERS = ['UMLClass', 'UMLInterface', 'UMLComponent', 'UMLCollaboration', 'UMLTimingLifeline'];
   isContainerView(v) {
@@ -596,6 +607,19 @@ export class DiagramCanvas {
     for (const v of this.diagram.elements || []) {
       if (v.isEdge || v._id === view._id) continue;
       if (v.$type !== 'UMLAction' && v.$type !== 'UMLStructuredActivityNode') continue;
+      if (!this.rectOf(v).contains(cx, cy)) continue;
+      if (!best || viewW(v) * viewH(v) < viewW(best) * viewH(best)) best = v;
+    }
+    return best;
+  }
+
+  findStateHostFor(view) {
+    let best = null;
+    const cx = view.x + viewW(view) / 2;
+    const cy = view.y + viewH(view) / 2;
+    for (const v of this.diagram.elements || []) {
+      if (v.isEdge || v._id === view._id) continue;
+      if (!['UMLState', 'UMLCompositeState', 'UMLOrthogonalState', 'UMLSubmachineState'].includes(v.$type)) continue;
       if (!this.rectOf(v).contains(cx, cy)) continue;
       if (!best || viewW(v) * viewH(v) < viewW(best) * viewH(best)) best = v;
     }
@@ -897,7 +921,8 @@ export class DiagramCanvas {
     const items = [];
     for (const r of selectedViews) {
       items.push({ view: r.view, orig: { x: r.view.x, y: r.view.y, points: (r.view.points || []).map((p) => ({ ...p })) } });
-      if (this.isContainerView(r.view) || r.view.$type === 'UMLCombinedFragment' || r.view.$type === 'UMLTimingState' || r.view.$type === 'UMLAction') {
+      if (this.isContainerView(r.view) || r.view.$type === 'UMLCombinedFragment' || r.view.$type === 'UMLTimingState' || r.view.$type === 'UMLAction'
+        || r.view.$type === 'UMLState' || r.view.$type === 'UMLSubmachineState') {
         for (const child of this.descendantsOf(r.view._id)) {
           if (sel.includes(child._id)) continue;
           items.push({ view: child, orig: { x: child.x, y: child.y, points: [] } });
@@ -1118,6 +1143,9 @@ export class DiagramCanvas {
           let target;
           if (v.$type === 'UMLInputPin' || v.$type === 'UMLOutputPin') {
             target = this.findPinHostFor(v);
+            if (target) this._snapPortToView(v, target);
+          } else if (v.$type === 'UMLEntryPoint' || v.$type === 'UMLExitPoint' || v.$type === 'UMLConnectionPointReference') {
+            target = this.findStateHostFor(v);
             if (target) this._snapPortToView(v, target);
           } else if (v.$type === 'UMLPart' || v.$type === 'UMLPort') {
             target = this.findContainerFor(v, ['UMLClass', 'UMLInterface', 'UMLComponent', 'UMLCollaboration']);
@@ -1489,6 +1517,47 @@ export class DiagramCanvas {
       : `已添加丢失消息 ← ${otherModel ? otherModel.name : ''}`);
   }
 
+  createOrthogonalStateAt(w, x, y) {
+    if (!this.diagram) return;
+    const outerModel = createModel('UMLOrthogonalState');
+    const outer = createNodeView('UMLOrthogonalState', outerModel._id, x, y);
+    const innerW = Math.max(70, (outer.width - 30) / 2);
+    const innerH = Math.max(80, outer.height - 50);
+    const regions = [
+      { model: createModel('UMLRegion'), view: createNodeView('UMLRegion', null, x + 10, y + 38) },
+      { model: createModel('UMLRegion'), view: createNodeView('UMLRegion', null, x + 20 + innerW, y + 38) },
+    ];
+    for (const r of regions) {
+      r.view.modelRef = r.model._id;
+      r.view.width = innerW;
+      r.view.height = innerH;
+      r.view.container = outer._id;
+    }
+    const parentModel = this._defaultOwnerFor(outerModel);
+    const diagram = this.diagram;
+    const ops = [{ redo: () => repository.addChild(parentModel, outerModel), undo: () => repository.removeChild(outerModel) }];
+    for (const r of regions) {
+      ops.push({ redo: () => repository.addChild(parentModel, r.model), undo: () => repository.removeChild(r.model) });
+    }
+    ops.push({
+      redo: () => {
+        diagram.elements.push(outer); outer.__diagram = diagram;
+        for (const r of regions) { diagram.elements.push(r.view); r.view.__diagram = diagram; }
+        repository._reindex();
+      },
+      undo: () => {
+        for (const v of [outer, ...regions.map((r) => r.view)]) {
+          const i = diagram.elements.indexOf(v);
+          if (i >= 0) diagram.elements.splice(i, 1);
+        }
+        repository._reindex();
+      },
+    });
+    compound('create orthogonal state', ops);
+    repository.select([outer._id], outerModel);
+    this.setStatusMessage('已创建正交状态（两个区域）');
+  }
+
   createAssociationClassAt(w, assocView) {
     if (!this.diagram) return;
     let x = snap(w.x + 20, this.gridSize);
@@ -1537,6 +1606,21 @@ export class DiagramCanvas {
         && hit.view.$type === 'UMLAssociation') {
       this.createAssociationClassAt(w, hit.view);
       return;
+    } else if (nodeType === 'UMLOrthogonalState') {
+      this.createOrthogonalStateAt(w, x, y);
+      return;
+    } else if (nodeType === 'UMLEntryPoint' || nodeType === 'UMLExitPoint' || nodeType === 'UMLConnectionPointReference') {
+      const target = hit && hit.kind === 'node'
+        && ['UMLState', 'UMLCompositeState', 'UMLOrthogonalState', 'UMLSubmachineState'].includes(hit.view.$type)
+        ? hit.view : null;
+      if (!target) {
+        this.setStatusMessage('请把连接点放到状态上');
+        return;
+      }
+      model = createModel(nodeType);
+      view = createNodeView(nodeType, model._id, x - 7, y - 7);
+      forcedContainer = target._id;
+      this._snapPortToView(view, target);
     } else if (nodeType === 'UMLNaryAssociation') {
       model = createModel('UMLAssociation', '');
       view = createNodeView('UMLNaryAssociation', model._id, x, y);
@@ -1824,6 +1908,10 @@ export class DiagramCanvas {
       UMLNode: 'UMLNode', UMLObject: 'UMLObject', UMLSubsystem: 'UMLSubsystem',
       UMLSignal: 'UMLSignal', UMLPrimitiveType: 'UMLPrimitiveType', UMLFrame: 'UMLFrame',
       UMLAssociationClass: 'UMLAssociationClass',
+      UMLOrthogonalState: 'UMLOrthogonalState', UMLRegion: 'UMLRegion',
+      UMLSubmachineState: 'UMLSubmachineState', UMLTerminate: 'UMLTerminate',
+      UMLEntryPoint: 'UMLEntryPoint', UMLExitPoint: 'UMLExitPoint',
+      UMLConnectionPointReference: 'UMLConnectionPointReference',
       UMLCentralBufferNode: 'UMLCentralBufferNode', UMLDataStoreNode: 'UMLDataStoreNode',
       UMLActivityParameterNode: 'UMLActivityParameterNode', UMLInputPin: 'UMLInputPin',
       UMLOutputPin: 'UMLOutputPin', UMLStructuredActivityNode: 'UMLStructuredActivityNode',
@@ -1909,7 +1997,8 @@ export class DiagramCanvas {
     const released = [];
     for (const r of removals) {
       if (!this.isContainerView(r.view) && r.view.$type !== 'UMLCombinedFragment'
-        && r.view.$type !== 'UMLTimingState' && r.view.$type !== 'UMLAction') continue;
+        && r.view.$type !== 'UMLTimingState' && r.view.$type !== 'UMLAction'
+        && r.view.$type !== 'UMLState' && r.view.$type !== 'UMLSubmachineState') continue;
       for (const ch of els) if (ch.container === r.view._id) released.push({ parent: r.view, child: ch });
     }
     removals.sort((a, b) => b.index - a.index);

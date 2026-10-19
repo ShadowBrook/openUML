@@ -544,6 +544,85 @@ export function renderNode(g, view, model, kind) {
       }
       break;
     }
+    case 'orthogonal': {
+      svgEl('rect', {
+        x, y, width: w, height: h, rx: 12, ry: 12,
+        fill: view.fillColor || '#ffffff', stroke: line, 'stroke-width': 1, class: 'node-frame',
+      }, g);
+      const t = svgEl('text', {
+        x: x + w / 2, y: y + fs + 8, 'text-anchor': 'middle',
+        'font-size': fs, 'font-weight': 700, fill: fontColor,
+      }, g);
+      t.textContent = model.name;
+      meta.textSlots.name = { box: new Rect(x, y, w, fs + 14), text: model.name, field: 'name', align: 'center' };
+      break;
+    }
+    case 'region': {
+      svgEl('rect', {
+        x, y, width: w, height: h,
+        fill: view.fillColor || 'none', stroke: line, 'stroke-width': 1,
+        'stroke-dasharray': '7 4', class: 'node-frame',
+      }, g);
+      const t = svgEl('text', {
+        x: x + 8, y: y + fs + 2, 'font-size': fs, fill: fontColor, 'font-style': 'italic',
+      }, g);
+      t.textContent = model.name;
+      meta.textSlots.name = { box: new Rect(x, y, Math.min(w, 160), fs + 8), text: model.name, field: 'name', align: 'left' };
+      break;
+    }
+    case 'submachine': {
+      svgEl('rect', {
+        x, y, width: w, height: h, rx: 12, ry: 12,
+        fill, stroke: line, 'stroke-width': 1, class: 'node-frame',
+      }, g);
+      const st = svgEl('text', {
+        x: x + w / 2, y: y + 14, 'text-anchor': 'middle',
+        'font-size': fs - 2, 'font-style': 'italic', fill: fontColor,
+      }, g);
+      st.textContent = '«submachine»';
+      const t = svgEl('text', {
+        x: x + w / 2, y: y + fs + 16, 'text-anchor': 'middle', 'font-size': fs, fill: fontColor,
+      }, g);
+      t.textContent = model.name;
+      if (model.submachine) {
+        const sub = svgEl('text', {
+          x: x + w / 2, y: y + fs * 2 + 18, 'text-anchor': 'middle',
+          'font-size': fs - 2, fill: fontColor,
+        }, g);
+        sub.textContent = `→ ${model.submachine}`;
+      }
+      meta.textSlots.name = { box: new Rect(x, y, w, fs + 24), text: model.name, field: 'name', align: 'center' };
+      break;
+    }
+    case 'entryPoint':
+    case 'exitPoint':
+    case 'connectionPoint': {
+      const cx = x + w / 2, cy = y + h / 2;
+      const r = Math.max(4, Math.min(w, h) / 2 - 1);
+      svgEl('circle', { cx, cy, r, fill: '#ffffff', stroke: line, 'stroke-width': 1.2, class: 'node-frame' }, g);
+      const label = kind === 'entryPoint' ? 'E' : kind === 'exitPoint' ? 'X' : (model.name || '');
+      if (label) {
+        const t = svgEl('text', {
+          x: cx, y: cy + fs * 0.3, 'text-anchor': 'middle', 'font-size': fs - 3, fill: fontColor,
+        }, g);
+        t.textContent = label;
+      }
+      if (kind === 'connectionPoint' && model.name) {
+        const t = svgEl('text', { x: x + w + 3, y: cy + fs * 0.35, 'font-size': fs - 2, fill: fontColor }, g);
+        t.textContent = model.name;
+      }
+      meta.textSlots.name = { box: new Rect(x, y, w, h), text: model.name, field: 'name', align: 'center' };
+      break;
+    }
+    case 'terminate': {
+      const cx = x + w / 2, cy = y + h / 2;
+      const r = Math.min(w, h) / 2;
+      svgEl('circle', { cx, cy, r, fill: '#ffffff', stroke: line, 'stroke-width': 1.4, class: 'node-frame' }, g);
+      const k = r * 0.55;
+      svgEl('line', { x1: cx - k, y1: cy - k, x2: cx + k, y2: cy + k, stroke: line, 'stroke-width': 1.6 }, g);
+      svgEl('line', { x1: cx - k, y1: cy + k, x2: cx + k, y2: cy - k, stroke: line, 'stroke-width': 1.6 }, g);
+      break;
+    }
     case 'composite': {
       // composite state: rounded rect + name compartment line
       svgEl('rect', { x, y, width: w, height: h, rx: 12, ry: 12, fill, stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);

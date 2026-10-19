@@ -1115,7 +1115,9 @@ function showInDiagram(model, canvas) {
     return;
   }
   if (!['UMLClass', 'UMLInterface', 'UMLEnumeration', 'UMLDataType', 'UMLSignal',
-    'UMLPrimitiveType', 'UMLFrame', 'UMLAssociationClass', 'UMLCentralBufferNode', 'UMLDataStoreNode',
+    'UMLPrimitiveType', 'UMLFrame', 'UMLAssociationClass', 'UMLOrthogonalState', 'UMLRegion',
+    'UMLSubmachineState', 'UMLTerminate', 'UMLEntryPoint', 'UMLExitPoint',
+    'UMLConnectionPointReference', 'UMLCentralBufferNode', 'UMLDataStoreNode',
     'UMLActivityParameterNode', 'UMLInputPin', 'UMLOutputPin',
     'UMLStructuredActivityNode', 'UMLInterruptibleRegion', 'UMLAcceptTimeEvent',
     'UMLActor', 'UMLUseCase', 'UMLPackage',
