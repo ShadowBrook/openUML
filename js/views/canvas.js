@@ -27,6 +27,7 @@ export class DiagramCanvas {
     this.tool = null;             // active toolbox tool {kind, nodeType, edgeType, ...}
     this.drag = null;             // current gesture state
     this.hoverHandle = null;
+    this._clipMap = new Map();
 
     this.defs = svgEl('defs', {}, this.svg);
     this.gridLayer = svgEl('g', { id: 'grid-layer' }, this.svg);
@@ -114,6 +115,7 @@ export class DiagramCanvas {
 
     const views = this.diagram.elements || [];
     this._applySequenceLayout(views);
+    this._renderClipDefs(views);
     const rects = new Map();
     for (const v of views) {
       if (!v.isEdge) rects.set(v._id, this.rectOf(v));
@@ -121,7 +123,8 @@ export class DiagramCanvas {
     // draw nodes first (backdrops below their children), then edges on top.
     const isBackdrop = (v) => v.$type === 'UMLSwimlaneVert' || v.$type === 'UMLSwimlaneHorz' || v.$type === 'UMLCompositeState' || v.$type === 'UMLCombinedFragment' || v.$type === 'UMLFrame' || v.$type === 'UMLStructuredActivityNode' || v.$type === 'UMLInterruptibleRegion'
       || v.$type === 'UMLNode' || v.$type === 'UMLNodeInstance'
-      || v.$type === 'UMLOrthogonalState' || v.$type === 'UMLRegion';
+      || v.$type === 'UMLOrthogonalState' || v.$type === 'UMLRegion'
+      || v.$type === 'UMLPackage' || v.$type === 'UMLModel' || v.$type === 'UMLSubsystem';
     const nodes = views.filter((v) => !v.isEdge)
       .sort((a, b) => {
         const pa = isBackdrop(a) ? 0 : 1, pb = isBackdrop(b) ? 0 : 1;
@@ -142,6 +145,7 @@ export class DiagramCanvas {
   _renderNodeView(v) {
     const model = repository.lookup(v.modelRef);
     const g = svgEl('g', { class: 'node-main', 'data-id': v._id }, this.contentLayer);
+    if (this._clipMap.has(v._id)) g.setAttribute('clip-path', `url(#${this._clipMap.get(v._id)})`);
     const kind = v.$type === 'UMLClass' ? 'class'
       : v.$type === 'UMLInterface' ? 'interface'
       : v.$type === 'UMLEnumeration' ? 'enumeration'
@@ -257,6 +261,41 @@ export class DiagramCanvas {
           this.requestRender();
         }
       }
+    }
+  }
+
+  _packageBodyRect(v) {
+    const tabH = v.$type === 'UMLSubsystem' ? 18 : 16;
+    return new Rect(v.x + 1, v.y + tabH, Math.max(0, viewW(v) - 2), Math.max(0, viewH(v) - tabH - 1));
+  }
+
+  /**
+   * Package/model/subsystem views clip their descendants. For nested packages
+   * the clip is the intersection of every package body on the ancestor chain.
+   */
+  _renderClipDefs(views) {
+    this.defs.querySelectorAll('clipPath.diagram-clip').forEach((n) => n.remove());
+    this._clipMap = new Map();
+    for (const v of views) {
+      if (v.isEdge) continue;
+      let rect = null;
+      const seen = new Set();
+      let cid = v.container;
+      while (cid && !seen.has(cid)) {
+        seen.add(cid);
+        const container = repository.lookup(cid);
+        if (!container) break;
+        if (['UMLPackage', 'UMLModel', 'UMLSubsystem'].includes(container.$type)) {
+          const body = this._packageBodyRect(container);
+          rect = rect ? rect.intersect(body) : body;
+        }
+        cid = container.container;
+      }
+      if (!rect || rect.width < 1 || rect.height < 1) continue;
+      const id = `clip-${v._id}`;
+      const cp = svgEl('clipPath', { id, class: 'diagram-clip', clipPathUnits: 'userSpaceOnUse' }, this.defs);
+      svgEl('rect', { x: rect.x, y: rect.y, width: rect.width, height: rect.height }, cp);
+      this._clipMap.set(v._id, id);
     }
   }
 
@@ -567,7 +606,7 @@ export class DiagramCanvas {
   // ---------------- containment (swimlanes / composite states) ----------------
   static CONTAINER_TYPES = ['UMLSwimlaneVert', 'UMLSwimlaneHorz', 'UMLCompositeState', 'UMLFrame',
     'UMLStructuredActivityNode', 'UMLInterruptibleRegion', 'UMLNode', 'UMLNodeInstance',
-    'UMLOrthogonalState', 'UMLRegion'];
+    'UMLOrthogonalState', 'UMLRegion', 'UMLPackage', 'UMLModel', 'UMLSubsystem'];
   // structural containers used by composite-structure / timing diagrams
   static STRUCTURAL_CONTAINERS = ['UMLClass', 'UMLInterface', 'UMLComponent', 'UMLCollaboration', 'UMLTimingLifeline'];
   isContainerView(v) {

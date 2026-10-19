@@ -876,6 +876,28 @@ class Converter:
                         best = c
             if best:
                 v['container'] = best['_id']
+        # Package/model/subsystem views are geometric containers; nest any
+        # remaining view whose center lies inside the smallest package body.
+        for v in nodes:
+            if v.get('container') or v.get('$type') not in (
+                'UMLPackage', 'UMLModel', 'UMLSubsystem',
+                'UMLClass', 'UMLInterface', 'UMLEnumeration', 'UMLDataType',
+                'UMLActor', 'UMLUseCase', 'UMLComponent', 'UMLArtifact',
+                'UMLNode', 'UMLObject', 'UMLCollaboration', 'UMLInformationItem',
+                'UMLStereotype', 'UMLMetaClass', 'UMLSubmachineState', 'UMLState',
+            ):
+                continue
+            cx = v['x'] + v['width'] / 2
+            cy = v['y'] + v['height'] / 2
+            best = None
+            for c in nodes:
+                if c is v or c.get('$type') not in ('UMLPackage', 'UMLModel', 'UMLSubsystem'):
+                    continue
+                if c['x'] <= cx <= c['x'] + c['width'] and c['y'] <= cy <= c['y'] + c['height']:
+                    if best is None or c['width'] * c['height'] < best['width'] * best['height']:
+                        best = c
+            if best:
+                v['container'] = best['_id']
 
     def resolve_endpoint(self, endpoint_ref):
         rid = ref(endpoint_ref)

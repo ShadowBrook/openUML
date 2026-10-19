@@ -37,6 +37,8 @@ export function diagramToSVG(canvas, { transparent = false } = {}) {
   svg.setAttribute('width', bounds.width);
   svg.setAttribute('height', bounds.height);
   svg.setAttribute('viewBox', `${bounds.x} ${bounds.y} ${bounds.width} ${bounds.height}`);
+  // keep clip paths (package containment) available in the exported document
+  if (canvas.defs) svg.appendChild(canvas.defs.cloneNode(true));
   if (!transparent) {
     const bg = document.createElementNS(SVG_NS, 'rect');
     bg.setAttribute('x', bounds.x);
