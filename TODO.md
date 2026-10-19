@@ -107,18 +107,28 @@
 
 ## P2 — 模型仓库与工程化
 
-- [ ] 模型树多选、拖拽重排 / 改父级、内联重命名
-- [ ] 跨图表剪贴板（模型树复制、跨图粘贴）
+- [x] 模型树多选（Ctrl/Shift）、拖拽改父级（防环、可撤销）、双击/F2 内联重命名、
+      键盘方向键展开折叠
+- [x] 跨图表剪贴板（复制携带模型与视图，任意图表粘贴并重建交叉引用，已回归验证）
 - [x] StarUML `.mdj` 离线转换器（`tools/mdj_to_ouml.py`）与 UMLExample 样例
       （28 张图 / 15 种图类型，已逐图回归）
-- [ ] 应用内 `.mdj` 导入（当前需先用离线转换器）
-- [ ] `.mfj` 项目格式兼容与导入导出
-- [ ] 扩展系统 / 插件 API
-- [ ] 代码生成（模板驱动）
-- [ ] 国际化（当前仅中文 UI）
-- [ ] 自动化测试（当前为零，需覆盖命令栈、几何、序列化）
-- [ ] GitHub Pages 部署（仓库现为 private，需 GitHub Pro 或转为 public）
-- [ ] 可访问性（键盘遍历、ARIA）
+- [x] 应用内 `.mdj` 导入（`js/io/mdj.js`：离线转换器的浏览器移植，
+      UMLExample 3MB 实测 13ms，744 模型 / 28 图与 Python 版结果一致）
+      （样例 `.mdj` 已附于 samples/staruml/ 供验证）
+- [x] `.mfj` 片段导入导出（选中模型子树导出为片段文件，导入时重建新 id 并合并；
+      StarUML 原生 `.mfj` 元素映射视内容而定）
+- [x] 插件 API（`window.openuml`：repository 读写、命令栈、模型工厂、
+      `registerCommand` 注册进命令面板；见 js/plugins.js）
+- [x] 代码生成（模板驱动：内置 Java 模板，字段/访问器/方法桩/文档注释，
+      `registerTemplate` 支持自定义生成器；模型 > 代码生成… 预览/复制/下载）
+- [x] 国际化基础（`js/ui/i18n.js`：中文为源语言，英文词典覆盖菜单/工具箱组/
+      面板，偏好设置可切换语言并即时重建 UI；其余界面字符串渐进迁移）
+- [x] 自动化测试（`node --test tests/`：命令栈撤销重做、仓库树、序列化回路、
+      校验器、mdj 转换器、代码生成，8 项全过；commands.js 已无 DOM 依赖）
+- [x] GitHub Pages 部署（`.github/workflows/pages.yml`：push 到 main 自动部署
+      静态站点；仓库允许 Pages（Actions 源）后即生效）
+- [x] 可访问性基础（模型树 role=tree/treeitem + aria-expanded/level、方向键与
+      Enter/F2 键盘操作、工具栏图标按钮 aria-label、画布说明文本、焦点样式）
 
 ## 已知限制（记录在案）
 

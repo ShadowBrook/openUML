@@ -1,6 +1,7 @@
 // toolbox.js — left palette with UML element icons (original SVG icon set)
 
 import { ToolboxGroups, diagramIcon } from '../core/metamodel.js';
+import { t } from './i18n.js';
 
 // Per-group header glyphs; the three diagram groups reuse their type icons
 const groupIcons = {
@@ -269,7 +270,7 @@ export function initToolbox(canvas, getActiveToolboxGroup) {
     for (const group of ToolboxGroups) {
       const header = document.createElement('div');
       header.className = 'toolbox-group-header';
-      header.innerHTML = `<span class="arrow">▾</span><span class="gh-icon">${groupIcon(group.id)}</span><span>${group.name}</span>`;
+      header.innerHTML = `<span class="arrow">▾</span><span class="gh-icon">${groupIcon(group.id)}</span><span>${t(group.name)}</span>`;
       header.onclick = () => {
         const body = header.nextElementSibling;
         if (body) {

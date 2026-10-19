@@ -1,5 +1,7 @@
 // preferences.js — persisted editor/export preferences and the preferences dialog.
 
+import { setLang, availableLangs } from './i18n.js';
+
 const KEY = 'openuml-preferences';
 
 export const DEFAULT_PREFERENCES = {
@@ -10,6 +12,7 @@ export const DEFAULT_PREFERENCES = {
   exportScale: 2,
   transparentBackground: false,
   autoResize: true,
+  lang: 'zh-CN',
   panels: { sidebar: true, navigator: true, toolbox: true, toolbar: true, statusbar: true },
 };
 
@@ -91,6 +94,8 @@ export function showPreferencesDialog(current = DEFAULT_PREFERENCES) {
     const lookSec = section(body, '外观');
     const theme = select([['light', '浅色'], ['dark', '深色']], current.theme);
     row(lookSec, '主题', theme);
+    const lang = select(availableLangs(), current.lang || 'zh-CN');
+    row(lookSec, '语言 / Language', lang);
 
     const exportSec = section(body, '导出');
     const scale = select([[1, '1×'], [2, '2×'], [3, '3×']], current.exportScale);
@@ -144,6 +149,7 @@ export function showPreferencesDialog(current = DEFAULT_PREFERENCES) {
       showGrid: showGrid.checked,
       snapToGrid: snap.checked,
       theme: theme.value,
+      lang: lang.value,
       exportScale: parseInt(scale.value, 10),
       transparentBackground: transparent.checked,
       autoResize: autoResize.checked,
@@ -156,6 +162,7 @@ export function showPreferencesDialog(current = DEFAULT_PREFERENCES) {
       showGrid.checked = DEFAULT_PREFERENCES.showGrid;
       snap.checked = DEFAULT_PREFERENCES.snapToGrid;
       theme.value = DEFAULT_PREFERENCES.theme;
+      lang.value = DEFAULT_PREFERENCES.lang;
       scale.value = String(DEFAULT_PREFERENCES.exportScale);
       transparent.checked = DEFAULT_PREFERENCES.transparentBackground;
       autoResize.checked = DEFAULT_PREFERENCES.autoResize;

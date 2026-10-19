@@ -207,10 +207,21 @@ samples/staruml/      StarUML UMLExample 转换样例、转换报告与 MIT 许�
 - 属性面板深化：isAbstract / isLeaf / isActive / isStatic / isReadOnly /
   isOrdered / isUnique（含对应渲染记法）
 
+## 工程化
+
+- **应用内 .mdj 导入**：文件 > 导入 StarUML 项目（`js/io/mdj.js`，与离线转换器同源逻辑）
+- **.mfj 片段**：选中模型导出/导入（文件菜单）
+- **代码生成**：模型 > 代码生成…（内置 Java 模板，`registerTemplate` 可扩展）
+- **插件 API**：`window.openuml`（repository / 命令栈 / 工厂 / 命令面板注册）
+- **国际化**：中文为源语言，偏好设置可切换 English（菜单 / 工具箱 / 面板）
+- **自动化测试**：`node --test tests/`（命令栈 / 仓库 / 序列化 / 校验 / 转换器 / 代码生成）
+- **部署**：`.github/workflows/pages.yml`（push main 自动部署 GitHub Pages）
+- **可访问性**：模型树 ARIA 树角色与键盘操作、图标按钮 aria-label、焦点样式
+
 ## 已知边界
 
-- `.mdj` 仅通过离线转换器导入，应用内尚未提供直接打开；不支持的扩展区域、
-  异常处理/中断边等会被跳过
+- `.mdj` 支持应用内直接导入（文件菜单）；不支持的扩展区域、
+  异常处理/中断边等会被跳过并在状态栏提示
 - 复合结构图采用简化容器模型：部件/端口归属类、接口、组件或协作，端口自动贴边；
   协作使用绑定以 roleBindings 列表表达（角色 → 部件名）
 - Timing 图：状态带 + 刻度 + 约束；时间类图元按生命线刻度间隔吸附，时间段可驱动

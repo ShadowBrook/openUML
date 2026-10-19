@@ -44,7 +44,7 @@ class CommandStack {
   }
 
   _changed() {
-    document.dispatchEvent(new CustomEvent('stack-changed'));
+    if (typeof document !== 'undefined') document.dispatchEvent(new CustomEvent('stack-changed'));
   }
 }
 

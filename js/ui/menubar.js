@@ -40,6 +40,8 @@ export function buildMenu(items) {
       }
       const el = document.createElement('div');
       el.className = 'menu-item' + (item.disabled ? ' disabled' : '');
+      el.setAttribute('role', 'menuitem');
+      el.tabIndex = -1;
       if (item.checked) {
         const c = document.createElement('span');
         c.className = 'checkmark';

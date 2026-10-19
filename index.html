@@ -49,7 +49,8 @@
         <!-- Diagram Area -->
         <div id="diagram-area-wrapper">
           <div id="diagram-area">
-            <svg id="diagram-canvas" tabindex="0"></svg>
+            <svg id="diagram-canvas" tabindex="0" role="application"
+        aria-label="UML 画布：方向键滚动，Ctrl+滚轮缩放，Enter 编辑选中元素"></svg>
           </div>
         </div>
       </div>
@@ -57,14 +58,14 @@
       <!-- Right floating toolbar -->
       <div id="toolbar" class="toolbar">
         <div class="toolbar-group">
-          <button id="tb-zoom-in" title="放大 (Ctrl++)">＋</button>
-          <button id="tb-zoom-out" title="缩小 (Ctrl+-)">－</button>
-          <button id="tb-zoom-fit" title="适应窗口 (Ctrl+Shift+F)">⊞</button>
+          <button id="tb-zoom-in" title="放大 (Ctrl++)" aria-label="放大">＋</button>
+          <button id="tb-zoom-out" title="缩小 (Ctrl+-)" aria-label="缩小">－</button>
+          <button id="tb-zoom-fit" title="适应窗口 (Ctrl+Shift+F)" aria-label="适应窗口">⊞</button>
           <span id="tb-zoom-label" class="zoom-label">100%</span>
         </div>
         <div class="toolbar-group">
-          <button id="tb-grid" class="active" title="网格">⋮⋮</button>
-          <button id="tb-snap" class="active" title="吸附网格">⌗</button>
+          <button id="tb-grid" class="active" title="网格" aria-label="切换网格显示" aria-pressed="true">⋮⋮</button>
+          <button id="tb-snap" class="active" title="吸附网格" aria-label="切换吸附网格" aria-pressed="true">⌗</button>
         </div>
       </div>
     </div>
@@ -76,7 +77,7 @@
       <div id="model-explorer-holder" class="model-explorer-holder">
         <div class="pane-header"><span class="pane-title">模型资源管理器</span>
           <span class="pane-tools">
-            <button id="me-collapse" title="全部折叠">−</button>
+            <button id="me-collapse" title="全部折叠" aria-label="全部折叠">−</button>
           </span>
         </div>
         <div id="model-explorer" class="model-explorer"></div>

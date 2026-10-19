@@ -19,6 +19,10 @@ import { showValidationDialog } from './ui/validation-panel.js';
 import { loadPreferences, savePreferences, showPreferencesDialog } from './ui/preferences.js';
 import { downloadPNG, downloadSVG, downloadJPEG, copyDiagramPNG, printDiagram, downloadPDF, buildPDF, diagramToSVG } from './exporter.js';
 import { TEMPLATES, applyTemplate } from './ui/templates.js';
+import { convertMdj } from './io/mdj.js';
+import { initPluginApi } from './plugins.js';
+import { generate, CODEGEN_TEMPLATES } from './codegen.js';
+import { t, setLang, availableLangs, getLang } from './ui/i18n.js';
 
 const DIAGRAM_TYPE_LABELS = {
   UMLClassDiagram: '类图', UMLUseCaseDiagram: '用例图', UMLSequenceDiagram: '序列图',
@@ -180,6 +184,7 @@ function togglePanel(key) {
 }
 
 function applyPreferences(next) {
+  const prevLang = app.prefs?.lang;
   app.prefs = {
     ...app.prefs,
     ...next,
@@ -194,6 +199,11 @@ function applyPreferences(next) {
   document.getElementById('tb-snap')?.classList.toggle('active', c.snapToGrid);
   applyPanels();
   setTheme(app.prefs.theme);
+  if (app.prefs.lang && (app.prefs.lang !== prevLang || app.prefs.lang !== getLang())) {
+    setLang(app.prefs.lang);
+    buildMenus();
+    initToolbox(c);
+  }
   savePreferences(app.prefs);
   c.requestRender();
 }
@@ -904,6 +914,49 @@ function safeName(s) {
   return String(s || 'diagram').replace(/[\\/:*?"<>|]+/g, '_');
 }
 
+// ---------------- code generation ----------------
+
+function openCodegenDialog() {
+  const selModels = repository.selections.map((id) => repository.lookup(id)).filter(Boolean);
+  const files = generate(selModels.length ? selModels : null);
+  if (!files.length) { showToast('项目中没有可生成的类/接口/枚举'); return; }
+  const overlay = document.createElement('div');
+  overlay.className = 'dialog-overlay';
+  overlay.innerHTML = `<div class="dialog" style="width:720px;height:540px;display:flex;flex-direction:column">
+    <div class="dialog-title">代码生成 — Java（${files.length} 个文件）</div>
+    <div class="dialog-body" style="flex:1;display:flex;flex-direction:column;gap:6px;min-height:0">
+      <select id="gen-file" style="align-self:flex-start"></select>
+      <textarea id="gen-code" readonly style="flex:1;font-family:monospace;white-space:pre;resize:none"></textarea>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn" id="gen-copy">复制当前文件</button>
+      <button class="btn primary" id="gen-download">下载全部</button>
+      <button class="btn" id="gen-close">关闭</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  const sel2 = overlay.querySelector('#gen-file');
+  const code = overlay.querySelector('#gen-code');
+  for (const f of files) sel2.appendChild(new Option(f.name, f.name));
+  const show = () => { code.value = (files.find((f) => f.name === sel2.value) || files[0]).content; };
+  sel2.onchange = show;
+  show();
+  overlay.querySelector('#gen-copy').onclick = async () => {
+    try { await navigator.clipboard.writeText(code.value); showToast('已复制'); } catch { showToast('复制失败'); }
+  };
+  overlay.querySelector('#gen-download').onclick = () => {
+    for (const f of files) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([f.content], { type: 'text/plain' }));
+      a.download = f.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }
+    app.canvas.setStatusMessage(`已生成 ${files.length} 个源文件`);
+  };
+  overlay.querySelector('#gen-close').onclick = () => overlay.remove();
+}
+
 // ---------------- selection sync ----------------
 
 function revealInExplorer() {
@@ -915,6 +968,121 @@ function locateInDiagram() {
   const m = repository.selectedModel;
   if (!m || !app.activeDiagram) return;
   showInDiagram(m, app.canvas);
+}
+
+// ---------------- StarUML .mdj import & .mfj fragments ----------------
+
+async function importMdjFile() {
+  if (app.dirty) {
+    const ok = await showConfirmDialog({ title: '导入 StarUML', message: '导入将替换当前项目（当前更改未保存）。继续吗？' });
+    if (!ok) return;
+  }
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.mdj,.json';
+  input.onchange = () => {
+    const f = input.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const mdj = JSON.parse(reader.result);
+        const { project, skipped, models, diagrams } = convertMdj(mdj);
+        project._id = 'p-' + Math.random().toString(36).slice(2, 10);
+        repository.root = project;
+        repository._index = new Map();
+        repository.walk((n) => repository._index.set(n._id, n));
+        app.openDiagrams = [];
+        app.fileHandle = null;
+        app.explorer.expanded.clear();
+        app.explorer.expanded.add(project._id);
+        commandStack.undoStack.length = 0;
+        commandStack.redoStack.length = 0;
+        markDirty(true);
+        const first = findFirstDiagram(project);
+        if (first) openDiagram(first); else app.canvas.setDiagram(null);
+        app.explorer.render();
+        storeProject(serializeProject(project), { quiet: true });
+        const skipCount = Object.values(skipped).reduce((a, b) => a + b, 0);
+        app.canvas.setStatusMessage(`已导入 ${f.name}：${models} 个模型、${diagrams} 张图表`
+          + (skipCount ? `（跳过 ${skipCount} 项不支持元素）` : ''));
+        showToast(`已导入 ${f.name}`);
+      } catch (err) {
+        showAlertDialog({ title: '导入失败', message: `无法解析 .mdj 文件: ${err.message}` });
+      }
+    };
+    reader.readAsText(f);
+  };
+  input.click();
+}
+
+/** Export the selected model subtree as a StarUML-style fragment file (.mfj). */
+function exportFragment() {
+  const sel = repository.selections.map((id) => repository.lookup(id)).filter((m) => m && m.__parent);
+  if (!sel.length) { showToast('请先选择要导出的模型元素'); return; }
+  const frag = sel.map((m) => serializeProject(m));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(frag, null, 2)], { type: 'application/json' }));
+  a.download = (sel[0].name || 'fragment') + '.mfj';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  app.canvas.setStatusMessage(`已导出片段（${sel.length} 个元素）`);
+}
+
+/** Import a .mfj fragment: fresh ids, appended to the project root model. */
+async function importFragment() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.mfj,.json';
+  input.onchange = () => {
+    const f = input.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const frag = JSON.parse(reader.result);
+        const items = Array.isArray(frag) ? frag : [frag];
+        const parent = ownerFor(repository.selectedModel || repository.root);
+        const ops = [];
+        for (const raw of items) {
+          // re-serialize through the clipboard pipeline for fresh ids + remap
+          const container = { _id: '__frag__', type: '__Clip', ownedElements: [raw], elements: [] };
+          const json = serializeProject(container);
+          const clone = deserializeProject(json);
+          const stack = [clone];
+          const idMap = new Map();
+          while (stack.length) {
+            const n = stack.pop();
+            if (n._id && n._id !== '__frag__') {
+              const newId = 'm-' + Math.random().toString(36).slice(2, 10) + '-' + Math.random().toString(36).slice(2, 6);
+              idMap.set(n._id, newId);
+              n._id = newId;
+            }
+            if (n.ownedElements) for (const k of n.ownedElements) stack.push(k);
+          }
+          const remap = (n) => {
+            for (const key of ['end1ReferenceId', 'end2ReferenceId', 'tailRoleName', 'headRoleName']) {
+              if (n[key] && idMap.has(n[key])) n[key] = idMap.get(n[key]);
+            }
+            for (const c of n.ownedElements || []) remap(c);
+          };
+          for (const m of clone.ownedElements || []) remap(m);
+          for (const m of clone.ownedElements || []) {
+            ops.push({ redo: () => repository.addChild(parent, m), undo: () => repository.removeChild(m) });
+          }
+        }
+        if (!ops.length) { showToast('片段中没有可导入的模型元素'); return; }
+        compound('import fragment', ops);
+        app.explorer.expandTo(parent);
+        app.canvas.setStatusMessage(`已导入片段：${ops.length} 个顶层元素`);
+        showToast(`已导入 ${f.name}`);
+      } catch (err) {
+        showAlertDialog({ title: '导入失败', message: `无法解析 .mfj 文件: ${err.message}` });
+      }
+    };
+    reader.readAsText(f);
+  };
+  input.click();
 }
 
 // ---------------- Markdown documentation editor ----------------
@@ -1198,8 +1366,12 @@ function paletteCommands() {
     { label: '验证模型…', group: '模型', run: runValidation },
     { label: '重命名选中元素…', group: '模型', shortcut: 'F2', enabled: !!repository.selectedModel, run: () => renameElement(repository.selectedModel) },
     { label: '关于 OpenUML', group: '帮助', run: showAboutDialog },
+    ...pluginCommands,
   ];
 }
+
+// commands registered at runtime through the window.openuml plugin API
+const pluginCommands = [];
 
 function openCommandPalette() {
   showPalette({
@@ -1271,7 +1443,14 @@ async function buildMenus() {
       }));
     } catch { /* private mode */ }
   }
-  buildMenu([
+  const T = (label) => (typeof label === 'string' ? t(label) : label);
+  const tr = (items) => items.map((item) => {
+    if (item === '---') return item;
+    const out = { ...item, label: T(item.label) };
+    if (out.submenu && Array.isArray(out.submenu)) out.submenu = tr(out.submenu);
+    return out;
+  });
+  buildMenu(tr([
     {
       label: '文件', submenu: [
         { label: '新建', shortcut: 'Ctrl+N', action: requestNewProject },
@@ -1280,6 +1459,10 @@ async function buildMenus() {
         { label: '最近文件', disabled: !recentItems.length, submenu: recentItems.length ? recentItems : [{ label: '（空）', action: () => {} }] },
         { label: '保存项目', shortcut: 'Ctrl+S', action: () => saveProject(false) },
         { label: '项目另存为…', shortcut: 'Ctrl+Shift+S', action: () => saveProject(true) },
+        '---',
+        { label: '导入 StarUML 项目 (.mdj)…', action: importMdjFile },
+        { label: '导出片段 (.mfj)…', disabled: !sel(), action: exportFragment },
+        { label: '导入片段 (.mfj)…', action: importFragment },
         '---',
         { label: '导出为 SVG', action: exportCurrentSVG },
         { label: '导出为 PNG', action: exportCurrentPNG },
@@ -1357,6 +1540,7 @@ async function buildMenus() {
         '---',
         { label: '验证模型…', action: runValidation },
         { label: '文档编辑器… (Markdown)', disabled: !sel(), action: openMarkdownEditor },
+        { label: '代码生成…', action: openCodegenDialog },
         '---',
         { label: '重命名…', shortcut: 'F2', disabled: !sel(), action: () => sel() && renameElement(sel()) },
       ],
@@ -1418,7 +1602,7 @@ async function buildMenus() {
         { label: '关于 OpenUML', action: showAboutDialog },
       ],
     },
-  ]);
+  ]));
 }
 
 // ---------------- context menus ----------------
@@ -1717,6 +1901,14 @@ function boot() {
     try { localStorage.setItem(PROJECT_KEY, serializeProject(repository.root)); } catch { /* ignore */ }
   });
   canvas.zoomFit();
+  // expose the plugin API (window.openuml) for extensions
+  initPluginApi(app, {
+    registerPaletteCommand: (cmd) => {
+      const i = pluginCommands.findIndex((c) => c.id === cmd.id);
+      if (i >= 0) pluginCommands[i] = cmd; else pluginCommands.push(cmd);
+    },
+    openDiagram,
+  });
   // dismiss the splash screen once the app is interactive
   const splash = document.getElementById('splash');
   if (splash) {
