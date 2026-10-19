@@ -62,6 +62,8 @@ export class PropertyEditor {
     }
     this._row(sec, '显示名称', v.nameVisible !== false, (val) => this._setView(v, 'nameVisible', val === 'true'), 'select', [['true', '是'], ['false', '否']]);
     this._row(sec, '线型', v.lineStyle || 'solid', (val) => this._setView(v, 'lineStyle', val), 'select', [['solid', '实线'], ['dashed', '虚线'], ['dotted', '点线']]);
+    this._row(sec, '路径', v.lineMode || 'orthogonal', (val) => this._setView(v, 'lineMode', val), 'select',
+      [['orthogonal', '直角'], ['oblique', '斜线'], ['rounded', '圆角'], ['curved', '曲线']]);
     if (v.$type === 'UMLConnector' && (v.messages || []).length) {
       const hint = document.createElement('div');
       hint.className = 'pref-hint';
@@ -335,6 +337,8 @@ export class PropertyEditor {
       }
       this._row(sec, '显示名称', this.currentView.nameVisible !== false, (val) => this._setView(this.currentView, 'nameVisible', val === 'true'), 'select', [['true', '是'], ['false', '否']]);
       this._row(sec, '线型', this.currentView.lineStyle, (val) => this._setView(this.currentView, 'lineStyle', val), 'select', [['solid', '实线'], ['dashed', '虚线']]);
+      this._row(sec, '路径', this.currentView.lineMode || 'orthogonal', (val) => this._setView(this.currentView, 'lineMode', val), 'select',
+        [['orthogonal', '直角'], ['oblique', '斜线'], ['rounded', '圆角'], ['curved', '曲线']]);
     }
   }
 
@@ -560,6 +564,10 @@ export class PropertyEditor {
     this._row(body, 'lineColor', v.lineColor || '', (val) => this._setView(v, 'lineColor', val));
     this._row(body, 'fontColor', v.fontColor || '', (val) => this._setView(v, 'fontColor', val));
     this._row(body, 'fontSize', v.fontSize || 12, (val) => this._setView(v, 'fontSize', parseInt(val) || 12), 'number');
+    this._checkRow(body, '阴影', v.shadow === true, (val) => this._setView(v, 'shadow', val));
+    if (!v.isEdge) {
+      this._checkRow(body, '自动调整尺寸', v.autoResize !== false, (val) => this._setView(v, 'autoResize', val));
+    }
     // color picker row helper
     for (const [key, label] of [['fillColor', '填充颜色'], ['lineColor', '线条颜色'], ['fontColor', '字体颜色']]) {
       const row = document.createElement('div');

@@ -815,7 +815,7 @@ class Converter:
                 view_model['name'] = label
         for flag in ('showVisibility', 'showType', 'showMultiplicity',
                      'showOperationSignature', 'suppressAttributes',
-                     'suppressOperations', 'suppressLiterals'):
+                     'suppressOperations', 'suppressLiterals', 'shadow', 'autoResize'):
             if flag in view:
                 v[flag] = bool(view[flag])
         if 'stereotypeDisplay' in view:
@@ -1077,6 +1077,13 @@ class Converter:
             if label:
                 if vm:
                     vm['name'] = label
+        if 'shadow' in view:
+            v['shadow'] = bool(view['shadow'])
+        mode = str(view.get('lineMode') or '').lower()
+        mode_map = {'rectilinear': 'orthogonal', 'orthogonal': 'orthogonal',
+                    'oblique': 'oblique', 'rounded': 'rounded', 'curved': 'curved'}
+        if mode in mode_map:
+            v['lineMode'] = mode_map[mode]
         if our_type == 'UMLAssociation':
             v['lineStyle'] = 'solid'
             end1 = (model or {}).get('end1') or {}
@@ -1144,7 +1151,7 @@ class Converter:
             v['headArrow'] = 'open'
         for flag in ('showVisibility', 'showType', 'showMultiplicity',
                      'showOperationSignature', 'suppressAttributes',
-                     'suppressOperations', 'suppressLiterals'):
+                     'suppressOperations', 'suppressLiterals', 'shadow', 'autoResize'):
             if flag in view:
                 v[flag] = bool(view[flag])
         if 'stereotypeDisplay' in view:

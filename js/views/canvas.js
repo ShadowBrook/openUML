@@ -40,6 +40,8 @@ export class DiagramCanvas {
     this.gridRect = svgEl('rect', {
       x: 0, y: 0, width: '100%', height: '100%', fill: 'url(#grid-pattern)',
     }, this.gridLayer);
+    const shadow = svgEl('filter', { id: 'drop-shadow', x: '-25%', y: '-25%', width: '150%', height: '150%' }, this.defs);
+    svgEl('feDropShadow', { dx: 2, dy: 2, stdDeviation: 2, 'flood-opacity': 0.35 }, shadow);
     this.contentLayer = svgEl('g', { id: 'content-layer' }, this.svg);
     this.overlayLayer = svgEl('g', { id: 'overlay-layer' }, this.svg);
 
@@ -146,6 +148,7 @@ export class DiagramCanvas {
     const model = repository.lookup(v.modelRef);
     const g = svgEl('g', { class: 'node-main', 'data-id': v._id }, this.contentLayer);
     if (this._clipMap.has(v._id)) g.setAttribute('clip-path', `url(#${this._clipMap.get(v._id)})`);
+    if (v.shadow) g.setAttribute('filter', 'url(#drop-shadow)');
     const kind = v.$type === 'UMLClass' ? 'class'
       : v.$type === 'UMLInterface' ? 'interface'
       : v.$type === 'UMLEnumeration' ? 'enumeration'
@@ -233,7 +236,7 @@ export class DiagramCanvas {
   }
 
   _applyAutoSize(v, meta) {
-    if (!this.autoResize) return;
+    if (!this.autoResize || v.autoResize === false) return;
     if (meta.autoHeight != null) {
       const req = Math.ceil(meta.autoHeight);
       if (req > viewH(v) + 0.5) {
@@ -437,6 +440,7 @@ export class DiagramCanvas {
   _renderEdgeView(e, rects) {
     const model = repository.lookup(e.modelRef);
     const g = svgEl('g', { class: 'edge-main' }, this.contentLayer);
+    if (e.shadow) g.setAttribute('filter', 'url(#drop-shadow)');
     let meta;
     if (e.$type === 'UMLAssociationClassLink') {
       const classV = repository.lookup(e.tail);

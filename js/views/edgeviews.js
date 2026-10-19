@@ -76,7 +76,7 @@ export function renderSelfLoop(g, edge, model, rect) {
     { x: x2 + out, y: ym - 26 },
     { x: x2, y: ym - 26 },
   ];
-  const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ');
+  const d = buildEdgePath(points, edge.lineMode);
   svgEl('path', {
     d, fill: 'none', stroke: line, 'stroke-width': 1,
     'stroke-dasharray': dashArray(edge.lineStyle),
@@ -261,6 +261,54 @@ function angleBetween(from, to) {
   return Math.atan2(to.y - from.y, to.x - from.x);
 }
 
+function pointStr(p) {
+  return `${p.x.toFixed(2)} ${p.y.toFixed(2)}`;
+}
+
+/** Build the SVG path for a polyline according to the edge's line mode. */
+function buildEdgePath(points, mode = 'orthogonal') {
+  if (!points || points.length < 2) return '';
+  if (mode === 'rounded') {
+    const radius = 10;
+    let d = `M ${pointStr(points[0])}`;
+    for (let i = 1; i < points.length - 1; i++) {
+      const prev = points[i - 1], cur = points[i], next = points[i + 1];
+      const l1 = Math.hypot(cur.x - prev.x, cur.y - prev.y);
+      const l2 = Math.hypot(next.x - cur.x, next.y - cur.y);
+      if (l1 === 0 || l2 === 0) { d += ` L ${pointStr(cur)}`; continue; }
+      const r = Math.min(radius, l1 / 2, l2 / 2);
+      const pIn = { x: cur.x - (cur.x - prev.x) / l1 * r, y: cur.y - (cur.y - prev.y) / l1 * r };
+      const pOut = { x: cur.x + (next.x - cur.x) / l2 * r, y: cur.y + (next.y - cur.y) / l2 * r };
+      d += ` L ${pointStr(pIn)} Q ${pointStr(cur)} ${pointStr(pOut)}`;
+    }
+    d += ` L ${pointStr(points[points.length - 1])}`;
+    return d;
+  }
+  if (mode === 'curved') {
+    if (points.length === 2) {
+      const [a, b] = points;
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const off = Math.min(40, len * 0.16);
+      const c = { x: (a.x + b.x) / 2 - dy / len * off, y: (a.y + b.y) / 2 + dx / len * off };
+      return `M ${pointStr(a)} Q ${pointStr(c)} ${pointStr(b)}`;
+    }
+    // Catmull-Rom through the route points, converted to cubic Béziers.
+    let d = `M ${pointStr(points[0])}`;
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[i - 1] || points[i];
+      const p1 = points[i];
+      const p2 = points[i + 1];
+      const p3 = points[i + 2] || p2;
+      const c1 = { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 };
+      const c2 = { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 };
+      d += ` C ${pointStr(c1)} ${pointStr(c2)} ${pointStr(p2)}`;
+    }
+    return d;
+  }
+  return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ');
+}
+
 /**
  * Compute the full point list of an edge, given tail/head view rects and waypoints.
  * Returns {points, tailEnd, headEnd} where ends are {x,y,angle} for arrow drawing.
@@ -271,15 +319,25 @@ export function computeEdgeGeometry(edge, tailRect, headRect) {
   const headCenter = { x: headRect.cx, y: headRect.cy };
 
   const wps = edge.points || [];
-  const firstW = wps.length ? wps[0] : headCenter;
-  const lastW = wps.length ? wps[wps.length - 1] : tailCenter;
-
-  const tailB = borderIntersect(tailRect, firstW);
-  const headB = borderIntersect(headRect, lastW);
-
-  const pts = [tailB, ...wps, headB];
-  // orthogonalize if no waypoints: produce clean route
-  const route = wps.length ? pts : orthogonalRoute({ ...tailB, side: tailB.side }, { ...headB, side: headB.side });
+  const mode = edge.lineMode || 'orthogonal';
+  let route;
+  let tailB, headB;
+  if (wps.length) {
+    const firstW = wps[0];
+    const lastW = wps[wps.length - 1];
+    tailB = borderIntersect(tailRect, firstW);
+    headB = borderIntersect(headRect, lastW);
+    route = [tailB, ...wps, headB];
+  } else if (mode === 'oblique') {
+    // direct diagonal: attach each end toward the other node's center
+    tailB = borderIntersect(tailRect, headCenter);
+    headB = borderIntersect(headRect, tailCenter);
+    route = [tailB, headB];
+  } else {
+    tailB = borderIntersect(tailRect, headCenter);
+    headB = borderIntersect(headRect, tailCenter);
+    route = orthogonalRoute({ ...tailB, side: tailB.side }, { ...headB, side: headB.side });
+  }
 
   const headEnd = route[route.length - 1];
   const beforeHead = route[route.length - 2] || route[0];
@@ -299,7 +357,7 @@ export function renderEdge(g, edge, model, tailRect, headRect, opts = {}) {
   const fs = edge.fontSize || 11;
   const meta = { labels: [], points };
 
-  const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ');
+  const d = buildEdgePath(points, edge.lineMode);
   svgEl('path', {
     d, fill: 'none', stroke: line,
     'stroke-width': opts.selected ? 1.6 : 1,

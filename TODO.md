@@ -79,8 +79,8 @@
 - [x] JPEG 导出
 - [ ] 直接 PDF 导出（当前通过浏览器打印对话框另存为 PDF）
 - [ ] 选择联动：在资源管理器中定位 / 在图中定位 / 打开子图
-- [ ] 线条样式（直线 / 斜线 / 圆角 / 曲线）、阴影、按元素 Auto Resize、继承样式
-      （全局自动调整尺寸开关已在偏好设置中）
+- [x] 连线路径（直角 / 斜线 / 圆角 / 曲线）、阴影、按元素 Auto Resize
+- [ ] 样式继承（Inherit Style）
 - [ ] 属性面板深化：每类元素的完整属性集（visibility / isStatic / isAbstract /
       isLeaf / isReadOnly / isOrdered / isUnique / isActive …）
 - [x] 模型校验器 + 校验结果面板（重名、空名、悬空引用/端点/容器，点击定位）
