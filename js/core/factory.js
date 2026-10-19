@@ -15,7 +15,8 @@ export function createModel(type, name, extra = {}) {
     ...extra,
   };
   if (type === 'UMLClass' || type === 'UMLInterface' || type === 'UMLDataType'
-      || type === 'UMLInformationItem' || type === 'UMLCollaboration' || type === 'UMLStereotype') {
+      || type === 'UMLInformationItem' || type === 'UMLCollaboration' || type === 'UMLStereotype'
+      || type === 'UMLSignal') {
     el.attributes = [];
     el.operations = [];
     el.templateParameters = [];
@@ -68,7 +69,10 @@ export function defaultName(type) {
   counters[type] = (counters[type] || 0) + 1;
   const label = {
     UMLClass: 'Class', UMLInterface: 'Interface', UMLEnumeration: 'Enumeration',
-    UMLDataType: 'DataType', UMLActor: 'Actor', UMLUseCase: 'UseCase',
+    UMLDataType: 'DataType', UMLPrimitiveType: 'PrimitiveType',
+    UMLSignal: 'Signal', UMLFrame: 'Frame', UMLRealization: 'Realization',
+    UMLTemplateBinding: 'TemplateBinding',
+    UMLActor: 'Actor', UMLUseCase: 'UseCase',
     UMLPackage: 'Package', UMLNote: 'Note', Model: 'Model',
     UMLClassDiagram: 'Main', UMLUseCaseDiagram: 'Main',
     UMLInformationItem: 'InformationItem', UMLInformationFlow: 'InformationFlow',

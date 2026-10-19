@@ -89,6 +89,9 @@ const Icons = {
   timeSegment: `<svg viewBox="0 0 30 26"><line x1="5" y1="13" x2="25" y2="13" stroke="#4a4f4f" stroke-width="1.2"/><line x1="5" y1="8" x2="5" y2="18" stroke="#4a4f4f"/><line x1="25" y1="8" x2="25" y2="18" stroke="#4a4f4f"/></svg>`,
   timeTick: `<svg viewBox="0 0 30 26"><line x1="15" y1="5" x2="15" y2="18" stroke="#4a4f4f"/><text x="15" y="24" text-anchor="middle" font-size="6" fill="#4a4f4f">t</text></svg>`,
   duration: `<svg viewBox="0 0 30 26"><line x1="5" y1="16" x2="25" y2="16" stroke="#4a4f4f"/><line x1="5" y1="11" x2="5" y2="21" stroke="#4a4f4f"/><line x1="25" y1="11" x2="25" y2="21" stroke="#4a4f4f"/><text x="15" y="10" text-anchor="middle" font-size="6" fill="#4a4f4f">&#123;d&#125;</text></svg>`,
+  signal: `<svg viewBox="0 0 30 26"><rect x="4" y="3" width="22" height="20" fill="#e8f6f6" stroke="#4a4f4f"/><text x="15" y="9" text-anchor="middle" font-size="4" font-style="italic" fill="#4a4f4f">«signal»</text><line x1="4" y1="12" x2="26" y2="12" stroke="#4a4f4f"/><line x1="4" y1="17" x2="26" y2="17" stroke="#4a4f4f"/></svg>`,
+  primitive: `<svg viewBox="0 0 30 26"><rect x="4" y="4" width="22" height="18" fill="#eef4fb" stroke="#4a4f4f"/><text x="15" y="9.5" text-anchor="middle" font-size="4" font-style="italic" fill="#4a4f4f">«primitive»</text><text x="15" y="17" text-anchor="middle" font-size="7" fill="#4a4f4f">int</text></svg>`,
+  frame: `<svg viewBox="0 0 30 26"><rect x="3" y="4" width="24" height="18" fill="#fff" stroke="#4a4f4f"/><path d="M3 4 h12 v7 h-12 Z" fill="#fff" stroke="#4a4f4f"/><text x="5" y="9.5" font-size="5" fill="#4a4f4f">frame</text></svg>`,
 };
 
 // tool id -> canvas tool descriptor
@@ -98,6 +101,9 @@ export const ToolMap = {
   'tool-interface': { kind: 'node', nodeType: 'UMLInterface' },
   'tool-enum': { kind: 'node', nodeType: 'UMLEnumeration' },
   'tool-dataType': { kind: 'node', nodeType: 'UMLDataType' },
+  'tool-primitiveType': { kind: 'node', nodeType: 'UMLPrimitiveType' },
+  'tool-signal': { kind: 'node', nodeType: 'UMLSignal' },
+  'tool-frame': { kind: 'node', nodeType: 'UMLFrame' },
   'tool-package': { kind: 'node', nodeType: 'UMLPackage' },
   'tool-actor': { kind: 'node', nodeType: 'UMLActor' },
   'tool-usecase': { kind: 'node', nodeType: 'UMLUseCase' },
@@ -116,6 +122,8 @@ export const ToolMap = {
   'tool-generalization': { kind: 'edge', edgeType: 'UMLGeneralization' },
   'tool-gen': { kind: 'edge', edgeType: 'UMLGeneralization' },
   'tool-ifaceReal': { kind: 'edge', edgeType: 'UMLInterfaceRealization' },
+  'tool-realization': { kind: 'edge', edgeType: 'UMLRealization' },
+  'tool-templateBinding': { kind: 'edge', edgeType: 'UMLTemplateBinding' },
   'tool-include': { kind: 'edge', edgeType: 'UMLInclude' },
   'tool-extend': { kind: 'edge', edgeType: 'UMLExtend' },
   'tool-noteLink': { kind: 'edge', edgeType: 'UMLNoteLink' },

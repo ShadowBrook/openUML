@@ -119,7 +119,7 @@ export class DiagramCanvas {
       if (!v.isEdge) rects.set(v._id, this.rectOf(v));
     }
     // draw nodes first (backdrops below their children), then edges on top.
-    const isBackdrop = (v) => v.$type === 'UMLSwimlaneVert' || v.$type === 'UMLSwimlaneHorz' || v.$type === 'UMLCompositeState' || v.$type === 'UMLCombinedFragment';
+    const isBackdrop = (v) => v.$type === 'UMLSwimlaneVert' || v.$type === 'UMLSwimlaneHorz' || v.$type === 'UMLCompositeState' || v.$type === 'UMLCombinedFragment' || v.$type === 'UMLFrame';
     const nodes = views.filter((v) => !v.isEdge)
       .sort((a, b) => {
         const pa = isBackdrop(a) ? 0 : 1, pb = isBackdrop(b) ? 0 : 1;
@@ -183,6 +183,9 @@ export class DiagramCanvas {
       : v.$type === 'UMLInteractionInOverview' ? 'interactionOverview'
       : v.$type === 'UMLConstraint' ? 'constraint'
       : v.$type === 'UMLInformationItem' ? 'information'
+      : v.$type === 'UMLSignal' ? 'signal'
+      : v.$type === 'UMLPrimitiveType' ? 'primitive'
+      : v.$type === 'UMLFrame' ? 'frame'
       : v.$type === 'UMLMetaClass' ? 'metaclass'
       : v.$type === 'UMLStereotype' ? 'stereotype'
       : v.$type === 'UMLCollaboration' ? 'collaboration'
@@ -524,7 +527,7 @@ export class DiagramCanvas {
   }
 
   // ---------------- containment (swimlanes / composite states) ----------------
-  static CONTAINER_TYPES = ['UMLSwimlaneVert', 'UMLSwimlaneHorz', 'UMLCompositeState'];
+  static CONTAINER_TYPES = ['UMLSwimlaneVert', 'UMLSwimlaneHorz', 'UMLCompositeState', 'UMLFrame'];
   // structural containers used by composite-structure / timing diagrams
   static STRUCTURAL_CONTAINERS = ['UMLClass', 'UMLInterface', 'UMLComponent', 'UMLCollaboration', 'UMLTimingLifeline'];
   isContainerView(v) {
@@ -1692,6 +1695,7 @@ export class DiagramCanvas {
       UMLUseCase: 'UMLUseCase', UMLState: 'UMLState', UMLCompositeState: 'UMLCompositeState',
       UMLAction: 'UMLAction', UMLComponent: 'UMLComponent', UMLArtifact: 'UMLArtifact',
       UMLNode: 'UMLNode', UMLObject: 'UMLObject', UMLSubsystem: 'UMLSubsystem',
+      UMLSignal: 'UMLSignal', UMLPrimitiveType: 'UMLPrimitiveType', UMLFrame: 'UMLFrame',
       UMLObjectNode: 'UMLObjectNode', UMLSendSignal: 'UMLSendSignal', UMLAcceptSignal: 'UMLAcceptSignal',
       UMLLifeLine: 'UMLLifeLine', UMLNote: 'UMLNote', UMLConstraint: 'UMLConstraint',
       UMLArtifactInstance: 'UMLArtifactInstance', UMLComponentInstance: 'UMLComponentInstance',

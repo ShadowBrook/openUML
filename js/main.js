@@ -902,6 +902,9 @@ function buildMenus() {
         { label: '添加类', action: () => addModelElement('UMLClass') },
         { label: '添加接口', action: () => addModelElement('UMLInterface') },
         { label: '添加枚举', action: () => addModelElement('UMLEnumeration') },
+        { label: '添加信号', action: () => addModelElement('UMLSignal') },
+        { label: '添加原始类型', action: () => addModelElement('UMLPrimitiveType') },
+        { label: '添加框架', action: () => addModelElement('UMLFrame') },
         { label: '添加参与者', action: () => addModelElement('UMLActor') },
         { label: '添加用例', action: () => addModelElement('UMLUseCase') },
         { label: '添加包', action: () => addModelElement('UMLPackage') },
@@ -974,7 +977,8 @@ function elementContextItems(node, canvas) {
     );
     return items;
   }
-  if (['UMLClass', 'UMLInterface', 'UMLEnumeration', 'UMLDataType', 'UMLInformationItem', 'UMLStereotype', 'UMLCollaboration'].includes(node.type)) {
+  if (['UMLClass', 'UMLInterface', 'UMLEnumeration', 'UMLDataType', 'UMLSignal',
+    'UMLInformationItem', 'UMLStereotype', 'UMLCollaboration'].includes(node.type)) {
     items.push(
       { label: '添加属性', action: () => addMember(node, 'attributes') },
       { label: '添加操作', action: () => addMember(node, 'operations') },
@@ -1017,7 +1021,8 @@ function showInDiagram(model, canvas) {
     repository.select([v._id], model);
     return;
   }
-  if (!['UMLClass', 'UMLInterface', 'UMLEnumeration', 'UMLDataType', 'UMLActor', 'UMLUseCase', 'UMLPackage',
+  if (!['UMLClass', 'UMLInterface', 'UMLEnumeration', 'UMLDataType', 'UMLSignal',
+    'UMLPrimitiveType', 'UMLFrame', 'UMLActor', 'UMLUseCase', 'UMLPackage',
     'UMLInformationItem', 'UMLCollaboration', 'UMLCollaborationUse', 'UMLStereotype', 'UMLMetaClass',
     'UMLInteractionUseInOverview', 'UMLInteractionInOverview', 'UMLTimingLifeline', 'UMLTimingState',
     'UMLTimeConstraint', 'UMLDurationConstraint'].includes(model.type)) return;

@@ -119,7 +119,8 @@ export function renderNode(g, view, model, kind) {
     case 'interface':
     case 'information':
     case 'metaclass':
-    case 'stereotype': {
+    case 'stereotype':
+    case 'signal': {
       const attrs = (model.attributes || []).map(fmtAttribute);
       const ops = (model.operations || []).map(fmtOperation);
       const forced = {
@@ -127,6 +128,7 @@ export function renderNode(g, view, model, kind) {
         information: '«information»',
         metaclass: '«metaClass»',
         stereotype: '«stereotype»',
+        signal: '«signal»',
       }[kind];
       const stereotype = forced || (view.stereotypeShown ? model.stereotype || null : (model.stereotype || null));
       const nameH = (stereotype ? fs + 2 : 0) + fs + 10;
@@ -172,6 +174,35 @@ export function renderNode(g, view, model, kind) {
       yy += opH;
       if (yy < y + hEff - 1) svgEl('line', { x1: x, y1: y + hEff, x2: x + w, y2: y + hEff, stroke: line }, g);
       meta.textSlots.name = { box: new Rect(x, y + tpShift, w, nameH), text: model.name, field: 'name', align: 'center' };
+      break;
+    }
+    case 'primitive': {
+      // primitive type: classifier box with a «primitive» label
+      const requiredH = fs + 20;
+      const hEff = Math.max(h, requiredH);
+      meta.autoHeight = requiredH;
+      svgEl('rect', { x, y, width: w, height: hEff, fill, stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
+      drawName(g, x, y + 4, w, model.name + fmtTags(model), { fontSize: fs, color: fontColor, stereotype: '«primitive»' });
+      meta.textSlots.name = { box: new Rect(x, y, w, hEff), text: model.name, field: 'name', align: 'center' };
+      break;
+    }
+    case 'frame': {
+      // generic UML frame: rectangle with a name tab, usable as a container
+      const tabH = 20;
+      const tabW = Math.min(160, Math.max(60, w * 0.55));
+      svgEl('rect', {
+        x, y, width: w, height: h, fill: view.fillColor || '#ffffff', stroke: line,
+        'stroke-width': 1, class: 'node-frame',
+      }, g);
+      svgEl('path', {
+        d: `M ${x} ${y} L ${x + tabW} ${y} L ${x + tabW + 8} ${y + tabH / 2} L ${x + tabW} ${y + tabH} L ${x} ${y + tabH} Z`,
+        fill: '#ffffff', stroke: line, 'stroke-width': 1, class: 'node-frame',
+      }, g);
+      const t = svgEl('text', {
+        x: x + 8, y: y + tabH / 2 + fs * 0.35, 'font-size': fs, 'font-weight': 700, fill: fontColor,
+      }, g);
+      t.textContent = model.name + fmtTags(model);
+      meta.textSlots.name = { box: new Rect(x, y, tabW, tabH), text: model.name, field: 'name', align: 'left' };
       break;
     }
     case 'enumeration': {
