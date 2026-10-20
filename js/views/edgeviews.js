@@ -130,16 +130,20 @@ export function renderSelfLoop(g, edge, model, rect) {
  * Sequence-diagram message: horizontal arrow between two lifelines at view.y.
  * Returns meta with the point list so hit-testing and dragging work like edges.
  */
-export function renderMessage(g, view, model, tailView, headView) {
+export function renderMessage(g, view, model, tailView, headView, opts = {}) {
   const y = view.y;
   const line = view.lineColor || '#353535';
   const fs = view.fontSize || 11;
   const meta = { labels: [], points: [] };
   const isSelf = tailView._id === headView._id;
+  // when an activation bar covers the message y, the line starts/ends at the
+  // bar's edge instead of the lifeline center (avoids drawing through the bar)
+  const covered = (spans) => (spans || []).some((sp) => y >= sp.start - 1 && y <= sp.end + 1);
+  const barShift = (view2, spans) => covered(spans) ? view2.width / 2 : 0;
 
   if (isSelf) {
     // self-message: rectangular loop out to the right and back
-    const x = tailView.x + tailView.width / 2;
+    const x = tailView.x + tailView.width / 2 + barShift(tailView, opts.tailSpans);
     const loop = 40, rise = 24;
     meta.points = [{ x, y }, { x: x + loop, y }, { x: x + loop, y: y - rise }, { x, y: y - rise }];
     svgEl('path', {
@@ -165,12 +169,12 @@ export function renderMessage(g, view, model, tailView, headView) {
     return meta;
   }
 
-  const tailX = tailView.x + tailView.width / 2;
+  const tailX = tailView.x + tailView.width / 2 + barShift(tailView, opts.tailSpans);
   const isCreate = view.$type === 'UMLMessage+create';
   const isDelete = view.$type === 'UMLMessage+delete';
   // StarUML attaches a create message to the left/right edge of the target
   // lifeline head, not to its center line
-  let headX = headView.x + headView.width / 2;
+  let headX = headView.x + headView.width / 2 - barShift(headView, opts.headSpans);
   if (isCreate) {
     const headCenter = headView.x + headView.width / 2;
     headX = tailX <= headCenter ? headView.x : headView.x + headView.width;
