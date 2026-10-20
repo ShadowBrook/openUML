@@ -148,27 +148,35 @@ test('validateDsl routes sequence/activity errors', () => {
   assert.match(act.errors.join('\n'), /未知 kind/);
 });
 
-test('sequence notes float over the covered lifelines', () => {
+test('sequence notes occupy flow space and push messages down', () => {
   const dsl = {
     diagram: 'sequence',
     participants: [{ name: '用户' }, { name: '规则引擎' }, { name: '数据集市' }],
-    messages: [{ from: '用户', to: '规则引擎', text: '注册因子', sort: 'sync' }],
+    messages: [
+      { from: '用户', to: '规则引擎', text: '注册因子', sort: 'sync' },
+      { from: '用户', to: '数据集市', text: '查询', sort: 'sync' },
+    ],
     notes: [
-      { over: ['用户', '规则引擎'], text: '阶段一：配置' },
+      { over: ['用户', '规则引擎'], text: '阶段一：配置', at: 0 },
       { over: ['数据集市'], text: '离线计算' },
     ],
   };
   const built = buildDiagram(dsl, { name: 'SeqNotes' });
-  assert.equal(built.nodeCount, 5); // 3 lifelines + 2 notes
   const views = built.diagram.elements;
   const notes = views.filter((v) => v.$type === 'UMLNote');
+  const msgs = views.filter((v) => v.isMessage);
   assert.equal(notes.length, 2);
-  // note 1 spans 用户+规则引擎: left edge = min lifeline x + 10, width covers both
-  const ll0 = views.find((v) => v.$type === 'UMLLifeLine');
-  const ll1 = views.filter((v) => v.$type === 'UMLLifeLine')[1];
-  assert.equal(notes[0].x, ll0.x + 10);
-  assert.ok(notes[0].width >= ll1.x + ll1.width - ll0.x - 20);
-  assert.equal(notes[0].y, 40 + (70 + 1 * 46) + 12); // below the lifeline bottoms
+  assert.equal(msgs.length, 2);
+  for (const n of notes) {
+    for (const m of msgs) {
+      const inside = m.y >= n.y - 6 && m.y <= n.y + n.height + 6;
+      assert.ok(!inside, `message y=${m.y} overlaps note y=${n.y}`);
+    }
+  }
+  assert.ok(notes[0].y < msgs[0].y, 'leading note above first message');
+  assert.ok(notes[1].y > msgs[1].y, 'trailing note below last message');
+  const docs = notes.map((n) => built.models.find((m) => m._id === n.modelRef)?.documentation);
+  assert.deepEqual(docs, ['阶段一：配置', '离线计算']);
   const bad = validateDsl({ ...dsl, notes: [{ over: ['不存在'], text: 'x' }] });
   assert.match(bad.errors.join('\n'), /不在 participants 中/);
 });
