@@ -26,6 +26,7 @@ import { generateSQL, collectERD, SQL_DIALECTS } from './sql.js';
 import { cdmToPDM } from './sql.js';
 import { importSQLToDiagram, parseSQL } from './sql.js';
 import { t, setLang, availableLangs, getLang } from './ui/i18n.js';
+import { showAiDiagramDialog } from './ai/dialog.js';
 
 const DIAGRAM_TYPE_LABELS = {
   UMLClassDiagram: '类图', UMLUseCaseDiagram: '用例图', UMLSequenceDiagram: '序列图',
@@ -1645,12 +1646,22 @@ function paletteCommands() {
     { label: '验证模型…', group: '模型', run: runValidation },
     { label: '重命名选中元素…', group: '模型', shortcut: 'F2', enabled: !!repository.selectedModel, run: () => renameElement(repository.selectedModel) },
     { label: '关于 OpenUML', group: '帮助', run: showAboutDialog },
+    { label: 'AI 画图…', group: '模型', run: openAiDrawDialog },
     ...pluginCommands,
   ];
 }
 
 // commands registered at runtime through the window.openuml plugin API
 const pluginCommands = [];
+
+function openAiDrawDialog() {
+  showAiDiagramDialog({ onOpenDiagram: (diagram) => {
+    app.explorer.expandTo(diagram);
+    openDiagram(diagram);
+    markDirty(true);
+    storeProject(serializeProject(repository.root), { quiet: true });
+  } });
+}
 
 function openCommandPalette() {
   showPalette({
@@ -1824,6 +1835,7 @@ function buildMenus() {
         { label: '验证模型…', action: runValidation },
         { label: '文档编辑器… (Markdown)', disabled: !sel(), action: openMarkdownEditor },
         { label: '代码生成…', action: openCodegenDialog },
+        { label: 'AI 画图… (Beta)', action: openAiDrawDialog },
         { label: 'ERD / PDM 转 SQL…', action: openERDSQLDialog },
         { label: 'CDM → PDM 自动转换（生成外键列）', action: runCDMtoPDM },
         { label: '从 SQL 反向导入 PDM…', action: openSQLImportDialog },
