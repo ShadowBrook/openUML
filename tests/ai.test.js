@@ -18,13 +18,13 @@ test('extractJson tolerates fences and prose', () => {
 test('validateDsl catches schema problems', () => {
   assert.equal(validateDsl({ diagram: 'class', nodes: [{ kind: 'class', name: 'A' }] }).ok, true);
   const bad = validateDsl({
-    diagram: 'sequence', // unsupported in v1
+    diagram: 'mindmap', // unsupported family
     nodes: [{ kind: 'class', name: 'A' }, { kind: 'class', name: 'A' }, { kind: 'class' }],
     edges: [{ type: 'association', from: 'A', to: 'MISSING' }, { type: 'wedo', from: 'A', to: 'A' }],
   });
   assert.equal(bad.ok, false);
   const text = bad.errors.join('\n');
-  assert.match(text, /sequence/);
+  assert.match(text, /mindmap/);
   assert.match(text, /重复/);
   assert.match(text, /缺少 name/);
   assert.match(text, /MISSING/);
@@ -85,4 +85,65 @@ test('system prompt describes the DSL contract', () => {
   assert.match(p, new RegExp(`DSL v${DSL_VERSION}`));
   assert.match(p, /association/);
   assert.match(p, /name 必须唯一/);
+});
+
+test('sequence builder lays out lifelines and ordered messages', () => {
+  const dsl = {
+    diagram: 'sequence',
+    participants: [{ name: '客户端' }, { name: '服务端' }, { name: '数据库' }],
+    messages: [
+      { from: '客户端', to: '服务端', text: '登录', sort: 'sync' },
+      { from: '服务端', to: '数据库', text: '校验', sort: 'sync' },
+      { from: '服务端', to: '客户端', text: '结果', sort: 'reply' },
+    ],
+  };
+  const built = buildDiagram(dsl, { name: 'Seq' });
+  assert.equal(built.nodeCount, 3);
+  assert.equal(built.edgeCount, 3);
+  const views = built.diagram.elements;
+  const lifelines = views.filter((v) => v.$type === 'UMLLifeLine');
+  assert.equal(lifelines.length, 3);
+  const msgs = views.filter((v) => v.isMessage);
+  assert.equal(msgs.length, 3);
+  assert.deepEqual(msgs.map((m) => m.$type), ['UMLMessage+sync', 'UMLMessage+sync', 'UMLMessage+reply']);
+  // messages ordered top to bottom, attached to the right lifelines
+  assert.ok(msgs[0].y < msgs[1].y && msgs[1].y < msgs[2].y);
+  const llIds = new Set(lifelines.map((v) => v._id));
+  assert.ok(llIds.has(msgs[0].tail) && llIds.has(msgs[0].head));
+});
+
+test('activity builder maps node kinds and control flow', () => {
+  const dsl = {
+    diagram: 'activity',
+    nodes: [
+      { kind: 'initial', name: 'start' },
+      { kind: 'action', name: '提交订单' },
+      { kind: 'decision', name: '库存足够?' },
+      { kind: 'action', name: '发货' },
+      { kind: 'final', name: 'end' },
+    ],
+    edges: [
+      { type: 'control', from: 'start', to: '提交订单' },
+      { type: 'control', from: '提交订单', to: '库存足够?' },
+      { type: 'control', from: '库存足够?', to: '发货', name: '[是]' },
+      { type: 'control', from: '库存足够?', to: 'end', name: '[否]' },
+    ],
+  };
+  const built = buildDiagram(dsl, { name: 'Act' });
+  assert.equal(built.nodeCount, 5);
+  assert.equal(built.edgeCount, 4);
+  const views = built.diagram.elements;
+  assert.equal(views.filter((v) => v.$type === 'UMLAction').length, 2);
+  assert.equal(views.filter((v) => v.$type === 'UMLDecisionNode').length, 1);
+  const flows = views.filter((v) => v.$type === 'UMLControlFlow');
+  assert.equal(flows.length, 4);
+  const guard = built.models.find((m) => m.name === '[是]');
+  assert.ok(guard, 'guard label stored as flow model name');
+});
+
+test('validateDsl routes sequence/activity errors', () => {
+  const seq = validateDsl({ diagram: 'sequence', participants: [], messages: [{ from: 'A', to: 'B' }] });
+  assert.match(seq.errors.join('\n'), /participants/);
+  const act = validateDsl({ diagram: 'activity', nodes: [{ kind: 'warp', name: 'x' }], edges: [] });
+  assert.match(act.errors.join('\n'), /未知 kind/);
 });

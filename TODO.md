@@ -124,9 +124,14 @@
       用例/包/注释/对象 8 种节点与 10 种连线，`+name: Type` 成员简写）
 - [x] 「AI 画图…」对话框（`js/ai/dialog.js`：提示词生成、连接试连、
       校验失败自动回修一轮、预览后插入为新图表，走命令栈可撤销）
-- [ ] 序列图/活动图等更多图类型的 DSL 支持（当前 class/object）
-- [ ] 流式输出与生成中断
-- [ ] 按图类型的提示词模板与示例库
+- [x] 序列图 DSL（participants + messages，sort ∈ sync/async/reply/create/delete，
+      消息按序定位、激活条自动计算）与活动图 DSL（initial/action/decision/merge/
+      fork/join/final/flowfinal/object + 控制流守卫）
+- [x] 流式输出（SSE 增量、状态栏实时字数）与生成中断（停止按钮 +
+      AbortController，中断不再产生部分插入）
+- [x] 提示词模板与示例库（对话框内置类图/对象图/序列图/活动图五个模板一键填充）
+- [ ] 分支待合并：feat/ai-diagram → main（阶段三候选：泳道/复合片段 DSL、
+      多图一次生成、提示词编辑保存）
 
 ## P2 — 模型仓库与工程化
 

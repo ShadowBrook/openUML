@@ -19,6 +19,18 @@ export const NODE_KINDS = {
   object: { type: 'UMLObject', defaults: { width: 140, height: 70 } },
 };
 
+export const ACTIVITY_KINDS = {
+  initial: { type: 'UMLInitialNode', defaults: { width: 24, height: 24 } },
+  action: { type: 'UMLAction', defaults: { width: 130, height: 56 } },
+  decision: { type: 'UMLDecisionNode', defaults: { width: 32, height: 32 } },
+  merge: { type: 'UMLMergeNode', defaults: { width: 32, height: 32 } },
+  fork: { type: 'UMLForkNode', defaults: { width: 120, height: 8 } },
+  join: { type: 'UMLJoinNode', defaults: { width: 120, height: 8 } },
+  final: { type: 'UMLActivityFinalNode', defaults: { width: 26, height: 26 } },
+  flowfinal: { type: 'UMLFlowFinalNode', defaults: { width: 26, height: 26 } },
+  object: { type: 'UMLObjectNode', defaults: { width: 110, height: 46 } },
+};
+
 export const EDGE_TYPES = {
   association: { type: 'UMLAssociation', lineStyle: 'solid' },
   directed: { type: 'UMLAssociation', lineStyle: 'solid', headArrow: 'open' },
@@ -32,6 +44,14 @@ export const EDGE_TYPES = {
   notelink: { type: 'UMLNoteLink', lineStyle: 'dashed' },
 };
 
+export const MESSAGE_SORTS = {
+  sync: { $type: 'UMLMessage+sync', lineStyle: 'solid', headArrow: 'filledTriangle' },
+  async: { $type: 'UMLMessage+async', lineStyle: 'solid', headArrow: 'open' },
+  reply: { $type: 'UMLMessage+reply', lineStyle: 'dashed', headArrow: 'open' },
+  create: { $type: 'UMLMessage+create', lineStyle: 'dashed', headArrow: 'open' },
+  delete: { $type: 'UMLMessage+delete', lineStyle: 'solid', headArrow: 'filledTriangle' },
+};
+
 const STR = (v) => (typeof v === 'string' ? v.trim() : '');
 const STRS = (v) => (Array.isArray(v) ? v.map(STR).filter(Boolean) : []);
 
@@ -42,8 +62,10 @@ export function validateDsl(dsl) {
     return { ok: false, errors: ['输出必须是一个 JSON 对象'] };
   }
   const diagram = STR(dsl.diagram) || 'class';
+  if (diagram === 'sequence') return validateSequenceDsl(dsl, errors);
+  if (diagram === 'activity') return validateActivityDsl(dsl, errors);
   if (!['class', 'object'].includes(diagram)) {
-    errors.push(`diagram 暂只支持 "class" 或 "object"（收到 "${diagram}"）`);
+    errors.push(`diagram 暂只支持 class / object / sequence / activity（收到 "${diagram}"）`);
   }
   const nodes = Array.isArray(dsl.nodes) ? dsl.nodes : [];
   if (!nodes.length) errors.push('nodes 不能为空');
@@ -74,7 +96,14 @@ export function validateDsl(dsl) {
  * Returns { diagram, nodeCount, edgeCount } without touching the repository —
  * the caller owns insertion (typically inside one undoable compound command).
  */
-export function buildDiagram(dsl, { name = 'AI Diagram', originX = 60, originY = 60 } = {}) {
+export function buildDiagram(dsl, opts = {}) {
+  const family = STR(dsl && dsl.diagram) || 'class';
+  if (family === 'sequence') return buildSequenceDiagram(dsl, opts);
+  if (family === 'activity') return buildActivityDiagram(dsl, opts);
+  return buildClassifierDiagram(dsl, opts);
+}
+
+function buildClassifierDiagram(dsl, { name = 'AI Diagram', originX = 60, originY = 60 } = {}) {
   const check = validateDsl(dsl);
   if (!check.ok) throw new Error(check.errors.join('; '));
   const byName = new Map();
@@ -173,12 +202,130 @@ export function systemPrompt() {
   const kinds = Object.keys(NODE_KINDS).join(' | ');
   const edges = Object.keys(EDGE_TYPES).join(' | ');
   return [
-    `你是 UML 建模助手。把用户的描述转换为一个 JSON 对象（DSL v${DSL_VERSION}），不要输出任何解释文字。`,
-    `可用节点 kind: ${kinds}。`,
-    `可用连线 type: ${edges}。`,
-    '节点: { kind, name, stereotype?, attributes?: ["+name: Type"], operations?: ["+name(param: Type): Ret"], literals?: ["A","B"], slots?: ["slot = value"], classifier?, text? }。节点 name 必须唯一。',
-    '连线: { type, from, to, label?, tailRoleName?, tailMultiplicity?, headRoleName?, headMultiplicity? }。from/to 必须是 nodes 中的 name。',
-    `diagram 字段固定为 "class"（对象图用 "object"）。`,
-    '示例: {"diagram":"class","nodes":[{"kind":"class","name":"Order","attributes":["+id: String","-total: double"],"operations":["+submit(): void"]},{"kind":"class","name":"Customer"}],"edges":[{"type":"association","from":"Customer","to":"Order","tailMultiplicity":"1","headMultiplicity":"0..*"}]}',
+    `你是 UML 建模助手。把用户的描述转换为一个 JSON 对象（DSL v${DSL_VERSION}），不要输出任何解释文字。根据描述选择最合适的 diagram 家族。`,
+    `家族1 — 类图/对象图: {"diagram":"class"|"object","nodes":[{"kind":"${kinds}","name":"…","stereotype?":"…","attributes?:":["+name: Type"],"operations?:":["+name(p: Type): Ret"],"literals?:":["A"],"slots?:":["s = v"],"classifier?":"…","text?":"…"}],"edges":[{"type":"${edges}","from":"…","to":"…","label?":"…","tailRoleName?":"…","tailMultiplicity?":"1","headRoleName?":"…","headMultiplicity?":"0..*"}]}。节点 name 必须唯一；from/to 必须引用节点 name。`,
+    `家族2 — 序列图: {"diagram":"sequence","participants":[{"name":"用户"},{"name":"服务端"}],"messages":[{"from":"用户","to":"服务端","text":"请求","sort":"sync"}]}。sort ∈ sync|async|reply|create|delete；messages 按时间先后排列。`,
+    `家族3 — 活动图: {"diagram":"activity","nodes":[{"kind":"initial|action|decision|merge|fork|join|final|flowfinal|object","name":"…"}],"edges":[{"type":"control","from":"…","to":"…","name":"[条件]"}]}。守卫条件放在 edge 的 name 里。`,
+    '示例(类图): {"diagram":"class","nodes":[{"kind":"class","name":"Order","attributes":["+id: String","-total: double"],"operations":["+submit(): void"]},{"kind":"class","name":"Customer"}],"edges":[{"type":"association","from":"Customer","to":"Order","tailMultiplicity":"1","headMultiplicity":"0..*"}]}',
+    '示例(序列图): {"diagram":"sequence","participants":[{"name":"客户端"},{"name":"服务端"},{"name":"数据库"}],"messages":[{"from":"客户端","to":"服务端","text":"登录","sort":"sync"},{"from":"服务端","to":"数据库","text":"校验","sort":"sync"},{"from":"服务端","to":"客户端","text":"结果","sort":"reply"}]}',
+    '示例(活动图): {"diagram":"activity","nodes":[{"kind":"initial","name":"start"},{"kind":"action","name":"提交订单"},{"kind":"decision","name":"库存足够?"},{"kind":"action","name":"发货"},{"kind":"final","name":"end"}],"edges":[{"type":"control","from":"start","to":"提交订单"},{"type":"control","from":"提交订单","to":"库存足够?"},{"type":"control","from":"库存足够?","to":"发货","name":"[是]"},{"type":"control","from":"库存足够?","to":"end","name":"[否]"}]}',
   ].join('\n');
+}
+
+/** Sequence DSL: { diagram:'sequence', participants:[{name}], messages:[{from,to,text,sort}] } */
+function validateSequenceDsl(dsl, errors) {
+  const participants = Array.isArray(dsl.participants) ? dsl.participants : [];
+  const messages = Array.isArray(dsl.messages) ? dsl.messages : [];
+  if (participants.length < 1) errors.push('sequence 需要 participants（至少 1 个生命线）');
+  const names = new Set();
+  participants.forEach((p, i) => {
+    const name = STR(p && p.name);
+    if (!name) errors.push(`participants[${i}] 缺少 name`);
+    else if (names.has(name)) errors.push(`生命线名称重复: ${name}`);
+    else names.add(name);
+  });
+  messages.forEach((m, i) => {
+    for (const key of ['from', 'to']) {
+      const ref = STR(m && m[key]);
+      if (!ref) errors.push(`messages[${i}] 缺少 ${key}`);
+      else if (!names.has(ref)) errors.push(`messages[${i}] 的 ${key} "${ref}" 不在 participants 中`);
+    }
+    const sort = STR(m && m.sort) || 'sync';
+    if (!MESSAGE_SORTS[sort]) errors.push(`messages[${i}] 未知 sort: ${sort}（可用 sync/async/reply/create/delete）`);
+  });
+  return { ok: errors.length === 0, errors };
+}
+
+function buildSequenceDiagram(dsl, { name = 'AI Sequence' } = {}) {
+  const check = validateDsl(dsl);
+  if (!check.ok) throw new Error(check.errors.join('; '));
+  const diagram = createDiagram('UMLSequenceDiagram', name);
+  const models = [];
+  const byName = new Map();
+  const headH = 32;
+  const msgs = dsl.messages || [];
+  const lifeHeight = 70 + msgs.length * 46;
+  (dsl.participants || []).forEach((p, i) => {
+    const model = createModel('UMLLifeLine', STR(p.name));
+    const view = createNodeView('UMLLifeLine', model._id, 80 + i * 190, 40, { lifeHeight });
+    view.width = 140;
+    diagram.elements.push(view);
+    byName.set(STR(p.name), view);
+    models.push(model);
+  });
+  msgs.forEach((m, i) => {
+    const sort = STR(m.sort) || 'sync';
+    const spec = MESSAGE_SORTS[sort];
+    const tail = byName.get(STR(m.from));
+    const head = byName.get(STR(m.to));
+    const model = createModel('UMLMessage');
+    model.name = STR(m.text) || `${m.from}→${m.to}`;
+    const view = createEdgeView(spec.$type, model._id, tail._id, head._id);
+    view.isMessage = true;
+    view.y = 40 + headH + 50 + i * 46;
+    view.lineStyle = spec.lineStyle;
+    view.headArrow = spec.headArrow;
+    view.tailArrow = 'none';
+    diagram.elements.push(view);
+    models.push(model);
+  });
+  for (const model of models) diagram.ownedElements.push(model);
+  return { diagram, models, nodeCount: dsl.participants.length, edgeCount: msgs.length };
+}
+
+/** Activity DSL: { diagram:'activity', nodes:[{kind,name}], edges:[{type:'control'|'object',from,to,name}] } */
+function validateActivityDsl(dsl, errors) {
+  const nodes = Array.isArray(dsl.nodes) ? dsl.nodes : [];
+  const edges = Array.isArray(dsl.edges) ? dsl.edges : [];
+  if (!nodes.length) errors.push('activity 需要 nodes');
+  const names = new Set();
+  nodes.forEach((n, i) => {
+    const name = STR(n && n.name);
+    if (!name) errors.push(`nodes[${i}] 缺少 name`);
+    else if (names.has(name)) errors.push(`节点名称重复: ${name}`);
+    else names.add(name);
+    const kind = STR(n && n.kind) || 'action';
+    if (!ACTIVITY_KINDS[kind]) errors.push(`nodes[${i}] (${name || '?'}) 未知 kind: ${kind}`);
+  });
+  edges.forEach((e, i) => {
+    const type = STR(e && e.type) || 'control';
+    if (!['control', 'object'].includes(type)) errors.push(`edges[${i}] 未知 type: ${type}（control/object）`);
+    for (const key of ['from', 'to']) {
+      const ref = STR(e && e[key]);
+      if (!ref) errors.push(`edges[${i}] 缺少 ${key}`);
+      else if (!names.has(ref)) errors.push(`edges[${i}] 的 ${key} "${ref}" 不在 nodes 中`);
+    }
+  });
+  return { ok: errors.length === 0, errors };
+}
+
+function buildActivityDiagram(dsl, { name = 'AI Activity', originX = 60, originY = 60 } = {}) {
+  const check = validateDsl(dsl);
+  if (!check.ok) throw new Error(check.errors.join('; '));
+  const diagram = createDiagram('UMLActivityDiagram', name);
+  const byName = new Map();
+  const models = [];
+  dsl.nodes.forEach((n, i) => {
+    const spec = ACTIVITY_KINDS[STR(n.kind) || 'action'];
+    const model = createModel(spec.type, STR(n.name));
+    const col = i % 3, row = Math.floor(i / 3);
+    const view = createNodeView(spec.type, model._id,
+      originX + col * 240 + (120 - spec.defaults.width / 2), originY + row * 150, spec.defaults);
+    diagram.elements.push(view);
+    byName.set(STR(n.name), view);
+    models.push(model);
+  });
+  for (const model of models) diagram.ownedElements.push(model);
+  (dsl.edges || []).forEach((e) => {
+    const type = STR(e.type) || 'control';
+    const tail = byName.get(STR(e.from));
+    const head = byName.get(STR(e.to));
+    const spec = type === 'object' ? { type: 'UMLObjectFlow' } : { type: 'UMLControlFlow' };
+    const model = createModel(spec.type, STR(e.name));
+    const view = createEdgeView(spec.type, model._id, tail._id, head._id);
+    view.headArrow = 'open';
+    diagram.elements.push(view);
+    models.push(model);
+  });
+  return { diagram, models, nodeCount: dsl.nodes.length, edgeCount: (dsl.edges || []).length };
 }

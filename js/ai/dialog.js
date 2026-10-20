@@ -1,6 +1,6 @@
 // dialog.js — "AI 画图…" dialog: prompt → LLM → DSL → preview → insert.
 
-import { chatCompletion, extractJson, testConnection } from './client.js';
+import { chatCompletion, chatCompletionStream, extractJson, testConnection } from './client.js';
 import { systemPrompt, validateDsl, buildDiagram } from './dsl.js';
 import { repository } from '../core/repository.js';
 import { serializeProject } from '../core/commands.js';
@@ -43,27 +43,28 @@ export function saveAiConfig(config) {
  * JSON fails validation, the errors go back to the model for a corrected try.
  * onStatus(msg) reports progress; returns the built { diagram, ... } payload.
  */
-export async function generateDiagram(config, prompt, onStatus = () => {}) {
+export async function generateDiagram(config, prompt, { onStatus = () => {}, onDelta, signal } = {}) {
   const messages = [
     { role: 'system', content: systemPrompt() },
     { role: 'user', content: prompt },
   ];
+  const complete = () => chatCompletionStream({ ...config, jsonMode: true }, messages, { onDelta, signal });
   onStatus('正在请求模型…');
-  let content = await chatCompletion({ ...config, jsonMode: true }, messages);
+  let content = await complete();
   let dsl;
   try {
     dsl = extractJson(content);
   } catch (err) {
     onStatus('输出无法解析，请模型重试…');
     messages.push({ role: 'assistant', content }, { role: 'user', content: `你的输出无法解析为 JSON（${err.message}）。请只输出一个 JSON 对象，不要任何其他文字。` });
-    content = await chatCompletion({ ...config, jsonMode: true }, messages);
+    content = await complete();
     dsl = extractJson(content);
   }
   let check = validateDsl(dsl);
   if (!check.ok && check.errors.length) {
     onStatus(`校验未通过（${check.errors.length} 处），自动修复中…`);
     messages.push({ role: 'assistant', content }, { role: 'user', content: `生成的 DSL 有以下问题：\n- ${check.errors.join('\n- ')}\n请修正后重新只输出一个完整 JSON 对象。` });
-    content = await chatCompletion({ ...config, jsonMode: true }, messages);
+    content = await complete();
     dsl = extractJson(content);
     check = validateDsl(dsl);
   }
@@ -123,6 +124,17 @@ export function showAiDiagramDialog({ onOpenDiagram } = {}) {
             <input id="ai-remember" type="checkbox" ${cfg.rememberKey ? 'checked' : ''}>记住 Key</label>
           <button class="btn" id="ai-test" style="height:26px">试连</button>
         </div>
+        <div style="display:flex;gap:6px;align-items:center;font-size:11px">
+          <span style="color:var(--text-dim)">模板:</span>
+          <select id="ai-tpl" style="flex:1">
+            <option value="">（自定义描述）</option>
+            <option value="类图：画一个电商订单系统的类图。Order 有 id、total，可以 submit 和 cancel；Customer 拥有 0..* 个 Order；Order 由 1 个 Payment 结算（组合）；Payment 是抽象概念用接口表示，Order 实现它">类图 · 电商订单</option>
+            <option value="类图：画一个图书馆管理系统的领域模型。Book、Member、Loan 三个类，Member 与 Loan 一对多，Loan 引用 Book；Book 有 isbn/title/author，Loan 有借出日期和归还日期">类图 · 图书馆领域模型</option>
+            <option value="对象图：展示一张已支付的订单快照，订单编号 ORD-2026-001，总额 299.00，状态为已支付，包含两个商品行对象">对象图 · 订单快照</option>
+            <option value="序列图：用户在客户端登录，客户端把账号密码发给服务端校验，服务端查数据库验证，数据库返回校验结果，服务端把登录结果返回给客户端">序列图 · 登录流程</option>
+            <option value="活动图：下单流程，从开始节点提交订单，判断库存是否足够：足够则发货再进入结束节点，不足则取消订单进入结束节点">活动图 · 下单流程</option>
+          </select>
+        </div>
         <label style="display:flex;flex-direction:column;gap:2px;font-size:11px">描述你要画的图
           <textarea id="ai-prompt" rows="5" style="resize:vertical;font-family:inherit"
             placeholder="例如：画一个电商订单系统的类图，Order 包含id、total，可以 submit；Customer 拥有多个 Order；Order 与 Payment 是一对一是组合关系"></textarea></label>
@@ -132,6 +144,7 @@ export function showAiDiagramDialog({ onOpenDiagram } = {}) {
       </div>
       <div class="dialog-actions">
         <button class="btn" id="ai-gen">生成</button>
+        <button class="btn" id="ai-stop" style="display:none">停止</button>
         <button class="btn primary" id="ai-insert" disabled>插入为新图表</button>
         <button class="btn" id="ai-close">关闭</button>
       </div>
@@ -149,6 +162,12 @@ export function showAiDiagramDialog({ onOpenDiagram } = {}) {
   });
 
   let built = null;
+  let abortCtl = null;
+
+  const onTpl = () => {
+    const tplText = field('ai-tpl').value;
+    if (tplText) field('ai-prompt').value = tplText;
+  };
 
   const onTest = async () => {
     const conf = readConfig();
@@ -162,6 +181,12 @@ export function showAiDiagramDialog({ onOpenDiagram } = {}) {
     }
   };
 
+  const setBusy = (busy) => {
+    field('ai-gen').style.display = busy ? 'none' : '';
+    field('ai-stop').style.display = busy ? '' : 'none';
+    field('ai-insert').disabled = busy || !built;
+  };
+
   const onGenerate = async () => {
     const conf = readConfig();
     if (!conf.baseUrl || !conf.model) { statusEl().textContent = '请先填写 API 地址与模型'; return; }
@@ -169,23 +194,34 @@ export function showAiDiagramDialog({ onOpenDiagram } = {}) {
     if (!prompt) { statusEl().textContent = '请输入图的描述'; return; }
     saveAiConfig(conf);
     built = null;
-    field('ai-insert').disabled = true;
+    setBusy(true);
     const previewEl = field('ai-preview');
     previewEl.style.display = 'none';
-    field('ai-gen').disabled = true;
+    abortCtl = new AbortController();
+    let received = 0;
+    const onDelta = (full) => {
+      received = full.length;
+      statusEl().textContent = `生成中… 已接收 ${received} 字（再次点击停止可中断）`;
+    };
     statusEl().textContent = '正在请求模型…';
     try {
-      built = await generateDiagram(conf, prompt, (msg) => { statusEl().textContent = msg; });
+      built = await generateDiagram(conf, prompt, {
+        onStatus: (msg) => { statusEl().textContent = msg; },
+        onDelta,
+        signal: abortCtl.signal,
+      });
       statusEl().textContent = `生成成功：节点 ${built.nodeCount} · 连线 ${built.edgeCount}`;
       previewEl.textContent = previewText(built);
       previewEl.style.display = 'block';
-      field('ai-insert').disabled = false;
     } catch (err) {
       statusEl().textContent = `失败：${err.message}`;
     } finally {
-      field('ai-gen').disabled = false;
+      setBusy(false);
+      abortCtl = null;
     }
   };
+
+  const onStop = () => { abortCtl?.abort(); };
 
   const onInsert = () => {
     if (!built) return;
@@ -200,8 +236,12 @@ export function showAiDiagramDialog({ onOpenDiagram } = {}) {
     const id = e.target && e.target.id;
     if (id === 'ai-test') onTest();
     else if (id === 'ai-gen') onGenerate();
+    else if (id === 'ai-stop') onStop();
     else if (id === 'ai-insert') onInsert();
     else if (id === 'ai-close') overlay.remove();
+  });
+  overlay.addEventListener('change', (e) => {
+    if (e.target && e.target.id === 'ai-tpl') onTpl();
   });
   overlay.addEventListener('keydown', (e) => { if (e.key === 'Escape') overlay.remove(); });
 }
