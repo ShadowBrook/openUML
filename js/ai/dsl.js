@@ -208,6 +208,7 @@ export function systemPrompt() {
     `家族3 — 活动图: {"diagram":"activity","nodes":[{"kind":"initial|action|decision|merge|fork|join|final|flowfinal|object","name":"…"}],"edges":[{"type":"control","from":"…","to":"…","name":"[条件]"}]}。守卫条件放在 edge 的 name 里。`,
     '示例(类图): {"diagram":"class","nodes":[{"kind":"class","name":"Order","attributes":["+id: String","-total: double"],"operations":["+submit(): void"]},{"kind":"class","name":"Customer"}],"edges":[{"type":"association","from":"Customer","to":"Order","tailMultiplicity":"1","headMultiplicity":"0..*"}]}',
     '示例(序列图): {"diagram":"sequence","participants":[{"name":"客户端"},{"name":"服务端"},{"name":"数据库"}],"messages":[{"from":"客户端","to":"服务端","text":"登录","sort":"sync"},{"from":"服务端","to":"数据库","text":"校验","sort":"sync"},{"from":"服务端","to":"客户端","text":"结果","sort":"reply"}]}',
+    '序列图注释(Note): {"diagram":"sequence","notes":[{"over":["生命线A","生命线B"],"text":"说明"}]}。over 是被覆盖的生命线 name 数组；单条生命线也接受单个字符串，注释按覆盖范围浮在生命线上方。',
     '示例(活动图): {"diagram":"activity","nodes":[{"kind":"initial","name":"start"},{"kind":"action","name":"提交订单"},{"kind":"decision","name":"库存足够?"},{"kind":"action","name":"发货"},{"kind":"final","name":"end"}],"edges":[{"type":"control","from":"start","to":"提交订单"},{"type":"control","from":"提交订单","to":"库存足够?"},{"type":"control","from":"库存足够?","to":"发货","name":"[是]"},{"type":"control","from":"库存足够?","to":"end","name":"[否]"}]}',
   ].join('\n');
 }
@@ -232,6 +233,13 @@ function validateSequenceDsl(dsl, errors) {
     }
     const sort = STR(m && m.sort) || 'sync';
     if (!MESSAGE_SORTS[sort]) errors.push(`messages[${i}] 未知 sort: ${sort}（可用 sync/async/reply/create/delete）`);
+  });
+  const notes = Array.isArray(dsl.notes) ? dsl.notes : [];
+  notes.forEach((n, i) => {
+    if (!STR(n && n.text)) errors.push(`notes[${i}] 缺少 text`);
+    for (const ref of Array.isArray(n && n.over) ? n.over : []) {
+      if (!names.has(STR(ref))) errors.push(`notes[${i}] 的 over "${STR(ref)}" 不在 participants 中`);
+    }
   });
   return { ok: errors.length === 0, errors };
 }
@@ -269,8 +277,21 @@ function buildSequenceDiagram(dsl, { name = 'AI Sequence' } = {}) {
     diagram.elements.push(view);
     models.push(model);
   });
+  // Mermaid-style `Note over A,B:` — a note box floating over the covered lifelines
+  const notes = Array.isArray(dsl.notes) ? dsl.notes : [];
+  notes.forEach((n) => {
+    const over = (Array.isArray(n.over) ? n.over : [n.over]).map((nm) => byName.get(STR(nm))).filter(Boolean);
+    if (!over.length) return;
+    const model = createModel('UMLNote', 'Note');
+    model.documentation = STR(n.text);
+    const left = Math.min(...over.map((v) => v.x));
+    const right = Math.max(...over.map((v) => v.x + v.width));
+    const view = createNodeView('UMLNote', model._id, left + 10, 40 + lifeHeight + 12, { width: Math.max(140, right - left - 20), height: 60 });
+    diagram.elements.push(view);
+    models.push(model);
+  });
   for (const model of models) diagram.ownedElements.push(model);
-  return { diagram, models, nodeCount: dsl.participants.length, edgeCount: msgs.length };
+  return { diagram, models, nodeCount: dsl.participants.length + notes.length, edgeCount: msgs.length };
 }
 
 /** Activity DSL: { diagram:'activity', nodes:[{kind,name}], edges:[{type:'control'|'object',from,to,name}] } */

@@ -147,3 +147,28 @@ test('validateDsl routes sequence/activity errors', () => {
   const act = validateDsl({ diagram: 'activity', nodes: [{ kind: 'warp', name: 'x' }], edges: [] });
   assert.match(act.errors.join('\n'), /未知 kind/);
 });
+
+test('sequence notes float over the covered lifelines', () => {
+  const dsl = {
+    diagram: 'sequence',
+    participants: [{ name: '用户' }, { name: '规则引擎' }, { name: '数据集市' }],
+    messages: [{ from: '用户', to: '规则引擎', text: '注册因子', sort: 'sync' }],
+    notes: [
+      { over: ['用户', '规则引擎'], text: '阶段一：配置' },
+      { over: ['数据集市'], text: '离线计算' },
+    ],
+  };
+  const built = buildDiagram(dsl, { name: 'SeqNotes' });
+  assert.equal(built.nodeCount, 5); // 3 lifelines + 2 notes
+  const views = built.diagram.elements;
+  const notes = views.filter((v) => v.$type === 'UMLNote');
+  assert.equal(notes.length, 2);
+  // note 1 spans 用户+规则引擎: left edge = min lifeline x + 10, width covers both
+  const ll0 = views.find((v) => v.$type === 'UMLLifeLine');
+  const ll1 = views.filter((v) => v.$type === 'UMLLifeLine')[1];
+  assert.equal(notes[0].x, ll0.x + 10);
+  assert.ok(notes[0].width >= ll1.x + ll1.width - ll0.x - 20);
+  assert.equal(notes[0].y, 40 + (70 + 1 * 46) + 12); // below the lifeline bottoms
+  const bad = validateDsl({ ...dsl, notes: [{ over: ['不存在'], text: 'x' }] });
+  assert.match(bad.errors.join('\n'), /不在 participants 中/);
+});
