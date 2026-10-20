@@ -5,7 +5,7 @@ import { Rect, snap, resizeHandle, dist } from '../core/geometry.js';
 import { repository } from '../core/repository.js';
 import { commandStack, compound } from '../core/commands.js';
 import { createModel, createNodeView, createEdgeView, createAttribute } from '../core/factory.js';
-import { renderNode, svgEl, TIMING_LANE_LABEL_W, viewW, viewH } from './nodeviews.js';
+import { renderNode, svgEl, TIMING_LANE_LABEL_W, viewW, viewH, fragmentOperandLayout } from './nodeviews.js';
 import { renderEdge, renderMessage, renderEndpointMessage, renderSelfLoop, renderTimingMessage, renderAssociationClassLink, distanceToPolyline, computeEdgeGeometry } from './edgeviews.js';
 import { openQuickEdit, openConnectorEdit, closeQuickEdit } from '../ui/quickedit.js';
 
@@ -361,14 +361,8 @@ export class DiagramCanvas {
 
   /** Absolute y positions of a combined fragment's operand separators. */
   fragmentOperandYs(view, model) {
-    const n = Math.max(1, (model.operands || []).length);
-    const tabH = 22;
-    const innerTop = view.y + tabH;
-    const innerH = Math.max(10, viewH(view) - tabH);
-    const fr = (Array.isArray(model.operandBoundaries) && model.operandBoundaries.length === n - 1)
-      ? model.operandBoundaries
-      : Array.from({ length: n - 1 }, (_, i) => (i + 1) / n);
-    return { innerTop, innerH, fractions: fr, ys: fr.map((f) => innerTop + innerH * f) };
+    const L = fragmentOperandLayout(view, model);
+    return { innerTop: L.innerTop, innerH: L.innerH, fractions: L.fractions, ys: L.ys };
   }
 
   /**
@@ -1009,17 +1003,20 @@ export class DiagramCanvas {
       return;
     }
 
-    // edge name labels are draggable (StarUML lets you offset relation labels)
+    // edge labels are draggable (name, association-end roles/multiplicities);
+    // each label carries the view field that stores its offset
     for (const [, r] of this.renderers) {
       if (r.kind !== 'edge' || !r.meta.labels || !r.meta.labels.length) continue;
-      const lb = r.meta.labels[0].box;
-      if (lb && new Rect(lb.x, lb.y, lb.width, lb.height).contains(w.x, w.y)) {
-        if (!repository.selections.includes(r.view._id)) repository.select([r.view._id], repository.lookup(r.view.modelRef));
-        this.drag = {
-          kind: 'label', view: r.view, start: w, moved: false,
-          orig: r.view.labelOffset ? { ...r.view.labelOffset } : null,
-        };
-        return;
+      for (const lb of r.meta.labels) {
+        if (lb && lb.box && new Rect(lb.box.x, lb.box.y, lb.box.width, lb.box.height).contains(w.x, w.y)) {
+          if (!repository.selections.includes(r.view._id)) repository.select([r.view._id], repository.lookup(r.view.modelRef));
+          const field = lb.field || 'labelOffset';
+          this.drag = {
+            kind: 'label', view: r.view, field, start: w, moved: false,
+            orig: r.view[field] ? { ...r.view[field] } : null,
+          };
+          return;
+        }
       }
     }
 
@@ -1229,7 +1226,7 @@ export class DiagramCanvas {
       const dx = Math.round(base.dx + (w.x - d.start.x));
       const dy = Math.round(base.dy + (w.y - d.start.y));
       // no offset is represented as null, so undo and serialization stay clean
-      d.view.labelOffset = (dx === 0 && dy === 0) ? null : { dx, dy };
+      d.view[d.field] = (dx === 0 && dy === 0) ? null : { dx, dy };
       d.moved = true;
       this._rerenderEdges(new Set([d.view._id]));
       return;
@@ -1414,12 +1411,13 @@ export class DiagramCanvas {
     if (d.kind === 'label') {
       if (d.moved) {
         const view = d.view;
-        const after = view.labelOffset || null;
+        const field = d.field || 'labelOffset';
+        const after = view[field] || null;
         const before = d.orig || null;
         commandStack.pushExecuted({
           label: 'move label',
-          redo: () => { view.labelOffset = after ? { ...after } : null; this.requestRender(); },
-          undo: () => { view.labelOffset = before ? { ...before } : null; this.requestRender(); },
+          redo: () => { view[field] = after ? { ...after } : null; this.requestRender(); },
+          undo: () => { view[field] = before ? { ...before } : null; this.requestRender(); },
         });
       }
       this.requestRender();

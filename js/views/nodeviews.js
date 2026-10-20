@@ -252,6 +252,44 @@ function compartmentHeight(items, fontSize, wrapChars = 0) {
   return rows * (fontSize + 4) + 4;
 }
 
+
+/**
+ * Combined-fragment operand geometry shared by the renderer and the canvas.
+ * Guard text wraps to the fragment width; each operand reserves its content
+ * height, and separators default to content-proportional fractions unless the
+ * user has dragged custom boundaries.
+ */
+export function fragmentOperandLayout(view, model) {
+  const operands = (model.operands && model.operands.length) ? model.operands : [{ guard: '' }];
+  const fs = view.fontSize || 12;
+  const tabH = 22;
+  const w = viewW(view);
+  const h = viewH(view);
+  const innerTop = view.y + tabH;
+  const innerH = Math.max(10, h - tabH);
+  const n = operands.length;
+  const maxChars = Math.max(6, Math.floor((w - 16) / (Math.max(8, fs - 1) * 0.62)));
+  const minHs = operands.map((op) => {
+    const lines = op.guard ? wrapText(op.guard, maxChars).length : 0;
+    return Math.max(24, lines * (fs + 4) + 12);
+  });
+  const manual = Array.isArray(model.operandBoundaries) && model.operandBoundaries.length === n - 1;
+  let fractions;
+  if (manual) {
+    fractions = model.operandBoundaries.slice();
+  } else {
+    const total = minHs.reduce((a, b) => a + b, 0) || 1;
+    fractions = [];
+    let acc = 0;
+    for (let i = 0; i < n - 1; i++) { acc += minHs[i]; fractions.push(acc / total); }
+  }
+  const ys = fractions.map((f) => innerTop + innerH * f);
+  const starts = [innerTop, ...ys];
+  const guardLines = operands.map((op) => (op.guard ? wrapText(op.guard, maxChars) : []));
+  const requiredH = tabH + minHs.reduce((a, b) => a + b, 0);
+  return { operands, fs, tabH, w, h, hEff: Math.max(h, requiredH), innerTop, innerH, n, fractions, ys, starts, minHs, guardLines, requiredH };
+}
+
 /**
  * Base node renderer. view = {x,y,width,height,fillColor,lineColor,fontColor,fontSize}
  * model = the referenced model element.
@@ -942,9 +980,9 @@ export function renderNode(g, view, model, kind) {
     }
     case 'fragment': {
       // combined fragment: frame + pentagon operator tab + interaction operands
-      const operands = (model.operands && model.operands.length) ? model.operands : [{ guard: '' }];
-      const tabH = 22;
-      svgEl('rect', { x, y, width: w, height: h, fill: view.fillColor || 'none', stroke: line, 'stroke-width': 1.2, class: 'node-frame' }, g);
+      const L = fragmentOperandLayout(view, model);
+      const tabH = L.tabH;
+      svgEl('rect', { x, y, width: L.w, height: L.hEff, fill: view.fillColor || 'none', stroke: line, 'stroke-width': 1.2, class: 'node-frame' }, g);
       // pentagon tab: (x,y) → (x+tw,y) → (x+tw+8,y+tabH/2) → (x+tw,y+tabH) → (x,y+tabH)
       const tw = Math.max(34, 16 + String(model.operator || 'alt').length * 7);
       svgEl('path', {
@@ -956,25 +994,20 @@ export function renderNode(g, view, model, kind) {
         'font-size': fs, 'font-weight': 700, fill: fontColor,
       }, g);
       opText.textContent = model.operator || 'alt';
-      // operand separators + guards (custom boundaries when present, else even split)
-      const innerY = y + tabH, innerH = Math.max(10, h - tabH);
-      const n = operands.length;
-      const fractions = (Array.isArray(model.operandBoundaries) && model.operandBoundaries.length === n - 1)
-        ? model.operandBoundaries
-        : Array.from({ length: n - 1 }, (_, i) => (i + 1) / n);
-      const starts = [innerY, ...fractions.map((f) => innerY + innerH * f)];
-      operands.forEach((op, i) => {
-        const oy = starts[i];
+      // operand separators + guards (custom boundaries when present, else content-proportional)
+      L.operands.forEach((op, i) => {
+        const oy = L.starts[i];
         if (i > 0) {
-          svgEl('line', { x1: x, y1: oy, x2: x + w, y2: oy, stroke: line, 'stroke-width': 1, 'stroke-dasharray': '5 4' }, g);
+          svgEl('line', { x1: x, y1: oy, x2: x + L.w, y2: oy, stroke: line, 'stroke-width': 1, 'stroke-dasharray': '5 4' }, g);
         }
-        if (op.guard) {
-          const gt = svgEl('text', { x: x + 8, y: oy + fs + 6, 'font-size': fs - 1, fill: fontColor }, g);
-          gt.textContent = op.guard;
-        }
+        (L.guardLines[i] || []).forEach((lineText, li) => {
+          const gt = svgEl('text', { x: x + 8, y: oy + fs - 1 + 6 + li * (fs + 3), 'font-size': fs - 1, fill: fontColor }, g);
+          gt.textContent = lineText;
+        });
       });
       // operator text is editable in place
       meta.textSlots.operator = { box: new Rect(x, y, tw, tabH), text: model.operator || 'alt', field: 'operator', align: 'center' };
+      meta.autoHeight = L.requiredH;
       break;
     }
     case 'ref': {

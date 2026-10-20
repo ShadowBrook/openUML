@@ -60,7 +60,7 @@ export function renderEndpointMessage(g, view, model, lifelineView) {
     const t = svgEl('text', { x: mid.x, y: y - 6, 'text-anchor': 'middle', 'font-size': fs, fill: view.fontColor || '#353535', 'font-style': 'italic' }, g);
     t.textContent = labelParts.join(' ');
     const textW = Math.max(50, t.textContent.length * fs * 0.55);
-    meta.labels.push({ el: t, kind: 'name', box: { x: mid.x - textW / 2, y: y - fs - 8, width: textW, height: fs + 4 } });
+    meta.labels.push({ el: t, kind: 'name', field: 'labelOffset', box: { x: mid.x - textW / 2, y: y - fs - 8, width: textW, height: fs + 4 } });
   }
   return meta;
 }
@@ -160,7 +160,7 @@ export function renderMessage(g, view, model, tailView, headView) {
     if (name) {
       const t = svgEl('text', { x: x + loop / 2 + 10, y: y - rise - 6, 'text-anchor': 'middle', 'font-size': fs, fill: view.fontColor || '#353535' }, g);
       t.textContent = name;
-      meta.labels.push({ el: t, kind: 'name', box: { x: x + loop / 2 - 40, y: y - rise - fs - 8, width: 100, height: fs + 4 } });
+      meta.labels.push({ el: t, kind: 'name', field: 'labelOffset', box: { x: x + loop / 2 - 40, y: y - rise - fs - 8, width: 100, height: fs + 4 } });
     }
     return meta;
   }
@@ -209,7 +209,7 @@ export function renderMessage(g, view, model, tailView, headView) {
     const t = svgEl('text', { x: mid.x, y: y - 6, 'text-anchor': 'middle', 'font-size': fs, fill: view.fontColor || '#353535', 'font-style': 'italic' }, g);
     t.textContent = labelParts.join(' ');
     const textW = Math.max(50, t.textContent.length * fs * 0.55);
-    meta.labels.push({ el: t, kind: 'name', box: { x: mid.x - textW / 2, y: y - fs - 8, width: textW, height: fs + 4 } });
+    meta.labels.push({ el: t, kind: 'name', field: 'labelOffset', box: { x: mid.x - textW / 2, y: y - fs - 8, width: textW, height: fs + 4 } });
   }
   return meta;
 }
@@ -248,7 +248,7 @@ export function renderTimingMessage(g, view, model, tailView, headView) {
     }, g);
     t.textContent = name;
     meta.labels.push({
-      el: t, kind: 'name',
+      el: t, kind: 'name', field: 'labelOffset',
       box: { x: x + 4, y: midY - fs, width: Math.max(40, name.length * fs * 0.58), height: fs + 4 },
     });
   }
@@ -473,7 +473,7 @@ export function renderEdge(g, edge, model, tailRect, headRect, opts = {}) {
     t.textContent = labelParts.join(' ');
     const textW = Math.max(40, t.textContent.length * fs * 0.58);
     meta.labels.push({
-      el: t, kind: 'name',
+      el: t, kind: 'name', field: 'labelOffset',
       box: new Rect(mid.x - textW / 2 - 3, mid.y - fs - 9, textW + 6, fs + 7),
     });
   }
@@ -509,21 +509,26 @@ export function renderEdge(g, edge, model, tailRect, headRect, opts = {}) {
     || model?.type === 'UMLLink' || model?.type === 'UMLDirectedLink'
     || edge.$type === 'UMLLink' || edge.$type === 'UMLDirectedLink';
   if (showEndLabels) {
-    if (edge.headRoleName) {
-      const t = svgEl('text', { x: headEnd.x, y: headEnd.y - 6, 'font-size': fs, fill: fontColor, 'text-anchor': 'middle' }, g);
-      t.textContent = edge.headRoleName;
-    }
-    if (edge.headMultiplicity) {
-      const t = svgEl('text', { x: headEnd.x, y: headEnd.y - 6 - fs, 'font-size': fs, fill: fontColor, 'text-anchor': 'middle' }, g);
-      t.textContent = edge.headMultiplicity;
-    }
-    if (edge.tailRoleName) {
-      const t = svgEl('text', { x: tailEnd.x, y: tailEnd.y - 6, 'font-size': fs, fill: fontColor, 'text-anchor': 'middle' }, g);
-      t.textContent = edge.tailRoleName;
-    }
-    if (edge.tailMultiplicity) {
-      const t = svgEl('text', { x: tailEnd.x, y: tailEnd.y - 6 - fs, 'font-size': fs, fill: fontColor, 'text-anchor': 'middle' }, g);
-      t.textContent = edge.tailMultiplicity;
+    // each end label is draggable; offsets persist on their own view field
+    // (null = no offset), mirroring the name label's labelOffset mechanism
+    const endSpecs = [
+      ['headRole', edge.headRoleName, headEnd.x, headEnd.y - 6, 'headRoleOffset'],
+      ['headMult', edge.headMultiplicity, headEnd.x, headEnd.y - 6 - fs, 'headMultOffset'],
+      ['tailRole', edge.tailRoleName, tailEnd.x, tailEnd.y - 6, 'tailRoleOffset'],
+      ['tailMult', edge.tailMultiplicity, tailEnd.x, tailEnd.y - 6 - fs, 'tailMultOffset'],
+    ];
+    for (const [kind, text, bx, by, field] of endSpecs) {
+      if (!text) continue;
+      const o = edge[field] || { dx: 0, dy: 0 };
+      const t = svgEl('text', {
+        x: bx + o.dx, y: by + o.dy, 'font-size': fs, fill: fontColor, 'text-anchor': 'middle',
+      }, g);
+      t.textContent = text;
+      const tw2 = Math.max(24, text.length * fs * 0.6 + 8);
+      meta.labels.push({
+        el: t, kind, field,
+        box: { x: bx + o.dx - tw2 / 2, y: by + o.dy - fs - 2, width: tw2, height: fs + 6 },
+      });
     }
   }
   // role binding: the bound role name sits next to the head end
