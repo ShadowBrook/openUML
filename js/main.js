@@ -217,6 +217,13 @@ function togglePanel(key) {
   buildMenus();
 }
 
+function paperLuminance(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
+  if (!m) return 1;
+  const n = parseInt(m[1], 16);
+  return (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
+}
+
 function applyPreferences(next) {
   const prevLang = app.prefs?.lang;
   app.prefs = {
@@ -235,6 +242,10 @@ function applyPreferences(next) {
   document.getElementById('tb-snap')?.classList.toggle('active', c.snapToGrid);
   applyPanels();
   setTheme(app.prefs.theme);
+  // configurable canvas paper color; grid dots switch to a light tone on dark paper
+  const paper = app.prefs.canvasPaper || '';
+  document.documentElement.style.setProperty('--canvas-paper', paper);
+  document.documentElement.style.setProperty('--grid-dot', paper && paperLuminance(paper) < 0.5 ? '#565d60' : '');
   if (app.prefs.lang && (app.prefs.lang !== prevLang || app.prefs.lang !== getLang())) {
     setLang(app.prefs.lang);
     buildMenus();

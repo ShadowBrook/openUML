@@ -13,6 +13,7 @@ export const DEFAULT_PREFERENCES = {
   transparentBackground: false,
   autoResize: true,
   autoRoute: true,
+  canvasPaper: '',
   diagramFrame: true,
   lang: 'zh-CN',
   panels: { sidebar: true, navigator: true, toolbox: true, toolbar: true, statusbar: true },
@@ -119,6 +120,25 @@ export function showPreferencesDialog(current = DEFAULT_PREFERENCES) {
     row(editSec, t('自动调整类/枚举框尺寸'), autoResize);
     const autoRoute = checkbox(current.autoRoute !== false);
     row(editSec, t('连线自动避障（正交布线绕开节点）'), autoRoute);
+    const paperRow = document.createElement('div');
+    paperRow.className = 'prop-row';
+    paperRow.innerHTML = `<label>${t('画布纸面色 (留空跟随主题)')}</label>`;
+    const paperVal = document.createElement('div');
+    paperVal.className = 'prop-value';
+    paperVal.style.cssText = 'display:flex;gap:6px;align-items:center';
+    const paperEnabled = document.createElement('input');
+    paperEnabled.type = 'checkbox';
+    paperEnabled.checked = !!current.canvasPaper;
+    const paperColor = document.createElement('input');
+    paperColor.type = 'color';
+    paperColor.value = current.canvasPaper || '#2b3134';
+    paperColor.disabled = !paperEnabled.checked;
+    paperColor.style.width = '40px';
+    paperEnabled.addEventListener('change', () => { paperColor.disabled = !paperEnabled.checked; });
+    paperVal.appendChild(paperEnabled);
+    paperVal.appendChild(paperColor);
+    paperRow.appendChild(paperVal);
+    editSec.appendChild(paperRow);
     const hint = document.createElement('div');
     hint.className = 'pref-hint';
     hint.textContent = t('关闭后，新增成员可能被现有尺寸裁切；手动调整尺寸始终可用。');
@@ -158,6 +178,7 @@ export function showPreferencesDialog(current = DEFAULT_PREFERENCES) {
       transparentBackground: transparent.checked,
       autoResize: autoResize.checked,
       autoRoute: autoRoute.checked,
+      canvasPaper: paperEnabled.checked ? paperColor.value : '',
       panels: Object.fromEntries(Object.entries(panelChecks).map(([k, el]) => [k, el.checked])),
     });
     cancel.onclick = () => close(null);
@@ -172,6 +193,8 @@ export function showPreferencesDialog(current = DEFAULT_PREFERENCES) {
       transparent.checked = DEFAULT_PREFERENCES.transparentBackground;
       autoResize.checked = DEFAULT_PREFERENCES.autoResize;
       autoRoute.checked = DEFAULT_PREFERENCES.autoRoute;
+      paperEnabled.checked = !!DEFAULT_PREFERENCES.canvasPaper;
+      paperColor.disabled = !paperEnabled.checked;
       for (const [k, el] of Object.entries(panelChecks)) el.checked = DEFAULT_PREFERENCES.panels[k] !== false;
     };
     overlay.classList.remove('hidden');

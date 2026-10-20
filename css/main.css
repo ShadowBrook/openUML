@@ -255,7 +255,7 @@ html, body {
 #diagram-area-wrapper { flex: 1; position: relative; overflow: hidden; }
 #diagram-area {
   position: absolute; inset: 0;
-  background: var(--canvas-bg);
+  background: var(--canvas-paper, var(--canvas-bg));
   overflow: hidden;
 }
 #diagram-canvas { width: 100%; height: 100%; display: block; outline: none; cursor: default; }
