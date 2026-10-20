@@ -4,7 +4,7 @@
 
 // StarUML extension diagram families map onto the closest OpenUML diagram type
 const DIAGRAM_TYPE_MAP = {
-  ERDDiagram: 'UMLClassDiagram',
+  ERDDiagram: 'ERDDiagram',
   FCFlowchartDiagram: 'UMLActivityDiagram',
   MMMindmapDiagram: 'UMLClassDiagram',
   DFDDiagram: 'UMLActivityDiagram',
@@ -17,6 +17,7 @@ const DIAGRAM_TYPE_MAP = {
 
 const DIAGRAM_TYPES = new Set([
   'UMLClassDiagram', 'UMLUseCaseDiagram', 'UMLSequenceDiagram',
+  'ERDDiagram',
   'UMLStatechartDiagram', 'UMLActivityDiagram', 'UMLComponentDiagram',
   'UMLDeploymentDiagram', 'UMLPackageDiagram', 'UMLCommunicationDiagram',
   'UMLObjectDiagram', 'UMLCompositeStructureDiagram', 'UMLProfileDiagram',
@@ -67,7 +68,7 @@ const SIMPLE_MODEL_MAP = {
   UMLTimeConstraint: 'UMLTimeConstraint', UMLDurationConstraint: 'UMLDurationConstraint',
   UMLNote: 'UMLNote',
   // StarUML extension families → closest UML primitives
-  ERDEntity: 'UMLClass',
+  ERDEntity: 'ERDEntity',
   FCProcess: 'UMLAction',
   FCTerminator: 'UMLState',
   FCDecision: 'UMLDecisionNode',
@@ -129,7 +130,7 @@ const RELATIONSHIP_MAP = {
   UMLCommunicationPath: 'UMLCommunicationPath', UMLLink: 'UMLLink',
   UMLConnector: 'UMLConnector', UMLTransition: 'UMLTransition',
   UMLControlFlow: 'UMLControlFlow', UMLObjectFlow: 'UMLObjectFlow',
-  ERDRelationship: 'UMLAssociation',
+  ERDRelationship: 'ERDReference',
   FCFlow: 'UMLControlFlow',
   MMEdge: 'UMLLink',
   DFDDataFlow: 'UMLObjectFlow',
@@ -368,17 +369,24 @@ export class MdjConverter {
     };
     this.modelMap.set(sm._id, model);
     if (sm._type === 'ERDEntity') {
-      // ERD columns become attribute lines `name : type` ({PK} for keys)
-      model.attributes = (sm.columns || [])
+      // native ERD entity: columns in OpenUML's shape, FK flags preserved below
+      model.columns = (sm.columns || [])
         .filter((c) => c && typeof c === 'object')
-        .map((c) => ({
-          _id: this.nid('a'), $type: 'UMLAttribute',
-          name: clean(c.name) || 'column',
-          type: typeof c.type === 'string' ? clean(c.type) : this.resolveName(c.type),
-          multiplicity: '', visibility: 'public',
-          defaultValue: '', isStatic: false,
-          ...(c.primaryKey ? { isStatic: false, tags: [{ _id: this.nid('t'), name: 'PK', value: '' }] } : {}),
-        }));
+        .map((c) => {
+          const type = typeof c.type === 'string' ? clean(c.type) : this.resolveName(c.type);
+          const len = Number(c.length) > 0 && type && !type.includes('(') ? `(${Number(c.length)})` : '';
+          return {
+            _id: this.nid('col'),
+            name: clean(c.name) || 'column',
+            type: type + len,
+            primaryKey: !!c.primaryKey,
+            foreignKey: !!c.foreignKey,
+            notNull: !!c.notNull || !!c.primaryKey,
+            unique: !!c.unique,
+            comment: clean(c.comment),
+          };
+        });
+      model.indexes = [];
     }
     if (['UMLClass', 'UMLInterface', 'UMLDataType', 'UMLPrimitiveType', 'UMLInformationItem',
       'UMLCollaboration', 'UMLStereotype'].includes(ourType)) {
@@ -598,7 +606,7 @@ export class MdjConverter {
     if (t === 'UMLTextView' || t === 'UMLTextBoxView') return 'UMLTextView';
     // extension families → closest rendered primitive
     const extNodes = {
-      ERDEntityView: 'UMLClass',
+      ERDEntityView: 'ERDEntity',
       FCProcessView: 'UMLAction', FCTerminatorView: 'UMLState', FCDecisionView: 'UMLDecisionNode',
       FCPredefinedProcessView: 'UMLStructuredActivityNode', FCDataView: 'UMLObjectNode',
       FCDocumentView: 'UMLNote', FCDatabaseView: 'UMLDataStoreNode',
@@ -813,7 +821,7 @@ export class MdjConverter {
     if (t === 'UMLContainmentView') return 'UMLContainment';
     if (t === 'UMLLinkView') return 'UMLLink';
     const extEdges = {
-      ERDRelationshipView: 'UMLAssociation',
+      ERDRelationshipView: 'ERDReference',
       FCFlowView: 'UMLControlFlow',
       MMEdgeView: 'UMLLink',
       DFDDataFlowView: 'UMLObjectFlow',
@@ -957,6 +965,10 @@ export class MdjConverter {
       v.lineStyle = 'dashed'; v.headArrow = 'open'; v.stereotype = '«deploy»';
     } else if (ourType === 'UMLExtension') {
       v.headArrow = 'filledTriangle';
+    } else if (ourType === 'ERDReference' && model && model._type === 'ERDRelationship') {
+      // native ERD reference: cardinalities live on the ends
+      v.tailCardinality = clean((model.end1 || {}).cardinality);
+      v.headCardinality = clean((model.end2 || {}).cardinality);
     } else if (['UMLTransition', 'UMLControlFlow', 'UMLObjectFlow'].includes(ourType)) {
       v.headArrow = 'open';
     } else if (ourType === 'UMLInformationFlow') {

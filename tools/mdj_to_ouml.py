@@ -19,6 +19,7 @@ from collections import Counter
 
 DIAGRAM_TYPES = {
     'UMLClassDiagram', 'UMLUseCaseDiagram', 'UMLSequenceDiagram',
+    'ERDDiagram',
     'UMLStatechartDiagram', 'UMLActivityDiagram', 'UMLComponentDiagram',
     'UMLDeploymentDiagram', 'UMLPackageDiagram', 'UMLCommunicationDiagram',
     'UMLObjectDiagram', 'UMLCompositeStructureDiagram', 'UMLProfileDiagram',
@@ -27,7 +28,7 @@ DIAGRAM_TYPES = {
 }
 
 DIAGRAM_TYPE_MAP = {
-    'ERDDiagram': 'UMLClassDiagram',
+    'ERDDiagram': 'ERDDiagram',
     'FCFlowchartDiagram': 'UMLActivityDiagram',
     'MMMindmapDiagram': 'UMLClassDiagram',
     'DFDDiagram': 'UMLActivityDiagram',
@@ -105,7 +106,7 @@ SIMPLE_MODEL_MAP = {
     'UMLDurationConstraint': 'UMLDurationConstraint',
     'UMLNote': 'UMLNote',
     # StarUML extension families → closest UML primitives
-    'ERDEntity': 'UMLClass',
+    'ERDEntity': 'ERDEntity',
     'FCProcess': 'UMLAction',
     'FCTerminator': 'UMLState',
     'FCDecision': 'UMLDecisionNode',
@@ -173,7 +174,7 @@ RELATIONSHIP_MAP = {
     'UMLTransition': 'UMLTransition',
     'UMLControlFlow': 'UMLControlFlow',
     'UMLObjectFlow': 'UMLObjectFlow',
-    'ERDRelationship': 'UMLAssociation',
+    'ERDRelationship': 'ERDReference',
     'FCFlow': 'UMLControlFlow',
     'MMEdge': 'UMLLink',
     'DFDDataFlow': 'UMLObjectFlow',
@@ -516,17 +517,29 @@ class Converter:
         # cache before resolving references that may point back to this model
         self.model_map[sm_id] = model
         if sm.get('_type') == 'ERDEntity':
-            model['attributes'] = [
-                {
-                    '_id': self.nid('a'), '$type': 'UMLAttribute',
+            cols = []
+            for c in sm.get('columns') or []:
+                if not isinstance(c, dict):
+                    continue
+                ctype = c.get('type') if isinstance(c.get('type'), str) else self.resolve_name(c.get('type'))
+                try:
+                    length = float(c.get('length') or 0)
+                except (TypeError, ValueError):
+                    length = 0
+                if length > 0 and ctype and '(' not in ctype:
+                    ctype = f"{ctype}({int(length)})"
+                cols.append({
+                    '_id': self.nid('col'),
                     'name': clean_text(c.get('name')) or 'column',
-                    'type': c.get('type') if isinstance(c.get('type'), str) else self.resolve_name(c.get('type')),
-                    'multiplicity': '',
-                    'visibility': 'public',
-                    'defaultValue': '', 'isStatic': False,
-                }
-                for c in sm.get('columns') or [] if isinstance(c, dict)
-            ]
+                    'type': ctype or '',
+                    'primaryKey': bool(c.get('primaryKey')),
+                    'foreignKey': bool(c.get('foreignKey')),
+                    'notNull': bool(c.get('notNull')) or bool(c.get('primaryKey')),
+                    'unique': bool(c.get('unique')),
+                    'comment': clean_text(c.get('comment')),
+                })
+            model['columns'] = cols
+            model['indexes'] = []
         if our_type in ('UMLClass', 'UMLInterface', 'UMLDataType', 'UMLPrimitiveType',
                         'UMLInformationItem', 'UMLCollaboration', 'UMLStereotype'):
             model['attributes'] = [
@@ -867,7 +880,7 @@ class Converter:
         if t == 'UMLStructuredActivityNodeView':
             return 'UMLStructuredActivityNode'
         ext_nodes = {
-            'ERDEntityView': 'UMLClass',
+            'ERDEntityView': 'ERDEntity',
             'FCProcessView': 'UMLAction', 'FCTerminatorView': 'UMLState', 'FCDecisionView': 'UMLDecisionNode',
             'FCPredefinedProcessView': 'UMLStructuredActivityNode', 'FCDataView': 'UMLObjectNode',
             'FCDocumentView': 'UMLNote', 'FCDatabaseView': 'UMLDataStoreNode',
@@ -1155,7 +1168,7 @@ class Converter:
         if t == 'UMLLinkView':
             return 'UMLLink'
         ext_edges = {
-            'ERDRelationshipView': 'UMLAssociation',
+            'ERDRelationshipView': 'ERDReference',
             'FCFlowView': 'UMLControlFlow',
             'MMEdgeView': 'UMLLink',
             'DFDDataFlowView': 'UMLObjectFlow',
@@ -1318,6 +1331,9 @@ class Converter:
             v.update(lineStyle='dashed', headArrow='open', stereotype='«deploy»')
         elif our_type == 'UMLExtension':
             v['headArrow'] = 'filledTriangle'
+        elif our_type == 'ERDReference' and model and model.get('_type') == 'ERDRelationship':
+            v['tailCardinality'] = clean_text((model.get('end1') or {}).get('cardinality'))
+            v['headCardinality'] = clean_text((model.get('end2') or {}).get('cardinality'))
         elif our_type == 'UMLTransition' or our_type == 'UMLControlFlow' or our_type == 'UMLObjectFlow':
             v['headArrow'] = 'open'
             if label and v.get('modelRef'):
