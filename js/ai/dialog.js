@@ -107,7 +107,7 @@ export function showAiDiagramDialog({ onOpenDiagram } = {}) {
   const overlay = document.createElement('div');
   overlay.className = 'dialog-overlay';
   overlay.innerHTML = `
-    <div class="dialog" style="width:600px;max-height:640px;display:flex;flex-direction:column">
+    <div class="dialog-box" style="width:600px;max-height:640px;display:flex;flex-direction:column">
       <div class="dialog-title">AI 画图（Beta）</div>
       <div class="dialog-body" style="display:flex;flex-direction:column;gap:8px;min-height:0">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
