@@ -139,11 +139,12 @@ export function renderMessage(g, view, model, tailView, headView, opts = {}) {
   // when an activation bar covers the message y, the line starts/ends at the
   // bar's edge instead of the lifeline center (avoids drawing through the bar)
   const covered = (spans) => (spans || []).some((sp) => y >= sp.start - 1 && y <= sp.end + 1);
-  const barShift = (view2, spans) => covered(spans) ? view2.width / 2 : 0;
+  const ACTIVATION_HALF = 5; // activation bar is 10px wide, centered on the lifeline
+  const barShift = (spans) => covered(spans) ? ACTIVATION_HALF : 0;
 
   if (isSelf) {
     // self-message: rectangular loop out to the right and back
-    const x = tailView.x + tailView.width / 2 + barShift(tailView, opts.tailSpans);
+    const x = tailView.x + tailView.width / 2 + barShift(opts.tailSpans);
     const loop = 40, rise = 24;
     meta.points = [{ x, y }, { x: x + loop, y }, { x: x + loop, y: y - rise }, { x, y: y - rise }];
     svgEl('path', {
@@ -169,12 +170,12 @@ export function renderMessage(g, view, model, tailView, headView, opts = {}) {
     return meta;
   }
 
-  const tailX = tailView.x + tailView.width / 2 + barShift(tailView, opts.tailSpans);
+  const tailX = tailView.x + tailView.width / 2 + barShift(opts.tailSpans);
   const isCreate = view.$type === 'UMLMessage+create';
   const isDelete = view.$type === 'UMLMessage+delete';
   // StarUML attaches a create message to the left/right edge of the target
   // lifeline head, not to its center line
-  let headX = headView.x + headView.width / 2 - barShift(headView, opts.headSpans);
+  let headX = headView.x + headView.width / 2 - barShift(opts.headSpans);
   if (isCreate) {
     const headCenter = headView.x + headView.width / 2;
     headX = tailX <= headCenter ? headView.x : headView.x + headView.width;
