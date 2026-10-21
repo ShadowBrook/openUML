@@ -1299,6 +1299,16 @@ export class DiagramCanvas {
       headRect = new Rect(d.cur.x - 1, d.cur.y - 1, 2, 2);
       d.hoverTarget = null;
     }
+    // message tools: the preview starts where the user pressed on the tail
+    // lifeline (not the lifeline center), matching the eventual message
+    if (d.startPoint && String(d.edgeType || '').startsWith('UMLMessage')) {
+      const dstr = `M ${d.startPoint.x} ${d.startPoint.y} L ${d.cur.x} ${d.cur.y}`;
+      svgEl('path', {
+        d: dstr, fill: 'none', stroke: '#1390d6', 'stroke-dasharray': '5 4',
+        'stroke-width': 1.4 / this.zoom, 'vector-effect': 'non-scaling-stroke', class: 'connect-preview',
+      }, this.overlayLayer);
+      return;
+    }
     const geo = computeEdgeGeometry({ points: [], lineStyle: 'dashed' }, tailRect, headRect);
     const dstr = geo.points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
     svgEl('path', {
@@ -1687,6 +1697,7 @@ export class DiagramCanvas {
       const d = {
         kind: 'connect',
         tailId: hit.view._id,
+        startPoint: { x: w.x, y: w.y },
         cur: w,
         edgeType: tool.edgeType,
         allowLoose: isLost,
