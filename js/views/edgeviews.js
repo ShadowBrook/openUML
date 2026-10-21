@@ -180,15 +180,7 @@ export function renderMessage(g, view, model, tailView, headView, opts = {}) {
     const headCenter = headView.x + headView.width / 2;
     headX = tailX <= headCenter ? headView.x : headView.x + headView.width;
   }
-  // when the head activation covers y, the line stops short of the bar and the
-  // arrowhead sits with its tip on the bar's edge (body fully outside the bar)
-  // when the head activation covers y, pull the whole arrowhead just outside
-  // the bar so the arrow points at the bar edge without crossing it
-  const headCovered = covered(opts.headSpans) && !isCreate;
-  if (headCovered) {
-    const headDef = ARROW[view.headArrow] || ARROW.open;
-    headX = headX - ((headDef.size || 9) + 2);
-  }
+
   const points = [{ x: tailX, y }, { x: headX, y }];
   meta.points = points;
 
