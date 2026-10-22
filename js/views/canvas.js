@@ -369,9 +369,9 @@ export class DiagramCanvas {
    * Sequence-diagram activation bars: thin rectangles on lifelines covering
    * the spans where messages attach, computed from the diagram's messages.
    */
-  _renderActivations(views) {
+  /** Lifeline id -> activation spans [{start,end}] (shared with message trimming). */
+  _computeActivationSpans(views) {
     const lifelines = views.filter((v) => v.$type === 'UMLLifeLine');
-    if (!lifelines.length) return;
     const byId = new Map(lifelines.map((v) => [v._id, v]));
     const ysByLifeline = new Map(); // id -> sorted message ys
     for (const e of views) {
@@ -389,7 +389,7 @@ export class DiagramCanvas {
         if (tail) push(tail, e.y);
       }
     }
-    const merged = [];
+    const spansByLifeline = new Map();
     for (const ll of lifelines) {
       const ys = (ysByLifeline.get(ll._id) || []).sort((a, b) => a - b);
       const headH = viewH(ll), lifeH = ll.lifeHeight || 400;
@@ -402,7 +402,18 @@ export class DiagramCanvas {
         if (last && top <= last.end + 4) last.end = Math.max(last.end, bottom);
         else spans.push({ start: top, end: bottom });
       }
-      for (const s of spans) merged.push({ ll, s });
+      spansByLifeline.set(ll._id, spans);
+    }
+    return spansByLifeline;
+  }
+
+  _renderActivations(views) {
+    const lifelines = views.filter((v) => v.$type === 'UMLLifeLine');
+    if (!lifelines.length) return;
+    this._activationSpans = this._computeActivationSpans(views);
+    const merged = [];
+    for (const ll of lifelines) {
+      for (const s of this._activationSpans.get(ll._id) || []) merged.push({ ll, s });
     }
     for (const { ll, s } of merged) {
       const cx = ll.x + viewW(ll) / 2;
@@ -507,7 +518,11 @@ export class DiagramCanvas {
         const tailV = repository.lookup(e.tail);
         const headV = repository.lookup(e.head);
         if (!tailV || !headV) { g.remove(); return; }
-        meta = renderMessage(g, e, model, tailV, headV);
+        const spans = this._activationSpans || new Map();
+        meta = renderMessage(g, e, model, tailV, headV, {
+          tailSpans: spans.get(e.tail) || [],
+          headSpans: spans.get(e.head) || [],
+        });
       }
     } else if (e.tail === e.head) {
       // self-transition / self-association loop
@@ -1284,6 +1299,16 @@ export class DiagramCanvas {
       headRect = new Rect(d.cur.x - 1, d.cur.y - 1, 2, 2);
       d.hoverTarget = null;
     }
+    // message tools: the preview starts where the user pressed on the tail
+    // lifeline (not the lifeline center), matching the eventual message
+    if (d.startPoint && String(d.edgeType || '').startsWith('UMLMessage')) {
+      const dstr = `M ${d.startPoint.x} ${d.startPoint.y} L ${d.cur.x} ${d.cur.y}`;
+      svgEl('path', {
+        d: dstr, fill: 'none', stroke: '#1390d6', 'stroke-dasharray': '5 4',
+        'stroke-width': 1.4 / this.zoom, 'vector-effect': 'non-scaling-stroke', class: 'connect-preview',
+      }, this.overlayLayer);
+      return;
+    }
     const geo = computeEdgeGeometry({ points: [], lineStyle: 'dashed' }, tailRect, headRect);
     const dstr = geo.points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
     svgEl('path', {
@@ -1672,6 +1697,7 @@ export class DiagramCanvas {
       const d = {
         kind: 'connect',
         tailId: hit.view._id,
+        startPoint: { x: w.x, y: w.y },
         cur: w,
         edgeType: tool.edgeType,
         allowLoose: isLost,

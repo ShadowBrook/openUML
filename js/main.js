@@ -26,6 +26,7 @@ import { generateSQL, collectERD, SQL_DIALECTS } from './sql.js';
 import { cdmToPDM } from './sql.js';
 import { importSQLToDiagram, parseSQL } from './sql.js';
 import { t, setLang, availableLangs, getLang } from './ui/i18n.js';
+import { showAiDiagramDialog } from './ai/dialog.js';
 
 const DIAGRAM_TYPE_LABELS = {
   UMLClassDiagram: '类图', UMLUseCaseDiagram: '用例图', UMLSequenceDiagram: '序列图',
@@ -913,7 +914,7 @@ function showTemplateDialog() {
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
     overlay.className = 'dialog-overlay';
-    overlay.innerHTML = `<div class="dialog" style="width:420px">
+    overlay.innerHTML = `<div class="dialog-box" style="width:420px">
       <div class="dialog-title">从模板新建 (New From Template)</div>
       <div class="dialog-body" id="tpl-list" style="display:flex;flex-direction:column;gap:6px"></div>
       <div class="dialog-actions"><button class="btn" id="tpl-cancel">取消</button></div>
@@ -1012,7 +1013,7 @@ function openSQLImportDialog() {
   if (!diagram || diagram.type !== 'ERDDiagram') { showToast('请先打开一张 ERD / PDM 图'); return; }
   const overlay = document.createElement('div');
   overlay.className = 'dialog-overlay';
-  overlay.innerHTML = `<div class="dialog" style="width:720px;height:520px;display:flex;flex-direction:column">
+  overlay.innerHTML = `<div class="dialog-box" style="width:720px;height:520px;display:flex;flex-direction:column">
     <div class="dialog-title">从 SQL 反向导入 PDM（离线解析，不连接数据库）</div>
     <div class="dialog-body" style="flex:1;display:flex;flex-direction:column;gap:6px;min-height:0">
       <label style="color:var(--text-dim)">粘贴 CREATE TABLE / ALTER TABLE 语句（支持 MySQL / PostgreSQL / SQLite 方言）</label>
@@ -1085,7 +1086,7 @@ function openERDSQLDialog() {
   if (!entities.length) { showToast('当前图中没有实体/表'); return; }
   const overlay = document.createElement('div');
   overlay.className = 'dialog-overlay';
-  overlay.innerHTML = `<div class="dialog" style="width:760px;height:560px;display:flex;flex-direction:column">
+  overlay.innerHTML = `<div class="dialog-box" style="width:760px;height:560px;display:flex;flex-direction:column">
     <div class="dialog-title">PDM → SQL — ${entities.length} 表 / ${references.length} 引用 / ${views.length} 视图</div>
     <div class="dialog-body" style="flex:1;display:flex;flex-direction:column;gap:6px;min-height:0">
       <div style="display:flex;gap:8px;align-items:center">
@@ -1128,7 +1129,7 @@ function openCodegenDialog() {
   if (!files.length) { showToast('项目中没有可生成的类/接口/枚举'); return; }
   const overlay = document.createElement('div');
   overlay.className = 'dialog-overlay';
-  overlay.innerHTML = `<div class="dialog" style="width:720px;height:540px;display:flex;flex-direction:column">
+  overlay.innerHTML = `<div class="dialog-box" style="width:720px;height:540px;display:flex;flex-direction:column">
     <div class="dialog-title">代码生成 — Java（${files.length} 个文件）</div>
     <div class="dialog-body" style="flex:1;display:flex;flex-direction:column;gap:6px;min-height:0">
       <select id="gen-file" style="align-self:flex-start"></select>
@@ -1351,7 +1352,7 @@ function openMarkdownEditor() {
   if (!m) { showToast('请先选择一个元素'); return; }
   const overlay = document.createElement('div');
   overlay.className = 'dialog-overlay';
-  overlay.innerHTML = `<div class="dialog" style="width:760px;height:520px;display:flex;flex-direction:column">
+  overlay.innerHTML = `<div class="dialog-box" style="width:760px;height:520px;display:flex;flex-direction:column">
     <div class="dialog-title">文档编辑器 — ${m.name || m.type}（Markdown）</div>
     <div class="dialog-body" style="flex:1;display:flex;gap:8px;min-height:0">
       <textarea id="md-src" style="flex:1;font-family:monospace;resize:none"></textarea>
@@ -1400,7 +1401,7 @@ async function requestNewProject() {
   const choice = await new Promise((resolve) => {
     const overlay = document.createElement('div');
     overlay.className = 'dialog-overlay';
-    overlay.innerHTML = `<div class="dialog" style="width:420px">
+    overlay.innerHTML = `<div class="dialog-box" style="width:420px">
       <div class="dialog-title">新建项目</div>
       <div class="dialog-body">
         <div style="margin-bottom:8px;color:var(--text-dim)">选择初始图表类型：</div>
@@ -1645,12 +1646,22 @@ function paletteCommands() {
     { label: '验证模型…', group: '模型', run: runValidation },
     { label: '重命名选中元素…', group: '模型', shortcut: 'F2', enabled: !!repository.selectedModel, run: () => renameElement(repository.selectedModel) },
     { label: '关于 OpenUML', group: '帮助', run: showAboutDialog },
+    { label: 'AI 画图…', group: '模型', run: openAiDrawDialog },
     ...pluginCommands,
   ];
 }
 
 // commands registered at runtime through the window.openuml plugin API
 const pluginCommands = [];
+
+function openAiDrawDialog() {
+  showAiDiagramDialog({ onOpenDiagram: (diagram) => {
+    app.explorer.expandTo(diagram);
+    openDiagram(diagram);
+    markDirty(true);
+    storeProject(serializeProject(repository.root), { quiet: true });
+  } });
+}
 
 function openCommandPalette() {
   showPalette({
@@ -1824,6 +1835,7 @@ function buildMenus() {
         { label: '验证模型…', action: runValidation },
         { label: '文档编辑器… (Markdown)', disabled: !sel(), action: openMarkdownEditor },
         { label: '代码生成…', action: openCodegenDialog },
+        { label: 'AI 画图… (Beta)', action: openAiDrawDialog },
         { label: 'ERD / PDM 转 SQL…', action: openERDSQLDialog },
         { label: 'CDM → PDM 自动转换（生成外键列）', action: runCDMtoPDM },
         { label: '从 SQL 反向导入 PDM…', action: openSQLImportDialog },

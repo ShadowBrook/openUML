@@ -1194,7 +1194,6 @@ export function renderNode(g, view, model, kind) {
       meta.textSlots.name = { box: new Rect(x + tw + 10, y, w - tw - 10, tabH), text: model.name, field: 'name', align: 'center' };
       break;
     }
-    case 'note':
     case 'erdview': {
       const headH = fs + 12;
       svgEl('rect', { x, y, width: w, height: h, fill: view.fillColor || '#eafaf2', stroke: line, 'stroke-width': 1, class: 'node-frame' }, g);
@@ -1247,6 +1246,7 @@ export function renderNode(g, view, model, kind) {
       meta.textSlots.name = { box: new Rect(x, y, w, headH), text: model.name, field: 'name', align: 'center' };
       break;
     }
+    case 'note':
     case 'constraint': {
       const isConstraint = kind === 'constraint';
       const fold = 12;

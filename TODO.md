@@ -116,6 +116,26 @@
 - [x] 启动画面（应用就绪后淡出）
 - [x] 面板显隐开关（侧栏 / 导航器 / 工具箱 / 工具栏 / 状态栏，持久化）
 
+## P1.5 — AI 画图（feat/ai-diagram 分支）
+
+- [x] OpenAI 兼容客户端（`js/ai/client.js`：Base URL / API Key / 模型可配、
+      超时取消、JSON 提取容错、试连）
+- [x] 紧凑 DSL v1（`js/ai/dsl.js`：schema 校验 + Builder，类/接口/枚举/参与者/
+      用例/包/注释/对象 8 种节点与 10 种连线，`+name: Type` 成员简写）
+- [x] 「AI 画图…」对话框（`js/ai/dialog.js`：提示词生成、连接试连、
+      校验失败自动回修一轮、预览后插入为新图表，走命令栈可撤销）
+- [x] 序列图 DSL（participants + messages，sort ∈ sync/async/reply/create/delete，
+      消息按序定位、激活条自动计算）与活动图 DSL（initial/action/decision/merge/
+      fork/join/final/flowfinal/object + 控制流守卫）
+- [x] 流式输出（SSE 增量、状态栏实时字数）与生成中断（停止按钮 +
+      AbortController，中断不再产生部分插入）
+- [x] 提示词模板与示例库（对话框内置类图/对象图/序列图/活动图五个模板一键填充）
+- [x] 序列图注释支持（`notes: [{over:[生命线…], text, at}]`，对应 Mermaid
+      `Note over A,B:`；注释占据时间轴空间、后续消息自动下移，不再与消息堆叠，
+      生命线高度自动延伸）
+- [ ] 分支待合并：feat/ai-diagram → main（阶段三候选：泳道/复合片段 DSL、
+      多图一次生成、提示词编辑保存）
+
 ## P2 — 模型仓库与工程化
 
 - [x] 模型树多选（Ctrl/Shift）、拖拽改父级（防环、可撤销）、双击/F2 内联重命名、

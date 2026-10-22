@@ -204,6 +204,13 @@ samples/staruml/      StarUML UMLExample 转换样例、转换报告与 MIT 许�
 
 ## 编辑器能力
 
+- **AI 画图（Beta）**：模型 > AI 画图…（`feat/ai-diagram` 分支）。任意
+  OpenAI 兼容接口（DeepSeek/Kimi/通义/智谱/OpenAI/本地 Ollama·LM Studio），
+  配置地址/Key/模型后用自然语言描述即可生成图表并插入为新图表（可中断、流式回显）；
+  支持类图/对象图/序列图/活动图四家族（内置示例模板一键填充，
+  序列图支持 Mermaid `Note over` 式注释），
+  紧凑 DSL + 校验自动回修 + 网格布局与避障布线；序列图自动排布生命线与消息次序
+
 - **项目模板**：文件 > 从模板新建（UML Minimal / Conventional / 4+1 View / Rational）
 - **最近文件 / 直接写回**：File System Access API（Chromium），句柄持久化于
   IndexedDB，Ctrl+S 写回原文件；不支持的浏览器回退为文件选择器 + 下载
