@@ -8,6 +8,24 @@ function joinUrl(baseUrl, path) {
 }
 
 /**
+ * Resolve the request target + headers for one completion call.
+ * - direct: POST the provider URL (works for CORS-enabled providers)
+ * - proxy:  POST `proxyUrl` with X-Target-URL carrying the real provider URL
+ *           (works for serve.py /ai-proxy and Cloudflare Workers alike)
+ */
+function buildRequest(config, body, signal) {
+  const target = joinUrl(config.baseUrl, '/chat/completions');
+  const headers = { 'Content-Type': 'application/json' };
+  let url = target;
+  if (config.apiKey) headers.Authorization = `Bearer ${config.apiKey}`;
+  if (config.proxyUrl) {
+    url = config.proxyUrl;
+    headers['X-Target-URL'] = target;
+  }
+  return { url, headers, body: JSON.stringify(body), signal };
+}
+
+/**
  * One chat completion. Returns the assistant message content.
  * Config: { baseUrl, apiKey, model, temperature?, timeoutMs?, signal? }
  * messages: [{ role: 'system'|'user'|'assistant', content }]
@@ -15,8 +33,6 @@ function joinUrl(baseUrl, path) {
 export async function chatCompletion(config, messages) {
   if (!config || !config.baseUrl) throw new Error('未配置 API 地址（Base URL）');
   if (!config.model) throw new Error('未配置模型名称');
-  const headers = { 'Content-Type': 'application/json' };
-  if (config.apiKey) headers.Authorization = `Bearer ${config.apiKey}`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), config.timeoutMs || 120000);
   if (config.signal) {
@@ -25,15 +41,16 @@ export async function chatCompletion(config, messages) {
   }
   let res;
   try {
-    res = await fetch(joinUrl(config.baseUrl, '/chat/completions'), {
+    const { url, headers, body } = buildRequest(config, {
+      model: config.model,
+      messages,
+      temperature: config.temperature ?? 0.2,
+      ...(config.jsonMode ? { response_format: { type: 'json_object' } } : {}),
+    }, controller.signal);
+    res = await fetch(url, {
       method: 'POST',
       headers,
-      body: JSON.stringify({
-        model: config.model,
-        messages,
-        temperature: config.temperature ?? 0.2,
-        ...(config.jsonMode ? { response_format: { type: 'json_object' } } : {}),
-      }),
+      body,
       signal: controller.signal,
     });
   } catch (err) {
@@ -104,8 +121,6 @@ export async function testConnection(config) {
 export async function chatCompletionStream(config, messages, { onDelta, signal } = {}) {
   if (!config || !config.baseUrl) throw new Error('未配置 API 地址（Base URL）');
   if (!config.model) throw new Error('未配置模型名称');
-  const headers = { 'Content-Type': 'application/json' };
-  if (config.apiKey) headers.Authorization = `Bearer ${config.apiKey}`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), config.timeoutMs || 180000);
   if (signal) {
@@ -114,16 +129,17 @@ export async function chatCompletionStream(config, messages, { onDelta, signal }
   }
   let res;
   try {
-    res = await fetch(joinUrl(config.baseUrl, '/chat/completions'), {
+    const { url, headers, body } = buildRequest(config, {
+      model: config.model,
+      messages,
+      temperature: config.temperature ?? 0.2,
+      ...(config.jsonMode ? { response_format: { type: 'json_object' } } : {}),
+      stream: true,
+    }, controller.signal);
+    res = await fetch(url, {
       method: 'POST',
       headers,
-      body: JSON.stringify({
-        model: config.model,
-        messages,
-        temperature: config.temperature ?? 0.2,
-        ...(config.jsonMode ? { response_format: { type: 'json_object' } } : {}),
-        stream: true,
-      }),
+      body,
       signal: controller.signal,
     });
   } catch (err) {
