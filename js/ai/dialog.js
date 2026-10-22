@@ -5,6 +5,36 @@ import { systemPrompt, validateDsl, buildDiagram } from './dsl.js';
 import { repository } from '../core/repository.js';
 import { serializeProject } from '../core/commands.js';
 import { showToast } from '../ui/toast.js';
+
+// Cloudflare Worker implementing the X-Target-URL proxy contract (same as
+// serve.py's /ai-proxy). Users deploy this once; streaming passes through.
+const WORKER_CODE = `// OpenUML AI 代理 — 部署到 Cloudflare Workers（免费额度即可）
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, X-Target-URL, Authorization',
+};
+export default {
+  async fetch(request) {
+    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
+    if (request.method !== 'POST' || request.url.endsWith('/ai-proxy') === false && !request.headers.get('X-Target-URL')) {
+      return new Response('OpenUML AI proxy: POST with X-Target-URL header', { status: 400, headers: CORS });
+    }
+    const target = request.headers.get('X-Target-URL');
+    if (!target) return new Response('missing X-Target-URL', { status: 400, headers: CORS });
+    const headers = new Headers();
+    for (const h of ['Authorization', 'Content-Type', 'Accept']) {
+      const v = request.headers.get(h);
+      if (v) headers.set(h, v);
+    }
+    const up = await fetch(target, { method: 'POST', headers, body: await request.text() });
+    const resp = new Response(up.body, {
+      status: up.status,
+      headers: { 'Content-Type': up.headers.get('Content-Type') || 'application/json', ...CORS },
+    });
+    return resp;
+  },
+};`;
 import { t } from '../ui/i18n.js';
 
 const AI_PREFS_KEY = 'openuml-ai';
@@ -23,14 +53,16 @@ export function loadAiConfig() {
     apiKey: key,
     model: saved.model || '',
     rememberKey: !!saved.rememberKey,
+    proxyUrl: saved.proxyUrl || '',
   };
 }
 
 export function saveAiConfig(config) {
-  const { baseUrl, model, rememberKey } = config;
+  const { baseUrl, model, rememberKey, proxyUrl } = config;
   try {
     localStorage.setItem(AI_PREFS_KEY, JSON.stringify({
       baseUrl: baseUrl.trim(), model: model.trim(), rememberKey: !!rememberKey,
+      proxyUrl: (proxyUrl || '').trim(),
     }));
     if (rememberKey) localStorage.setItem(AI_PREFS_KEY + '-key', config.apiKey || '');
     else localStorage.removeItem(AI_PREFS_KEY + '-key');
@@ -111,6 +143,19 @@ export function showAiDiagramDialog({ onOpenDiagram } = {}) {
     <div class="dialog-box" style="width:600px;max-height:640px;display:flex;flex-direction:column">
       <div class="dialog-title">AI 画图（Beta）</div>
       <div class="dialog-body" style="display:flex;flex-direction:column;gap:8px;min-height:0">
+        <div style="display:grid;grid-template-columns:1fr auto;gap:6px">
+          <label style="display:flex;flex-direction:column;gap:2px;font-size:11px">请求方式
+            <select id="ai-mode" style="height:24px">
+              <option value="direct">直连（适用于 OpenAI / Kimi / 本地 Ollama 等）</option>
+              <option value="local-proxy">本地代理（127.0.0.1:8642/ai-proxy，需本地运行 serve.py，解决 DeepSeek 等跨域）</option>
+              <option value="custom-proxy">自定义代理地址（如自部署 Cloudflare Worker）</option>
+            </select></label>
+          <button class="btn" id="ai-worker" style="height:24px;align-self:end" title="复制部署到 Cloudflare Workers 的代理代码">复制 Worker 代码</button>
+        </div>
+        <div id="ai-custom-row" style="display:none">
+          <label style="display:flex;flex-direction:column;gap:2px;font-size:11px">代理地址
+            <input id="ai-proxy" type="text" placeholder="https://your-worker.your-name.workers.dev" value="${cfg.proxyUrl}"></label>
+        </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
           <label style="display:flex;flex-direction:column;gap:2px;font-size:11px">API 地址（OpenAI 兼容，含 /v1）
             <input id="ai-base" type="text" placeholder="https://api.deepseek.com/v1" value="${cfg.baseUrl}"></label>
@@ -154,12 +199,31 @@ export function showAiDiagramDialog({ onOpenDiagram } = {}) {
   // lazy lookups: element references are resolved at use time, never cached
   const field = (id) => overlay.querySelector('#' + id);
   const statusEl = () => field('ai-status');
-  const readConfig = () => ({
-    baseUrl: field('ai-base').value.trim(),
-    apiKey: field('ai-key').value.trim(),
-    model: field('ai-model').value.trim(),
-    rememberKey: field('ai-remember').checked,
-  });
+  {
+    const modeSel = field('ai-mode');
+    const savedMode = cfg.proxyUrl
+      ? (cfg.proxyUrl.includes('/ai-proxy') && location.hostname === 'localhost' || cfg.proxyUrl.includes('127.0.0.1:8642')
+          ? 'local-proxy' : 'custom-proxy')
+      : 'direct';
+    if (modeSel) {
+      modeSel.value = savedMode;
+      const row = field('ai-custom-row');
+      if (row) row.style.display = savedMode === 'custom-proxy' ? '' : 'none';
+    }
+  }
+  const readConfig = () => {
+    const mode = field('ai-mode').value;
+    const proxyUrl = mode === 'local-proxy'
+      ? `${location.origin}/ai-proxy`
+      : mode === 'custom-proxy' ? field('ai-proxy').value.trim() : '';
+    return {
+      baseUrl: field('ai-base').value.trim(),
+      apiKey: field('ai-key').value.trim(),
+      model: field('ai-model').value.trim(),
+      rememberKey: field('ai-remember').checked,
+      proxyUrl,
+    };
+  };
 
   let built = null;
   let abortCtl = null;
@@ -214,7 +278,8 @@ export function showAiDiagramDialog({ onOpenDiagram } = {}) {
       previewEl.textContent = previewText(built);
       previewEl.style.display = 'block';
     } catch (err) {
-      statusEl().textContent = `失败：${err.message}`;
+      statusEl().textContent = `失败：${err.message}` +
+        (/Failed to fetch/.test(err.message) ? '（跨域被拦截：DeepSeek 等供应商不支持浏览器直连，请切换「请求方式」为本地代理或自定义代理）' : '');
     } finally {
       setBusy(false);
       abortCtl = null;
@@ -242,6 +307,18 @@ export function showAiDiagramDialog({ onOpenDiagram } = {}) {
   });
   overlay.addEventListener('change', (e) => {
     if (e.target && e.target.id === 'ai-tpl') onTpl();
+  });
+  overlay.addEventListener('click', (e) => {
+    if (e.target && e.target.id === 'ai-worker') {
+      const code = WORKER_CODE;
+      navigator.clipboard?.writeText(code).then(() => showToast('Worker 代码已复制，粘贴到 Cloudflare Workers 部署后，把分配的地址填入「自定义代理地址」'), () => {});
+    }
+  });
+  overlay.addEventListener('change', (e) => {
+    if (e.target && e.target.id === 'ai-mode') {
+      const customRow = field('ai-custom-row');
+      if (customRow) customRow.style.display = e.target.value === 'custom-proxy' ? '' : 'none';
+    }
   });
   overlay.addEventListener('keydown', (e) => { if (e.key === 'Escape') overlay.remove(); });
 }

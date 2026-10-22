@@ -133,6 +133,9 @@
 - [x] 序列图注释支持（`notes: [{over:[生命线…], text, at}]`，对应 Mermaid
       `Note over A,B:`；注释占据时间轴空间、后续消息自动下移，不再与消息堆叠，
       生命线高度自动延伸）
+- [x] 跨域方案：serve.py 内置 `/ai-proxy` 流式转发代理（本地）+ 对话框
+      「请求方式」三选（直连/本地代理/自定义代理）+ Cloudflare Worker
+      代理代码一键复制（GitHub Pages 静态托管场景）
 - [ ] 分支待合并：feat/ai-diagram → main（阶段三候选：泳道/复合片段 DSL、
       多图一次生成、提示词编辑保存）
 
