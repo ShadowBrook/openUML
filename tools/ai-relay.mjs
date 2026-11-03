@@ -15,7 +15,8 @@ const PORT = Number(process.argv[2] || 8643);
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, X-Target-URL, Authorization',
+  'Access-Control-Allow-Headers': 'Content-Type, X-Target-URL, Authorization, Access-Control-Request-Private-Network',
+  'Access-Control-Allow-Private-Network': 'true',  // Chrome PNA: 公网页面 → 本地中继必须
 };
 
 const server = http.createServer(async (req, res) => {
