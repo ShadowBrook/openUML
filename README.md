@@ -210,7 +210,7 @@ samples/staruml/      StarUML UMLExample 转换样例、转换报告与 MIT 许�
   **跨域方案**：请求方式可选 直连（OpenAI/Kimi/Ollama 等支持 CORS 的端点）/
   本地代理（本地运行 serve.py 时自动可用，适用 DeepSeek 等无 CORS 供应商）/
   自定义代理（对话框一键复制 Cloudflare Worker 代码，部署后填地址——GitHub
-  Pages 等静态托管推荐此方式）
+  Pages 等静态托管推荐此方式；或本地跑零依赖的 `tools/ai-relay.mjs`）
   OpenAI 兼容接口（DeepSeek/Kimi/通义/智谱/OpenAI/本地 Ollama·LM Studio），
   配置地址/Key/模型后用自然语言描述即可生成图表并插入为新图表（可中断、流式回显）；
   支持类图/对象图/序列图/活动图四家族（内置示例模板一键填充，

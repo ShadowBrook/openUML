@@ -100,17 +100,18 @@ export function renderSelfLoop(g, edge, model, rect) {
   }
   // ERD reference/relationship: cardinalities near each end
   if (edge.$type === 'ERDReference' || edge.$type === 'ERDRelationship') {
-    const card = (text, end, before) => {
+    const loopMid = midPoint(points);
+    const card = (text, end) => {
       if (!text) return;
-      const side = end.x <= mid.x ? 'start' : 'end';
+      const side = end.x <= loopMid.x ? 'start' : 'end';
       const t = svgEl('text', {
         x: end.x + (side === 'start' ? 8 : -8), y: end.y - 6,
-        'text-anchor': side, 'font-size': fs, fill: fontColor,
+        'text-anchor': side, 'font-size': fs, fill: edge.fontColor || '#353535',
       }, g);
       t.textContent = text;
     };
-    card(edge.tailCardinality, tailEnd);
-    card(edge.headCardinality, headEnd);
+    card(edge.tailCardinality, points[0]);
+    card(edge.headCardinality, points[3]);
   }
   if (edge.$type === 'UMLExtension' && model?.multiplicity) {
     const mt = svgEl('text', {
@@ -471,6 +472,27 @@ export function renderEdge(g, edge, model, tailRect, headRect, opts = {}) {
       'font-size': fs, fill: fontColor,
     }, g);
     mt.textContent = model.multiplicity;
+  }
+  // ERD reference/relationship: cardinalities near each end, nudged along the
+  // first/last line segment so the label stays between the entities instead of
+  // landing inside the entity box
+  if (edge.$type === 'ERDReference' || edge.$type === 'ERDRelationship') {
+    const card = (text, from, to) => {
+      if (!text) return;
+      const dx = to.x - from.x, dy = to.y - from.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const horiz = Math.abs(dx) >= Math.abs(dy);
+      const ux = (dx / len) * 14, uy = (dy / len) * 14;
+      const t = svgEl('text', {
+        x: from.x + ux + (horiz ? 0 : 6),
+        y: from.y + uy + (horiz ? -5 : 4),
+        'text-anchor': horiz ? 'middle' : 'start',
+        'font-size': fs, fill: fontColor,
+      }, g);
+      t.textContent = text;
+    };
+    card(edge.tailCardinality, points[0], points[1]);
+    card(edge.headCardinality, points[points.length - 1], points[points.length - 2]);
   }
   if (labelParts.length) {
     const t = svgEl('text', {

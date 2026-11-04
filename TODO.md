@@ -136,6 +136,8 @@
 - [x] 跨域方案：serve.py 内置 `/ai-proxy` 流式转发代理（本地）+ 对话框
       「请求方式」三选（直连/本地代理/自定义代理）+ Cloudflare Worker
       代理代码一键复制（GitHub Pages 静态托管场景）
+- [x] 本地 JS 中继 `tools/ai-relay.mjs`（零依赖 Node，SSE 流式透传，
+      契约与 serve.py/Worker 一致；不想跑 Python 时的替代）
 - [ ] 分支待合并：feat/ai-diagram → main（阶段三候选：泳道/复合片段 DSL、
       多图一次生成、提示词编辑保存）
 
@@ -180,3 +182,50 @@
   可在偏好设置中自定义任意纸面色，深色纸面时网格点自动切换浅色调保证对比
 - 对象图"链接对象"为独立连接线 + 中点对象框（真实 UMLObject 模型：
   分类器 + 槽，undo/redo 一致；旧版视图级链接对象仍兼容显示）
+
+## 与 StarUML 操作行为的对齐（2026-11-04 全量核对官方文档后修复）
+
+已对齐（本次修复）：
+
+- 工具保持激活：创建一个元素后不再自动回到选择工具，Esc / 选择工具退出
+  （此前单发制，StarUML 为保持激活）
+- 节点拖拽出尺寸：工具按下拖动画出元素尺寸（ghost 预览、网格取整、
+  最小 30×20），单击仍为默认尺寸——官方文档手势
+- Esc 取消进行中手势：连线 / 创建 / 移动 / 缩放 / 拐点 / 标签 / 操作数分隔
+  全部恢复拖前状态且不产生命令
+- 框选为二维相交判定（"overlaps the area"，此前 OR 逻辑会把仅横向重叠的
+  元素误选）
+- 方向键微移 1px、Shift+方向键按网格步进（此前固定 10px）；微移可撤销，
+  连按合并为一条命令（撤销后不延续连发，避免弹错命令）
+- 快捷键对齐官方键位表：适应窗口 Ctrl+9、实际大小 Ctrl+0、
+  在资源管理器中显示 Ctrl+E、在图表中定位 Ctrl+D（此前 Ctrl+D 被创建副本占用，
+  创建副本改无快捷键）、复制图表为图片 Ctrl+Shift+C、导出 PNG Ctrl+Shift+E、
+  关闭当前/其他/全部图表 F4 / Ctrl+F4 / Shift+F4、上/下一图表 Ctrl+Shift+[ / ]、
+  显示网格 Ctrl+G、吸附网格 Ctrl+Shift+G、面板 Ctrl+1/2/3/4/5（侧栏/导航器/
+  工具栏/状态栏/工具箱）、填充颜色 Ctrl+Shift+I、线条颜色 Ctrl+Shift+L、
+  连线样式 直角 Ctrl+L / 斜线 Ctrl+B / 圆角 Ctrl+Alt+L / 曲线 Ctrl+Alt+B
+  （新增格式 > 线条样式子菜单，等价 StarUML Format > Line Style）
+- 画布空态提示文案修正（方向键是移动元素而非滚动）
+
+仍保留的差异（有意或待办）：
+
+- [ ] 双击关联线端部应打开关联端 QuickEdit（角色名/多重性/聚合），
+      目前双击边为整条改名，端属性在属性面板编辑
+- [ ] QuickEdit 成员行的 Ctrl+Up/Ctrl+Down/Ctrl+Delete（成员移动/删除）：
+      目前成员排序/删除在属性面板
+- [ ] 格式菜单的显示开关族尚未入菜单/快捷键（Word Wrap Ctrl+Shift+W、
+      Show Visibility Ctrl+Shift+V、Namespace N、Type Y、Multiplicity M、
+      Operation Signature J、Suppress Attributes/Operations/Literals A/O/T、
+      Stereotype Display Ctrl+Shift+0..5、Show Shadow Ctrl+Shift+H、
+      Auto Resize Ctrl+Shift+R、Inherit Style Ctrl+Shift+K）——
+      功能本身已在属性/样式面板支持，仅差菜单入口
+- [ ] Format > Font 字体对话框（Ctrl+Shift+F）：目前仅有字体颜色；
+      Ctrl+Shift+F 暂保留为适应窗口的别名
+- [ ] Edit > Move Up/Down（Ctrl+Shift+Up/Down 成员排序快捷键）
+- [ ] ERD Entity QuickEdit（Ctrl+Enter 加列等）
+- [ ] Ctrl+P：StarUML 为 Quick Find，本项目保留为打印/导出 PDF（web 惯例），
+      Quick Find 在 Ctrl+F（StarUML 的 Model > Find 同为 Ctrl+F，语义相近）
+- [ ] Ctrl+6（Editors 面板）：属性/样式编辑器目前不独立成面板
+- [ ] Ctrl+Tab / Ctrl+W 切换页签：浏览器占用，保留 Ctrl+Shift+[ / ] 与
+      Ctrl+Alt+PageUp/Down
+- [ ] 模型校验为手动触发（StarUML 有验证规则文档与批量校验面板）

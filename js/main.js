@@ -1595,9 +1595,9 @@ function paletteCommands() {
     { label: '保存项目', group: '文件', shortcut: 'Ctrl+S', run: () => saveProject(false) },
     { label: '项目另存为…', group: '文件', shortcut: 'Ctrl+Shift+S', run: () => saveProject(true) },
     { label: '导出为 SVG', group: '文件', enabled: hasView(), run: exportCurrentSVG },
-    { label: '导出为 PNG', group: '文件', enabled: hasView(), run: exportCurrentPNG },
+    { label: '导出为 PNG', group: '文件', shortcut: 'Ctrl+Shift+E', enabled: hasView(), run: exportCurrentPNG },
     { label: '导出为 JPEG', group: '文件', enabled: hasView(), run: exportCurrentJPEG },
-    { label: '复制图表为图片', group: '文件', enabled: hasView(), run: copyCurrentDiagram },
+    { label: '复制图表为图片', group: '文件', shortcut: 'Ctrl+Shift+C', enabled: hasView(), run: copyCurrentDiagram },
     { label: '打印 / 导出 PDF…', group: '文件', shortcut: 'Ctrl+P', enabled: hasView(), run: printCurrentDiagram },
 
     { label: '撤销', group: '编辑', shortcut: 'Ctrl+Z', run: () => commandStack.undo() },
@@ -1605,7 +1605,7 @@ function paletteCommands() {
     { label: '剪切', group: '编辑', shortcut: 'Ctrl+X', enabled: hasSel(), run: cutSelection },
     { label: '复制', group: '编辑', shortcut: 'Ctrl+C', enabled: hasSel(), run: () => copySelection() },
     { label: '粘贴', group: '编辑', shortcut: 'Ctrl+V', enabled: !!clipboard, run: () => pasteClipboard() },
-    { label: '创建副本', group: '编辑', shortcut: 'Ctrl+D', enabled: hasSel(), run: duplicateSelection },
+    { label: '创建副本', group: '编辑', enabled: hasSel(), run: duplicateSelection },
     { label: '从图表删除', group: '编辑', shortcut: 'Del', enabled: hasSel(), run: () => app.canvas.deleteSelection() },
     { label: '删除模型元素', group: '编辑', shortcut: 'Ctrl+Del', enabled: hasSel(), run: () => app.canvas.deleteSelectionDeep() },
     { label: '全选', group: '编辑', shortcut: 'Ctrl+A', run: () => { if (app.activeDiagram) repository.select(app.activeDiagram.elements.map((v) => v._id)); } },
@@ -1617,16 +1617,16 @@ function paletteCommands() {
 
     { label: '放大', group: '视图', shortcut: 'Ctrl++', run: () => app.canvas.zoomIn() },
     { label: '缩小', group: '视图', shortcut: 'Ctrl+-', run: () => app.canvas.zoomOut() },
-    { label: '适应窗口', group: '视图', shortcut: 'Ctrl+Shift+F', run: () => app.canvas.zoomFit() },
-    { label: '实际大小 (100%)', group: '视图', run: () => { app.canvas.zoom = 1; app.canvas._zoomChanged(); } },
-    { label: app.canvas.showGrid ? '隐藏网格' : '显示网格', group: '视图', run: toggleGrid },
-    { label: app.canvas.snapToGrid ? '关闭吸附网格' : '开启吸附网格', group: '视图', run: toggleSnap },
+    { label: '适应窗口', group: '视图', shortcut: 'Ctrl+9', run: () => app.canvas.zoomFit() },
+    { label: '实际大小 (100%)', group: '视图', shortcut: 'Ctrl+0', run: () => app.canvas.zoomActual() },
+    { label: app.canvas.showGrid ? '隐藏网格' : '显示网格', group: '视图', shortcut: 'Ctrl+G', run: toggleGrid },
+    { label: app.canvas.snapToGrid ? '关闭吸附网格' : '开启吸附网格', group: '视图', shortcut: 'Ctrl+Shift+G', run: toggleSnap },
     { label: app.theme === 'dark' ? '切换浅色主题' : '切换深色主题', group: '视图', run: () => setTheme(app.theme === 'dark' ? 'light' : 'dark') },
-    { label: '上一图表', group: '视图', shortcut: 'Ctrl+Alt+PageUp', enabled: app.openDiagrams.length > 1, run: () => cycleDiagram(-1) },
-    { label: '下一图表', group: '视图', shortcut: 'Ctrl+Alt+PageDown', enabled: app.openDiagrams.length > 1, run: () => cycleDiagram(1) },
-    { label: '关闭当前图表', group: '视图', enabled: hasView(), run: closeCurrentDiagram },
-    { label: '关闭其他图表', group: '视图', enabled: hasView(), run: closeOtherDiagrams },
-    { label: '关闭全部图表', group: '视图', enabled: hasView(), run: closeAllDiagrams },
+    { label: '上一图表', group: '视图', shortcut: 'Ctrl+Shift+[', enabled: app.openDiagrams.length > 1, run: () => cycleDiagram(-1) },
+    { label: '下一图表', group: '视图', shortcut: 'Ctrl+Shift+]', enabled: app.openDiagrams.length > 1, run: () => cycleDiagram(1) },
+    { label: '关闭当前图表', group: '视图', shortcut: 'F4', enabled: hasView(), run: closeCurrentDiagram },
+    { label: '关闭其他图表', group: '视图', shortcut: 'Ctrl+F4', enabled: hasView(), run: closeOtherDiagrams },
+    { label: '关闭全部图表', group: '视图', shortcut: 'Shift+F4', enabled: hasView(), run: closeAllDiagrams },
 
     { label: '左对齐', group: '格式', enabled: repository.selections.length >= 2, run: () => alignSelected('left') },
     { label: '水平居中', group: '格式', enabled: repository.selections.length >= 2, run: () => alignSelected('hcenter') },
@@ -1637,9 +1637,13 @@ function paletteCommands() {
     { label: '宽度相同', group: '格式', enabled: repository.selections.length >= 2, run: () => sameSizeMode('w') },
     { label: '高度相同', group: '格式', enabled: repository.selections.length >= 2, run: () => sameSizeMode('h') },
     { label: '宽高相同', group: '格式', enabled: repository.selections.length >= 2, run: () => sameSizeMode('wh') },
-    { label: '填充颜色…', group: '格式', enabled: hasSel(), run: () => pickColor('fill', (v) => applyColor('fillColor', v)) },
-    { label: '线条颜色…', group: '格式', enabled: hasSel(), run: () => pickColor('line', (v) => applyColor('lineColor', v)) },
+    { label: '填充颜色…', group: '格式', shortcut: 'Ctrl+Shift+I', enabled: hasSel(), run: () => pickColor('fill', (v) => applyColor('fillColor', v)) },
+    { label: '线条颜色…', group: '格式', shortcut: 'Ctrl+Shift+L', enabled: hasSel(), run: () => pickColor('line', (v) => applyColor('lineColor', v)) },
     { label: '字体颜色…', group: '格式', enabled: hasSel(), run: () => pickColor('font', (v) => applyColor('fontColor', v)) },
+    { label: '连线改为直角', group: '格式', shortcut: 'Ctrl+L', enabled: hasSel(), run: () => setEdgeLineMode('orthogonal') },
+    { label: '连线改为斜线', group: '格式', shortcut: 'Ctrl+B', enabled: hasSel(), run: () => setEdgeLineMode('oblique') },
+    { label: '连线改为圆角', group: '格式', shortcut: 'Ctrl+Alt+L', enabled: hasSel(), run: () => setEdgeLineMode('rounded') },
+    { label: '连线改为曲线', group: '格式', shortcut: 'Ctrl+Alt+B', enabled: hasSel(), run: () => setEdgeLineMode('curved') },
     { label: '置于顶层', group: '格式', enabled: hasSel(), run: () => app.canvas.bringToFront() },
     { label: '置于底层', group: '格式', enabled: hasSel(), run: () => app.canvas.sendToBack() },
 
@@ -1758,7 +1762,7 @@ function buildMenus() {
         { label: '导入片段 (.mfj)…', action: importFragment },
         '---',
         { label: '导出为 SVG', action: exportCurrentSVG },
-        { label: '导出为 PNG', action: exportCurrentPNG },
+        { label: '导出为 PNG', shortcut: 'Ctrl+Shift+E', action: exportCurrentPNG },
         { label: '导出为 JPEG', action: exportCurrentJPEG },
         { label: '导出为 PDF（直接导出）', action: exportCurrentPDF },
         { label: '导出全部图表', submenu: [
@@ -1767,7 +1771,7 @@ function buildMenus() {
           { label: '全部导出为 JPEG', action: exportAllJPEG },
           { label: '全部导出为 PDF', action: exportAllPDF },
         ] },
-        { label: '复制图表为图片', action: copyCurrentDiagram },
+        { label: '复制图表为图片', shortcut: 'Ctrl+Shift+C', action: copyCurrentDiagram },
         { label: '打印 / 导出 PDF…', shortcut: 'Ctrl+P', action: printCurrentDiagram },
       ],
     },
@@ -1784,7 +1788,7 @@ function buildMenus() {
         { label: '剪切', shortcut: 'Ctrl+X', disabled: !hasSel(), action: cutSelection },
         { label: '复制', shortcut: 'Ctrl+C', disabled: !hasSel(), action: () => copySelection() },
         { label: '粘贴', shortcut: 'Ctrl+V', disabled: !clipboard, action: () => pasteClipboard() },
-        { label: '创建副本', shortcut: 'Ctrl+D', disabled: !hasSel(), action: () => duplicateSelection() },
+        { label: '创建副本', disabled: !hasSel(), action: () => duplicateSelection() },
         '---',
         { label: '从图表删除', shortcut: 'Del', disabled: !hasSel(), action: () => app.canvas.deleteSelection() },
         { label: '删除模型元素', shortcut: 'Ctrl+Del', disabled: !hasSel(), action: () => app.canvas.deleteSelectionDeep() },
@@ -1792,8 +1796,8 @@ function buildMenus() {
         { label: '查找…', shortcut: 'Ctrl+F', action: openQuickFindPalette },
         { label: '命令面板…', shortcut: 'Ctrl+Shift+P', action: openCommandPalette },
         '---',
-        { label: '在资源管理器中显示', disabled: !sel(), action: revealInExplorer },
-        { label: '在图表中定位', disabled: !sel(), action: locateInDiagram },
+        { label: '在资源管理器中显示', shortcut: 'Ctrl+E', disabled: !sel(), action: revealInExplorer },
+        { label: '在图表中定位', shortcut: 'Ctrl+D', disabled: !sel(), action: locateInDiagram },
         '---',
         { label: '偏好设置…', shortcut: 'Ctrl+,', action: editPreferences },
       ],
@@ -1859,9 +1863,15 @@ function buildMenus() {
           { label: '高度', disabled: repository.selections.length < 2, action: () => sameSizeMode('h') },
           { label: '宽和高', disabled: repository.selections.length < 2, action: () => sameSizeMode('wh') },
         ] },
+        { label: '线条样式', disabled: !repository.selections.some((id) => { const v = repository.lookup(id); return v && v.isEdge; }), submenu: [
+          { label: '直角', shortcut: 'Ctrl+L', action: () => setEdgeLineMode('orthogonal') },
+          { label: '斜线', shortcut: 'Ctrl+B', action: () => setEdgeLineMode('oblique') },
+          { label: '圆角', shortcut: 'Ctrl+Alt+L', action: () => setEdgeLineMode('rounded') },
+          { label: '曲线', shortcut: 'Ctrl+Alt+B', action: () => setEdgeLineMode('curved') },
+        ] },
         '---',
-        { label: '填充颜色…', disabled: !hasSel(), action: () => pickColor('fill', (v) => applyColor('fillColor', v)) },
-        { label: '线条颜色…', disabled: !hasSel(), action: () => pickColor('line', (v) => applyColor('lineColor', v)) },
+        { label: '填充颜色…', shortcut: 'Ctrl+Shift+I', disabled: !hasSel(), action: () => pickColor('fill', (v) => applyColor('fillColor', v)) },
+        { label: '线条颜色…', shortcut: 'Ctrl+Shift+L', disabled: !hasSel(), action: () => pickColor('line', (v) => applyColor('lineColor', v)) },
         { label: '字体颜色…', disabled: !hasSel(), action: () => pickColor('font', (v) => applyColor('fontColor', v)) },
         '---',
         { label: '置于顶层', disabled: !hasSel(), action: () => app.canvas.bringToFront() },
@@ -1872,25 +1882,25 @@ function buildMenus() {
       label: '视图', submenu: [
         { label: '放大', shortcut: 'Ctrl++', action: () => app.canvas.zoomIn() },
         { label: '缩小', shortcut: 'Ctrl+-', action: () => app.canvas.zoomOut() },
-        { label: '适应窗口', shortcut: 'Ctrl+Shift+F', action: () => app.canvas.zoomFit() },
-        { label: '实际大小 (100%)', action: () => { app.canvas.zoom = 1; app.canvas._zoomChanged(); } },
+        { label: '适应窗口', shortcut: 'Ctrl+9', action: () => app.canvas.zoomFit() },
+        { label: '实际大小 (100%)', shortcut: 'Ctrl+0', action: () => app.canvas.zoomActual() },
         '---',
-        { label: '上一图表', shortcut: 'Ctrl+Alt+PageUp', disabled: app.openDiagrams.length < 2, action: () => cycleDiagram(-1) },
-        { label: '下一图表', shortcut: 'Ctrl+Alt+PageDown', disabled: app.openDiagrams.length < 2, action: () => cycleDiagram(1) },
-        { label: '关闭当前图表', disabled: !app.activeDiagram, action: closeCurrentDiagram },
-        { label: '关闭其他图表', disabled: !app.activeDiagram, action: closeOtherDiagrams },
-        { label: '关闭全部图表', disabled: !app.activeDiagram, action: closeAllDiagrams },
+        { label: '上一图表', shortcut: 'Ctrl+Shift+[', disabled: app.openDiagrams.length < 2, action: () => cycleDiagram(-1) },
+        { label: '下一图表', shortcut: 'Ctrl+Shift+]', disabled: app.openDiagrams.length < 2, action: () => cycleDiagram(1) },
+        { label: '关闭当前图表', shortcut: 'F4', disabled: !app.activeDiagram, action: closeCurrentDiagram },
+        { label: '关闭其他图表', shortcut: 'Ctrl+F4', disabled: !app.activeDiagram, action: closeOtherDiagrams },
+        { label: '关闭全部图表', shortcut: 'Shift+F4', disabled: !app.activeDiagram, action: closeAllDiagrams },
         '---',
         { label: '面板', submenu: [
-          { label: '侧栏', checked: app.prefs.panels.sidebar !== false, action: () => togglePanel('sidebar') },
-          { label: '导航器', checked: app.prefs.panels.navigator !== false, action: () => togglePanel('navigator') },
-          { label: '工具箱', checked: app.prefs.panels.toolbox !== false, action: () => togglePanel('toolbox') },
-          { label: '工具栏', checked: app.prefs.panels.toolbar !== false, action: () => togglePanel('toolbar') },
-          { label: '状态栏', checked: app.prefs.panels.statusbar !== false, action: () => togglePanel('statusbar') },
+          { label: '侧栏', shortcut: 'Ctrl+1', checked: app.prefs.panels.sidebar !== false, action: () => togglePanel('sidebar') },
+          { label: '导航器', shortcut: 'Ctrl+2', checked: app.prefs.panels.navigator !== false, action: () => togglePanel('navigator') },
+          { label: '工具箱', shortcut: 'Ctrl+5', checked: app.prefs.panels.toolbox !== false, action: () => togglePanel('toolbox') },
+          { label: '工具栏', shortcut: 'Ctrl+3', checked: app.prefs.panels.toolbar !== false, action: () => togglePanel('toolbar') },
+          { label: '状态栏', shortcut: 'Ctrl+4', checked: app.prefs.panels.statusbar !== false, action: () => togglePanel('statusbar') },
         ] },
         '---',
-        { label: '显示网格', checked: app.canvas.showGrid, action: toggleGrid },
-        { label: '吸附网格', checked: app.canvas.snapToGrid, action: toggleSnap },
+        { label: '显示网格', shortcut: 'Ctrl+G', checked: app.canvas.showGrid, action: toggleGrid },
+        { label: '吸附网格', shortcut: 'Ctrl+Shift+G', checked: app.canvas.snapToGrid, action: toggleSnap },
         { label: '连线自动避障', checked: app.canvas.autoRoute !== false, action: toggleAutoRoute },
         '---',
         { label: '深色主题', checked: app.theme === 'dark', action: () => setTheme(app.theme === 'dark' ? 'light' : 'dark') },
@@ -1992,6 +2002,22 @@ function showInDiagram(model, canvas) {
 
 // ---------------- keyboard ----------------
 
+// coalesced arrow-key nudge: one undo step per burst (StarUML-style)
+let arrowMove = null;
+
+function setEdgeLineMode(mode) {
+  const views = repository.selections
+    .map((id) => repository.lookup(id))
+    .filter((v) => v && v.isEdge);
+  if (!views.length) return;
+  const edits = views.map((v) => ({ v, before: v.lineMode || 'orthogonal' }));
+  commandStack.exec({
+    label: 'line style',
+    redo: () => { for (const b of edits) b.v.lineMode = mode; app.canvas.requestRender(); },
+    undo: () => { for (const b of edits) b.v.lineMode = b.before; app.canvas.requestRender(); },
+  });
+}
+
 function bindKeys() {
   window.addEventListener('keydown', (e) => {
     if (isPaletteOpen()) {
@@ -2008,18 +2034,47 @@ function bindKeys() {
     if (ctrl && e.key.toLowerCase() === 'n') { e.preventDefault(); requestNewProject(); return; }
     if (ctrl && e.key.toLowerCase() === 'a') { e.preventDefault(); if (app.activeDiagram) repository.select(app.activeDiagram.elements.map((v) => v._id)); return; }
     if (ctrl && e.key.toLowerCase() === 'x') { e.preventDefault(); cutSelection(); return; }
-    if (ctrl && e.key.toLowerCase() === 'c') { e.preventDefault(); copySelection(); return; }
+    if (ctrl && e.key.toLowerCase() === 'c' && !e.shiftKey) { e.preventDefault(); copySelection(); return; }
+    if (ctrl && e.shiftKey && e.key.toLowerCase() === 'c') { e.preventDefault(); copyCurrentDiagram(); return; }
     if (ctrl && e.key.toLowerCase() === 'v') { e.preventDefault(); pasteClipboard(); return; }
-    if (ctrl && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateSelection(); return; }
+    if (ctrl && e.key.toLowerCase() === 'e' && !e.shiftKey) { e.preventDefault(); if (repository.selectedModel) revealInExplorer(); return; }
+    if (ctrl && e.key.toLowerCase() === 'd' && !e.shiftKey) { e.preventDefault(); locateInDiagram(); return; }
     if (ctrl && e.shiftKey && e.key.toLowerCase() === 'p') { e.preventDefault(); openCommandPalette(); return; }
     if (ctrl && e.key === ',') { e.preventDefault(); editPreferences(); return; }
     if (ctrl && e.key.toLowerCase() === 'p') { e.preventDefault(); printCurrentDiagram(); return; }
+    if (ctrl && e.shiftKey && e.key.toLowerCase() === 'e') { e.preventDefault(); if (app.activeDiagram) exportCurrentPNG(); return; }
     if (ctrl && e.key.toLowerCase() === 'f' && !e.shiftKey) { e.preventDefault(); openQuickFindPalette(); return; }
     if (ctrl && (e.key === '=' || e.key === '+')) { e.preventDefault(); app.canvas.zoomIn(); return; }
     if (ctrl && e.key === '-') { e.preventDefault(); app.canvas.zoomOut(); return; }
+    if (ctrl && !e.shiftKey && e.key === '0') { e.preventDefault(); app.canvas.zoomActual(); return; }
+    if (ctrl && e.key === '9') { e.preventDefault(); app.canvas.zoomFit(); return; }
     if (ctrl && e.shiftKey && e.key.toLowerCase() === 'f') { e.preventDefault(); app.canvas.zoomFit(); return; }
+    if (ctrl && e.shiftKey && e.key === ']') { e.preventDefault(); cycleDiagram(1); return; }
+    if (ctrl && e.shiftKey && e.key === '[') { e.preventDefault(); cycleDiagram(-1); return; }
     if (ctrl && e.altKey && e.key === 'PageUp') { e.preventDefault(); cycleDiagram(-1); return; }
     if (ctrl && e.altKey && e.key === 'PageDown') { e.preventDefault(); cycleDiagram(1); return; }
+    if (ctrl && e.key.toLowerCase() === 'g' && !e.shiftKey) { e.preventDefault(); toggleGrid(); return; }
+    if (ctrl && e.shiftKey && e.key.toLowerCase() === 'g') { e.preventDefault(); toggleSnap(); return; }
+    if (ctrl && e.shiftKey && e.key.toLowerCase() === 'i') { e.preventDefault(); if (repository.selections.length) pickColor('fill', (v) => applyColor('fillColor', v)); return; }
+    if (ctrl && e.shiftKey && e.key.toLowerCase() === 'l') { e.preventDefault(); if (repository.selections.length) pickColor('line', (v) => applyColor('lineColor', v)); return; }
+    // line style (StarUML: Format > Line Style)
+    if (ctrl && e.altKey && e.key.toLowerCase() === 'l') { e.preventDefault(); setEdgeLineMode('rounded'); return; }
+    if (ctrl && e.altKey && e.key.toLowerCase() === 'b') { e.preventDefault(); setEdgeLineMode('curved'); return; }
+    if (ctrl && e.key.toLowerCase() === 'l' && !e.altKey && !e.shiftKey) { e.preventDefault(); setEdgeLineMode('orthogonal'); return; }
+    if (ctrl && e.key.toLowerCase() === 'b' && !e.altKey && !e.shiftKey) { e.preventDefault(); setEdgeLineMode('oblique'); return; }
+    // panels (StarUML: View > Sidebar/Navigator/Toolbar/Statusbar/Toolbox)
+    if (ctrl && !e.shiftKey && e.key === '1') { e.preventDefault(); togglePanel('sidebar'); return; }
+    if (ctrl && !e.shiftKey && e.key === '2') { e.preventDefault(); togglePanel('navigator'); return; }
+    if (ctrl && !e.shiftKey && e.key === '3') { e.preventDefault(); togglePanel('toolbar'); return; }
+    if (ctrl && !e.shiftKey && e.key === '4') { e.preventDefault(); togglePanel('statusbar'); return; }
+    if (ctrl && !e.shiftKey && e.key === '5') { e.preventDefault(); togglePanel('toolbox'); return; }
+    if (e.key === 'F4') {
+      e.preventDefault();
+      if (e.ctrlKey) closeOtherDiagrams();
+      else if (e.shiftKey) closeAllDiagrams();
+      else closeCurrentDiagram();
+      return;
+    }
     if (e.key === 'Delete') {
       e.preventDefault();
       if (e.ctrlKey) app.canvas.deleteSelectionDeep();
@@ -2028,6 +2083,7 @@ function bindKeys() {
     }
     if (e.key === 'F2' && repository.selectedModel) { renameElement(repository.selectedModel); return; }
     if (e.key === 'Escape') {
+      app.canvas.cancelGesture();
       app.canvas.setTool(null);
       repository.select([]);
       return;
@@ -2035,12 +2091,49 @@ function bindKeys() {
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
       if (repository.selections.length) {
         e.preventDefault();
-        const step = e.shiftKey ? 10 : 1;
+        // StarUML: Arrow moves 1px, Shift+Arrow moves by the grid size
+        const step = e.shiftKey ? app.canvas.gridSize : 1;
         const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
         const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
-        for (const id of repository.selections) {
-          const v = repository.lookup(id);
-          if (v && v.$type !== 'edge') { v.x += dx; v.y += dy; }
+        const now = Date.now();
+        const ids = [...repository.selections];
+        const movable = ids
+          .map((id) => repository.lookup(id))
+          .filter((v) => v && !v.isEdge);
+        // same burst only while our command is still the top of the undo
+        // stack — after an undo it lives on the redo stack and must not be
+        // mutated, or the next Ctrl+Z would pop an unrelated command
+        const same = arrowMove
+          && arrowMove.ids.length === ids.length
+          && ids.every((id) => arrowMove.ids.includes(id))
+          && now - arrowMove.at < 600
+          && commandStack.undoStack[commandStack.undoStack.length - 1] === arrowMove.cmd;
+        if (same) {
+          for (const v of movable) {
+            v.x += dx; v.y += dy;
+            const p = arrowMove.to.get(v._id);
+            if (p) { p.x = v.x; p.y = v.y; }
+          }
+          arrowMove.at = now;
+        } else {
+          const from = new Map(movable.map((v) => [v._id, { x: v.x, y: v.y }]));
+          for (const v of movable) { v.x += dx; v.y += dy; }
+          const to = new Map(movable.map((v) => [v._id, { x: v.x, y: v.y }]));
+          arrowMove = {
+            ids, at: now, from, to,
+            cmd: {
+              label: 'move',
+              redo: () => {
+                for (const [id, p] of to) { const v = repository.lookup(id); if (v) { v.x = p.x; v.y = p.y; } }
+                app.canvas.requestRender();
+              },
+              undo: () => {
+                for (const [id, p] of from) { const v = repository.lookup(id); if (v) { v.x = p.x; v.y = p.y; } }
+                app.canvas.requestRender();
+              },
+            },
+          };
+          commandStack.pushExecuted(arrowMove.cmd);
         }
         app.canvas.requestRender();
       }

@@ -147,7 +147,7 @@ export function showAiDiagramDialog({ onOpenDiagram } = {}) {
           <label style="display:flex;flex-direction:column;gap:2px;font-size:11px">请求方式
             <select id="ai-mode" style="height:24px">
               <option value="direct">直连（适用于 OpenAI / Kimi / 本地 Ollama 等）</option>
-              <option value="local-proxy">本地代理（127.0.0.1:8642/ai-proxy，需本地运行 serve.py，解决 DeepSeek 等跨域）</option>
+              <option value="local-proxy">本地代理（本机 serve.py 的 http://127.0.0.1:8642/ai-proxy，解决 DeepSeek 等跨域）</option>
               <option value="custom-proxy">自定义代理地址（如自部署 Cloudflare Worker）</option>
             </select></label>
           <button class="btn" id="ai-worker" style="height:24px;align-self:end" title="复制部署到 Cloudflare Workers 的代理代码">复制 Worker 代码</button>
@@ -201,10 +201,9 @@ export function showAiDiagramDialog({ onOpenDiagram } = {}) {
   const statusEl = () => field('ai-status');
   {
     const modeSel = field('ai-mode');
-    const savedMode = cfg.proxyUrl
-      ? (cfg.proxyUrl.includes('/ai-proxy') && location.hostname === 'localhost' || cfg.proxyUrl.includes('127.0.0.1:8642')
-          ? 'local-proxy' : 'custom-proxy')
-      : 'direct';
+    const LOCAL_PROXY_URL = 'http://127.0.0.1:8642/ai-proxy';
+    const savedMode = !cfg.proxyUrl ? 'direct'
+      : cfg.proxyUrl === LOCAL_PROXY_URL ? 'local-proxy' : 'custom-proxy';
     if (modeSel) {
       modeSel.value = savedMode;
       const row = field('ai-custom-row');
@@ -213,8 +212,11 @@ export function showAiDiagramDialog({ onOpenDiagram } = {}) {
   }
   const readConfig = () => {
     const mode = field('ai-mode').value;
+    // 本地代理固定指向本机 serve.py 的代理端点（GitHub Pages 上也成立：
+    // Chrome 将 127.0.0.1 视为安全上下文，不拦混合内容）
+    const LOCAL_PROXY_URL = 'http://127.0.0.1:8642/ai-proxy';
     const proxyUrl = mode === 'local-proxy'
-      ? `${location.origin}/ai-proxy`
+      ? LOCAL_PROXY_URL
       : mode === 'custom-proxy' ? field('ai-proxy').value.trim() : '';
     return {
       baseUrl: field('ai-base').value.trim(),

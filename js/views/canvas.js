@@ -893,6 +893,35 @@ export class DiagramCanvas {
     document.dispatchEvent(new CustomEvent('tool-changed', { detail: tool }));
   }
 
+  /** Escape during a gesture: abort it, restore the pre-drag state, no command. */
+  cancelGesture() {
+    const d = this.drag;
+    if (!d) return false;
+    this.drag = null;
+    this.svg.classList.remove('panning');
+    this.overlayLayer.querySelectorAll('.marquee, .connect-preview, .create-ghost').forEach((n) => n.remove());
+    if (d.kind === 'move') {
+      for (const it of d.items) { it.view.x = it.orig.x; it.view.y = it.orig.y; }
+    } else if (d.kind === 'resize') {
+      const { view, orig } = d;
+      Object.assign(view, { x: orig.x, y: orig.y, width: orig.baseWidth, height: orig.baseHeight });
+      if (orig.autoW == null) delete view.__autoW; else view.__autoW = orig.autoW;
+      if (orig.autoH == null) delete view.__autoH; else view.__autoH = orig.autoH;
+      for (const { f, before } of d.followers || []) { f.x = before.x; f.width = before.width; }
+      for (const c of d.children || []) { c.v.x = c.x; c.v.y = c.y; }
+    } else if (d.kind === 'wp-move') {
+      if (d.snapshot) d.view.points = d.snapshot.map((p) => ({ ...p }));
+      else d.view.points = (d.view.points || []).map((p, i) => (i === d.index ? { ...d.orig } : { ...p }));
+    } else if (d.kind === 'op-move') {
+      d.model.operandBoundaries = d.orig.slice();
+    } else if (d.kind === 'label') {
+      const field = d.field || 'labelOffset';
+      if (d.orig) d.view[field] = { ...d.orig }; else d.view[field] = null;
+    }
+    this.requestRender();
+    return true;
+  }
+
   // ---------------- events ----------------
   _bindEvents() {
     const svg = this.svg;
@@ -1104,6 +1133,11 @@ export class DiagramCanvas {
       this._drawMarquee();
       return;
     }
+    if (d.kind === 'create') {
+      d.cur = w;
+      this._drawCreateGhost();
+      return;
+    }
     if (d.kind === 'move') {
       let dx = w.x - d.start.x, dy = w.y - d.start.y;
       if (this.snapToGrid) {
@@ -1276,6 +1310,29 @@ export class DiagramCanvas {
     }, this.overlayLayer);
   }
 
+  _drawCreateGhost() {
+    this.overlayLayer.querySelectorAll('.create-ghost').forEach((n) => n.remove());
+    const r = this._createRect(this.drag);
+    svgEl('rect', {
+      x: r.x, y: r.y, width: r.width, height: r.height, class: 'selection-rect create-ghost',
+      'stroke-dasharray': '4 3', 'stroke-width': 1 / this.zoom, 'vector-effect': 'non-scaling-stroke',
+    }, this.overlayLayer);
+  }
+
+  // rect a node-tool drag would produce: grid-snapped position, size clamped
+  // to the resize minimums and rounded to whole grid cells
+  _createRect(d) {
+    const r = Rect.fromPoints([d.start, d.cur]);
+    let width = Math.max(30, r.width), height = Math.max(30, r.height);
+    if (this.snapToGrid) {
+      width = Math.max(this.gridSize, Math.round(width / this.gridSize) * this.gridSize);
+      height = Math.max(this.gridSize, Math.round(height / this.gridSize) * this.gridSize);
+    }
+    const x = this.snapToGrid ? snap(r.x, this.gridSize) : r.x;
+    const y = this.snapToGrid ? snap(r.y, this.gridSize) : r.y;
+    return new Rect(x, y, width, height);
+  }
+
   _drawConnectPreview(d) {
     this.overlayLayer.querySelectorAll('.connect-preview').forEach((n) => n.remove());
     const tailR = this.renderers.get(d.tailId);
@@ -1334,11 +1391,27 @@ export class DiagramCanvas {
         const box = rr.kind === 'node'
           ? this.rectOf(v)
           : Rect.fromPoints(rr.meta.points);
-        if (r.intersect(box).width > 0 || r.intersect(box).height > 0 || r.contains(box.cx, box.cy)) {
+        // StarUML: elements overlapping the drag area are selected — a true
+        // 2D intersection, with center containment as fallback for hairlines
+        const ir = r.intersect(box);
+        if ((ir.width > 0 && ir.height > 0) || r.contains(box.cx, box.cy)) {
           if (!ids.includes(v._id)) ids.push(v._id);
         }
       }
       repository.select(ids, this._primaryModel(ids[0]));
+      return;
+    }
+
+    if (d.kind === 'create') {
+      this.overlayLayer.querySelectorAll('.create-ghost').forEach((n) => n.remove());
+      // drag distance below the threshold = plain click: default size
+      const dragged = Math.abs(d.cur.x - d.start.x) > 8 || Math.abs(d.cur.y - d.start.y) > 8;
+      if (dragged) {
+        const r = this._createRect(d);
+        this.createNodeAt(d.nodeType, { x: r.x, y: r.y }, e, d.hit, { size: { width: r.width, height: r.height } });
+      } else {
+        this.createNodeAt(d.nodeType, d.start, e, d.hit);
+      }
       return;
     }
 
@@ -1546,6 +1619,7 @@ export class DiagramCanvas {
 
   zoomIn() { this.zoom = Math.min(4, this.zoom * 1.2); this._zoomChanged(); }
   zoomOut() { this.zoom = Math.max(0.2, this.zoom / 1.2); this._zoomChanged(); }
+  zoomActual() { this.zoom = 1; this._zoomChanged(); }
   zoomFit() {
     if (!this.diagram || !this.diagram.elements.length) { this.zoom = 1; this.panX = this.panY = 40; this._zoomChanged(); return; }
     const pts = [];
@@ -1667,8 +1741,10 @@ export class DiagramCanvas {
   _applyTool(w, hit, e) {
     const tool = this.tool;
     if (tool.kind === 'node') {
-      this.createNodeAt(tool.nodeType, w, e, hit);
-      this.setTool(null); // StarUML keeps tool for repeat; single-shot is friendlier
+      // StarUML gesture: the tool stays active after use, drag draws the
+      // element to size, a plain click creates it with the default size.
+      // Creation happens on mouseup so the ghost rect is visible while dragging.
+      this.drag = { kind: 'create', nodeType: tool.nodeType, start: w, cur: w, hit };
     } else if (tool.kind === 'edge') {
       const isFound = tool.edgeType === 'UMLMessage+found';
       const isLost = tool.edgeType === 'UMLMessage+lost';
@@ -1683,7 +1759,6 @@ export class DiagramCanvas {
           allowLoose: false,
           onComplete: (headId, upPoint, startPoint) => {
             this.createEndpointMessage('found', startPoint || d.startPoint, headId, upPoint);
-            this.setTool(null);
           },
         };
         this.drag = d;
@@ -1704,13 +1779,9 @@ export class DiagramCanvas {
         onComplete: (headId, upPoint) => {
           if (isLost) this.createEndpointMessage('lost', { x: upPoint.x, y: upPoint.y }, d.tailId, upPoint);
           else this.createEdge(tool.edgeType, d.tailId, headId, upPoint);
-          this.setTool(null);
         },
       };
       this.drag = d;
-    } else if (tool.id === 'tool-note') {
-      this.createNodeAt('UMLNote', w, e, hit);
-      this.setTool(null);
     }
   }
 
@@ -1821,7 +1892,7 @@ export class DiagramCanvas {
     this.setStatusMessage('已创建关联类并连接到关联');
   }
 
-  createNodeAt(nodeType, w, e, hit = null) {
+  createNodeAt(nodeType, w, e, hit = null, opts = null) {
     if (!this.diagram) return;
     let x = w.x, y = w.y;
     if (this.snapToGrid) { x = snap(x, this.gridSize); y = snap(y, this.gridSize); }
@@ -1978,6 +2049,13 @@ export class DiagramCanvas {
         repository._reindex();
       },
     });
+    // drag-to-size: honor the dragged size for plain (non-pinned, non-derived)
+    // node types; pinned/derived types keep their computed geometry
+    if (opts && opts.size && !forcedContainer
+        && nodeType !== 'UMLDurationConstraint' && nodeType !== 'UMLTextView') {
+      view.width = opts.size.width;
+      view.height = opts.size.height;
+    }
     compound('create', ops);
     repository.select([view._id], model);
     const createdLabel = model?.name || {
