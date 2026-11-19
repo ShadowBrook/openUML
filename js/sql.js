@@ -182,7 +182,8 @@ export function cdmToPDM(diagram, apply) {
       name: fkNames[i] || `${snake(parent.name)}_${pk.name}`,
       type: pk.type || 'BIGINT',
       primaryKey: false,
-      notNull: !/^(0\.\.*)/i.test(String(ref.headCardinality || '')),
+      // 零端基数（0..* / ZERO / ZERO_OR_ONE）→ FK 列可空
+      notNull: !/^(0\.\.|ZERO_OR_ONE|ZERO)/i.test(String(ref.headCardinality || '')),
       unique: false,
       foreignKey: true,
     })).filter((c) => !existing.has(c.name.toLowerCase()));

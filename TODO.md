@@ -205,6 +205,12 @@
   工具栏/状态栏/工具箱）、填充颜色 Ctrl+Shift+I、线条颜色 Ctrl+Shift+L、
   连线样式 直角 Ctrl+L / 斜线 Ctrl+B / 圆角 Ctrl+Alt+L / 曲线 Ctrl+Alt+B
   （新增格式 > 线条样式子菜单，等价 StarUML Format > Line Style）
+- ERD 关系线端点鸦爪记号（2026-11-19）：基数渲染从文字标签升级为 StarUML
+  的 crow's foot 记号——ZERO ○、ONE 刻线、ZERO_OR_ONE ○+刻线、MANY 三叉爪、
+  ONE_OR_MANY 爪+刻线；取值覆盖官方枚举（ZERO/ONE/ZERO_OR_ONE/MANY/
+  ONE_OR_MANY）与常见文本（1/N/M/*/0..1/0..*/1..N），无法识别的取值退回
+  文字标签；属性面板基数改为 StarUML 枚举下拉（自定义值保留为额外选项），
+  CDM→PDM 的 FK 列可空判断同步支持枚举值（ZERO/ZERO_OR_ONE → NULL 允许）
 - 画布空态提示文案修正（方向键是移动元素而非滚动）
 
 仍保留的差异（有意或待办）：

@@ -491,8 +491,20 @@ export class PropertyEditor {
       const isRef = this.currentView.$type === 'ERDReference';
       const sec = this._section(isRef ? '引用 (Reference)' : '关系 (Relationship)');
       const v = this.currentView;
-      this._row(sec, 'tail 基数', v.tailCardinality || '', (val) => this._setView(v, 'tailCardinality', val));
-      this._row(sec, 'head 基数', v.headCardinality || '', (val) => this._setView(v, 'headCardinality', val));
+      // StarUML 基数枚举；已存的自定义文本（如 0..*、1..N）保留为额外选项
+      const cardOpts = () => {
+        const base = [
+          ['', '（无）'], ['ZERO', 'ZERO（0）'], ['ONE', 'ONE（1）'],
+          ['ZERO_OR_ONE', 'ZERO_OR_ONE（0..1）'], ['MANY', 'MANY（N）'], ['ONE_OR_MANY', 'ONE_OR_MANY（1..N）'],
+        ];
+        return base;
+      };
+      for (const [field, label] of [['tailCardinality', 'tail 基数'], ['headCardinality', 'head 基数']]) {
+        const cur = v[field] || '';
+        const opts = cardOpts();
+        if (cur && !opts.some(([val]) => val === cur)) opts.push([cur, `${cur}（自定义）`]);
+        this._row(sec, label, cur, (val) => this._setView(v, field, val), 'select', opts);
+      }
       if (isRef) {
         this._row(sec, 'FK 列 (子表)', v.fkColumns || '', (val) => this._setView(v, 'fkColumns', val));
         this._row(sec, 'ON DELETE', v.onDelete || 'RESTRICT', (val) => this._setView(v, 'onDelete', val), 'select',

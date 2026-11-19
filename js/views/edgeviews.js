@@ -9,6 +9,55 @@ function dashArray(style) {
   return 'none';
 }
 
+// ERD 鸦爪记号：把基数字符串解析为端点记号类型（覆盖 StarUML 枚举与常见文本写法）
+function erdCardKind(text) {
+  const t = String(text || '').trim().toUpperCase().replace(/\s+/g, '');
+  if (!t) return null;
+  if (t === 'ZERO' || t === '0') return 'zero';
+  if (t === 'ONE' || t === '1') return 'one';
+  if (t === 'ZERO_OR_ONE' || t === '0..1') return 'zeroOrOne';
+  if (t === 'ONE_OR_MANY' || t === '1..*' || t === '1..N' || t === '1..M') return 'oneOrMany';
+  if (t === 'MANY' || t === 'N' || t === 'M' || t === '*' || t === '0..*' || t === '0..N' || t === '0..M') return 'many';
+  return 'text';
+}
+
+// 在 ERD 连线一端绘制鸦爪记号（StarUML ERD 记号：○ 零、| 一、
+// ○| 零或一、三叉爪 多、爪| 一或多）；无法识别的取值退回文字标签
+function drawErdEnd(g, text, end, toward, opts = {}) {
+  if (!text) return;
+  const color = opts.color || '#353535';
+  const fs = opts.fontSize || 11;
+  const kind = erdCardKind(text);
+  const dx = toward.x - end.x, dy = toward.y - end.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len, uy = dy / len;      // 指向线身（离开实体）
+  if (kind === 'text') {
+    const horiz = Math.abs(dx) >= Math.abs(dy);
+    const t = svgEl('text', {
+      x: end.x + ux * 14 + (horiz ? 0 : 6),
+      y: end.y + uy * 14 + (horiz ? -5 : 4),
+      'text-anchor': horiz ? 'middle' : 'start',
+      'font-size': fs, fill: color,
+    }, g);
+    t.textContent = text;
+    return;
+  }
+  const at = (d) => ({ x: end.x + ux * d, y: end.y + uy * d });
+  const px = -uy, py = ux;                 // 垂直方向
+  const seg = (a, b) => svgEl('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: color, 'stroke-width': 1.3 }, g);
+  const tick = (d) => { const p = at(d); seg({ x: p.x - px * 4.5, y: p.y - py * 4.5 }, { x: p.x + px * 4.5, y: p.y + py * 4.5 }); };
+  const circle = (d) => { const p = at(d); svgEl('circle', { cx: p.x, cy: p.y, r: 3.4, fill: 'none', stroke: color, 'stroke-width': 1.3 }, g); };
+  const claw = () => {
+    const root = at(12), tip = at(1);
+    for (const off of [5, 0, -5]) seg(root, { x: tip.x + px * off, y: tip.y + py * off });
+  };
+  if (kind === 'one') tick(7);
+  else if (kind === 'zero') circle(7);
+  else if (kind === 'zeroOrOne') { circle(7); tick(16); }
+  else if (kind === 'many') claw();
+  else if (kind === 'oneOrMany') { tick(16); claw(); }
+}
+
 const ARROW = {
   none: null,
   open: { size: 9, filled: false, stroke: 1.4 },
@@ -98,20 +147,11 @@ export function renderSelfLoop(g, edge, model, rect) {
     const conveyed = model.conveyed.map((c) => c.name).filter(Boolean);
     if (conveyed.length) labelParts.push(conveyed.join(', '));
   }
-  // ERD reference/relationship: cardinalities near each end
+  // ERD reference/relationship: crow's-foot notation at each end
   if (edge.$type === 'ERDReference' || edge.$type === 'ERDRelationship') {
-    const loopMid = midPoint(points);
-    const card = (text, end) => {
-      if (!text) return;
-      const side = end.x <= loopMid.x ? 'start' : 'end';
-      const t = svgEl('text', {
-        x: end.x + (side === 'start' ? 8 : -8), y: end.y - 6,
-        'text-anchor': side, 'font-size': fs, fill: edge.fontColor || '#353535',
-      }, g);
-      t.textContent = text;
-    };
-    card(edge.tailCardinality, points[0]);
-    card(edge.headCardinality, points[3]);
+    const color = edge.fontColor || '#353535';
+    drawErdEnd(g, edge.tailCardinality, points[0], points[1], { color, fontSize: fs });
+    drawErdEnd(g, edge.headCardinality, points[3], points[2], { color, fontSize: fs });
   }
   if (edge.$type === 'UMLExtension' && model?.multiplicity) {
     const mt = svgEl('text', {
@@ -473,26 +513,12 @@ export function renderEdge(g, edge, model, tailRect, headRect, opts = {}) {
     }, g);
     mt.textContent = model.multiplicity;
   }
-  // ERD reference/relationship: cardinalities near each end, nudged along the
-  // first/last line segment so the label stays between the entities instead of
-  // landing inside the entity box
+  // ERD reference/relationship: crow's-foot notation at each end, nudged
+  // along the first/last line segment so the marker stays between the
+  // entities instead of landing inside the entity box
   if (edge.$type === 'ERDReference' || edge.$type === 'ERDRelationship') {
-    const card = (text, from, to) => {
-      if (!text) return;
-      const dx = to.x - from.x, dy = to.y - from.y;
-      const len = Math.hypot(dx, dy) || 1;
-      const horiz = Math.abs(dx) >= Math.abs(dy);
-      const ux = (dx / len) * 14, uy = (dy / len) * 14;
-      const t = svgEl('text', {
-        x: from.x + ux + (horiz ? 0 : 6),
-        y: from.y + uy + (horiz ? -5 : 4),
-        'text-anchor': horiz ? 'middle' : 'start',
-        'font-size': fs, fill: fontColor,
-      }, g);
-      t.textContent = text;
-    };
-    card(edge.tailCardinality, points[0], points[1]);
-    card(edge.headCardinality, points[points.length - 1], points[points.length - 2]);
+    drawErdEnd(g, edge.tailCardinality, points[0], points[1], { color: fontColor, fontSize: fs });
+    drawErdEnd(g, edge.headCardinality, points[points.length - 1], points[points.length - 2], { color: fontColor, fontSize: fs });
   }
   if (labelParts.length) {
     const t = svgEl('text', {
