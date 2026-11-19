@@ -47,6 +47,20 @@ test('vertical-sides pair detours through a horizontal channel', () => {
   assert.ok(!crossesAny(route, [blocker]));
 });
 
+test('dense grid: route threads the gap between surrounding obstacles', () => {
+  // center obstacle directly between the endpoints; tall tables wall off both
+  // sides and the outer envelope, so the only clean path is through the gap
+  const s = { x: 300, y: 100, side: 'bottom' };
+  const e = { x: 300, y: 500, side: 'top' };
+  const obstacles = [
+    new Rect(260, 200, 80, 120),   // center, blocks the straight line
+    new Rect(-50, 0, 280, 600),    // left wall (gap 238..252 after padding)
+    new Rect(420, 0, 280, 600),    // right wall (gap 348..412 after padding)
+  ];
+  const route = routeAvoiding(s, e, obstacles);
+  assert.ok(!crossesAny(route, obstacles), 'route must thread a gap, not cross tables');
+});
+
 test('borderIntersect picks the facing side', () => {
   const r = new Rect(0, 0, 100, 50);
   assert.equal(borderIntersect(r, { x: 500, y: 25 }).side, 'right');
