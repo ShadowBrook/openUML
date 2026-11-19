@@ -146,7 +146,16 @@ function polylineCost(pts, obstacles) {
  * Orthogonal route with obstacle avoidance: try the plain route first; when it
  * crosses something, score detour candidates through channels around the
  * combined bounds of the endpoints and obstacles and keep the cleanest/shortest.
+ *
+ * Every channel candidate enters/leaves through a fixed-length stub along the
+ * endpoint's table-edge normal (12px). Without it the last segment would run
+ * *along* the entity border before touching the attach point — the line hugs
+ * the box and the ERD crow's-foot mark (drawn on the normal) ends up
+ * disconnected from the line.
  */
+const ENTER_STUB = 12;
+const EDGE_NORMALS = { top: [0, -1], bottom: [0, 1], left: [-1, 0], right: [1, 0] };
+
 export function routeAvoiding(s, e, obstacles) {
   const base = orthogonalRoute(s, e);
   if (!obstacles || !obstacles.length) return base;
@@ -160,10 +169,18 @@ export function routeAvoiding(s, e, obstacles) {
     x1 = Math.min(x1, r.x); y1 = Math.min(y1, r.y);
     x2 = Math.max(x2, r.x2); y2 = Math.max(y2, r.y2);
   }
-  const M = 24, midX = (s.x + e.x) / 2, midY = (s.y + e.y) / 2;
-  const cands = [base, [s, { x: midX, y: s.y }, { x: midX, y: e.y }, e]];
-  for (const ch of [x1 - M, x2 + M]) cands.push([s, { x: ch, y: s.y }, { x: ch, y: e.y }, e]);
-  for (const ch of [y1 - M, y2 + M]) cands.push([s, { x: s.x, y: ch }, { x: e.x, y: ch }, e]);
+  const M = 24, midX = (s.x + e.x) / 2;
+  const sn = EDGE_NORMALS[s.side] || [0, -1], en = EDGE_NORMALS[e.side] || [0, -1];
+  const sIn = { x: s.x + sn[0] * ENTER_STUB, y: s.y + sn[1] * ENTER_STUB };
+  const eIn = { x: e.x + en[0] * ENTER_STUB, y: e.y + en[1] * ENTER_STUB };
+  // [s, stub, (lane, stub) ×2, e]: orthogonal chain that always leaves/enters
+  // along the endpoint normals
+  const clean = (pts) => pts.filter((p, i) => i === 0 || Math.abs(p.x - pts[i - 1].x) > 0.01 || Math.abs(p.y - pts[i - 1].y) > 0.01);
+  const laneV = (ch) => clean([s, sIn, { x: ch, y: sIn.y }, { x: ch, y: eIn.y }, eIn, e]);
+  const laneH = (cy) => clean([s, sIn, { x: sIn.x, y: cy }, { x: eIn.x, y: cy }, eIn, e]);
+  const cands = [base, laneV(midX)];
+  for (const ch of [x1 - M, x2 + M]) cands.push(laneV(ch));
+  for (const ch of [y1 - M, y2 + M]) cands.push(laneH(ch));
   // gap lanes: every channel between consecutive obstacle edges (plus lanes
   // just outside the endpoints). Dense layouts (ERD grids) leave no clean
   // outer-envelope detour — both sides stay walled by other tables — so the
@@ -174,12 +191,10 @@ export function routeAvoiding(s, e, obstacles) {
   const xsArr = [...xs].sort((a, b) => a - b);
   const ysArr = [...ys].sort((a, b) => a - b);
   for (let i = 0; i + 1 < xsArr.length; i++) {
-    const ch = (xsArr[i] + xsArr[i + 1]) / 2;
-    cands.push([s, { x: ch, y: s.y }, { x: ch, y: e.y }, e]);
+    cands.push(laneV((xsArr[i] + xsArr[i + 1]) / 2));
   }
   for (let i = 0; i + 1 < ysArr.length; i++) {
-    const ch = (ysArr[i] + ysArr[i + 1]) / 2;
-    cands.push([s, { x: s.x, y: ch }, { x: e.x, y: ch }, e]);
+    cands.push(laneH((ysArr[i] + ysArr[i + 1]) / 2));
   }
   if (polylineCost(base, obs) === 0) return base;
   let best = base, bestCost = Infinity;

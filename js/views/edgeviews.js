@@ -25,40 +25,70 @@ function erdCardKind(text) {
 // 垂直于表边向外，不随避障路由的拐点/末段方向漂移
 const ERD_END_AWAY = { left: [-1, 0], right: [1, 0], top: [0, -1], bottom: [0, 1] };
 
+// 从折线端点沿线回退 d（可跨拐点），返回位置与所在段方向
+function backtrackPoint(pts, d, fromStart) {
+  const list = fromStart ? pts : [...pts].reverse();
+  let acc = 0;
+  for (let i = 1; i < list.length; i++) {
+    const a = list[i - 1], b = list[i];
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    if (len < 1e-6) continue;
+    if (acc + len >= d) {
+      const t = (d - acc) / len;
+      return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, ux: (b.x - a.x) / len, uy: (b.y - a.y) / len };
+    }
+    acc += len;
+  }
+  const last = list[list.length - 1];
+  return { x: last.x, y: last.y, ux: 0, uy: 0 };
+}
+
 // 在 ERD 连线一端绘制鸦爪记号（StarUML ERD 记号：○ 零、| 一、
-// ○| 零或一、三叉爪 多、爪| 一或多）；无法识别的取值退回文字标签。
-// opts.away = [ux, uy] 表边法线；缺省时退回“指向线身”方向。
-function drawErdEnd(g, text, end, toward, opts = {}) {
+// ○| 零或一、三叉爪 多、爪| 一或多）；记号沿连线自身回退放置（可跨
+// 拐点），横向以表边法线为准——交汇点永远在线上；无法识别的取值退回
+// 文字标签
+function drawErdEnd(g, text, points, opts = {}) {
   if (!text) return;
   const color = opts.color || '#353535';
   const fs = opts.fontSize || 11;
+  const fromStart = opts.fromStart !== false;
   const kind = erdCardKind(text);
-  const dx = toward.x - end.x, dy = toward.y - end.y;
-  const len = Math.hypot(dx, dy) || 1;
-  let ux, uy;
-  if (opts.away) {
-    [ux, uy] = opts.away;                  // 表边法线（离开实体）
-  } else {
-    ux = dx / len; uy = dy / len;
-  }
+  const end = fromStart ? points[0] : points[points.length - 1];
+  const toward = fromStart
+    ? (points[1] || { x: end.x + 1, y: end.y })
+    : (points[points.length - 2] || { x: end.x + 1, y: end.y });
   if (kind === 'text') {
+    const dx = toward.x - end.x, dy = toward.y - end.y;
     const horiz = Math.abs(dx) >= Math.abs(dy);
+    const len = Math.hypot(dx, dy) || 1;
     const t = svgEl('text', {
-      x: end.x + ux * 14 + (horiz ? 0 : 6),
-      y: end.y + uy * 14 + (horiz ? -5 : 4),
+      x: end.x + (dx / len) * 14 + (horiz ? 0 : 6),
+      y: end.y + (dy / len) * 14 + (horiz ? -5 : 4),
       'text-anchor': horiz ? 'middle' : 'start',
       'font-size': fs, fill: color,
     }, g);
     t.textContent = text;
     return;
   }
-  const at = (d) => ({ x: end.x + ux * d, y: end.y + uy * d });
-  const px = -uy, py = ux;                 // 垂直方向（沿表边）
+  const away = opts.away || null;
+  const at = (d) => backtrackPoint(points, d, fromStart);
+  // 记号的横向轴：优先表边法线（与引出段一致），回退跨过拐点时跟随所在段
+  const axis = (p) => {
+    if (away) return away;
+    return [p.ux || 1, p.uy || 0];
+  };
   const seg = (a, b) => svgEl('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: color, 'stroke-width': 1.3 }, g);
-  const tick = (d) => { const p = at(d); seg({ x: p.x - px * 4.5, y: p.y - py * 4.5 }, { x: p.x + px * 4.5, y: p.y + py * 4.5 }); };
-  const circle = (d) => { const p = at(d); svgEl('circle', { cx: p.x, cy: p.y, r: 3.4, fill: 'none', stroke: color, 'stroke-width': 1.3 }, g); };
+  const tick = (d) => {
+    const p = at(d), [ax, ay] = axis(p), px = -ay, py = ax;
+    seg({ x: p.x - px * 4.5, y: p.y - py * 4.5 }, { x: p.x + px * 4.5, y: p.y + py * 4.5 });
+  };
+  const circle = (d) => {
+    const p = at(d);
+    svgEl('circle', { cx: p.x, cy: p.y, r: 3.4, fill: 'none', stroke: color, 'stroke-width': 1.3 }, g);
+  };
   const claw = () => {
-    const root = at(12), tip = at(1);
+    const tip = at(1), root = at(12);
+    const [ax, ay] = axis(root), px = -ay, py = ax;
     for (const off of [5, 0, -5]) seg(root, { x: tip.x + px * off, y: tip.y + py * off });
   };
   if (kind === 'one') tick(7);
@@ -161,8 +191,8 @@ export function renderSelfLoop(g, edge, model, rect) {
   // anchors on the entity's right edge, so the outward normal is +x)
   if (edge.$type === 'ERDReference' || edge.$type === 'ERDRelationship') {
     const color = edge.fontColor || '#353535';
-    drawErdEnd(g, edge.tailCardinality, points[0], points[1], { color, fontSize: fs, away: ERD_END_AWAY.right });
-    drawErdEnd(g, edge.headCardinality, points[3], points[2], { color, fontSize: fs, away: ERD_END_AWAY.right });
+    drawErdEnd(g, edge.tailCardinality, points, { color, fontSize: fs, away: ERD_END_AWAY.right, fromStart: true });
+    drawErdEnd(g, edge.headCardinality, points, { color, fontSize: fs, away: ERD_END_AWAY.right, fromStart: false });
   }
   if (edge.$type === 'UMLExtension' && model?.multiplicity) {
     const mt = svgEl('text', {
@@ -530,8 +560,8 @@ export function renderEdge(g, edge, model, tailRect, headRect, opts = {}) {
     const color = fontColor;
     const tailAway = ERD_END_AWAY[borderIntersect(tailRect, { x: headRect.cx, y: headRect.cy }).side];
     const headAway = ERD_END_AWAY[borderIntersect(headRect, { x: tailRect.cx, y: tailRect.cy }).side];
-    drawErdEnd(g, edge.tailCardinality, points[0], points[1], { color, fontSize: fs, away: tailAway });
-    drawErdEnd(g, edge.headCardinality, points[points.length - 1], points[points.length - 2], { color, fontSize: fs, away: headAway });
+    drawErdEnd(g, edge.tailCardinality, points, { color, fontSize: fs, away: tailAway, fromStart: true });
+    drawErdEnd(g, edge.headCardinality, points, { color, fontSize: fs, away: headAway, fromStart: false });
   }
   if (labelParts.length) {
     const t = svgEl('text', {
