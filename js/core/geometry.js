@@ -161,11 +161,26 @@ export function routeAvoiding(s, e, obstacles) {
     x2 = Math.max(x2, r.x2); y2 = Math.max(y2, r.y2);
   }
   const M = 24, midX = (s.x + e.x) / 2, midY = (s.y + e.y) / 2;
-  const horizIn = s.side === 'left' || s.side === 'right';
-  const horizOut = e.side === 'left' || e.side === 'right';
   const cands = [base, [s, { x: midX, y: s.y }, { x: midX, y: e.y }, e]];
   for (const ch of [x1 - M, x2 + M]) cands.push([s, { x: ch, y: s.y }, { x: ch, y: e.y }, e]);
   for (const ch of [y1 - M, y2 + M]) cands.push([s, { x: s.x, y: ch }, { x: e.x, y: ch }, e]);
+  // gap lanes: every channel between consecutive obstacle edges (plus lanes
+  // just outside the endpoints). Dense layouts (ERD grids) leave no clean
+  // outer-envelope detour — both sides stay walled by other tables — so the
+  // route must thread the gaps between obstacles instead.
+  const xs = new Set([s.x, e.x, x1 - M, x2 + M]);
+  const ys = new Set([s.y, e.y, y1 - M, y2 + M]);
+  for (const r of obs) { xs.add(r.x); xs.add(r.x2); ys.add(r.y); ys.add(r.y2); }
+  const xsArr = [...xs].sort((a, b) => a - b);
+  const ysArr = [...ys].sort((a, b) => a - b);
+  for (let i = 0; i + 1 < xsArr.length; i++) {
+    const ch = (xsArr[i] + xsArr[i + 1]) / 2;
+    cands.push([s, { x: ch, y: s.y }, { x: ch, y: e.y }, e]);
+  }
+  for (let i = 0; i + 1 < ysArr.length; i++) {
+    const ch = (ysArr[i] + ysArr[i + 1]) / 2;
+    cands.push([s, { x: s.x, y: ch }, { x: e.x, y: ch }, e]);
+  }
   if (polylineCost(base, obs) === 0) return base;
   let best = base, bestCost = Infinity;
   for (const c of cands) {
