@@ -25,6 +25,7 @@ import { initPluginApi } from './plugins.js';
 import { generate, CODEGEN_TEMPLATES } from './codegen.js';
 import { generateSQL, collectERD, SQL_DIALECTS } from './sql.js';
 import { diffERD, emitMigration, describeOp, isDestructiveOp } from './core/erd-diff.js';
+import { buildMigrationHtml } from './core/erd-report.js';
 import { cdmToPDM } from './sql.js';
 import { importSQLToDiagram, parseSQL } from './sql.js';
 import { createContextLensDiagram } from './core/erd-lens.js';
@@ -1179,6 +1180,7 @@ function openMigrationDialog() {
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn" id="mig-copy" style="display:none">复制</button>
         <button class="btn" id="mig-download" style="display:none">下载 .sql</button>
+        <button class="btn" id="mig-html" style="display:none">HTML 报告</button>
       </div>
       <textarea id="mig-out" readonly style="flex:1;font-family:monospace;white-space:pre;resize:none;display:none"></textarea>
     </div>
@@ -1188,6 +1190,7 @@ function openMigrationDialog() {
   </div>`;
   document.body.appendChild(overlay);
   let ops = [];
+  let lastTarget = null;
   const regen = () => {
     const text = overlay.querySelector('#mig-in').value;
     if (!text.trim()) { showToast('请先粘贴目标 DDL'); return; }
@@ -1203,6 +1206,7 @@ function openMigrationDialog() {
         onDelete: r.onDelete, onUpdate: r.onUpdate,
       })).filter((r) => r.child && r.parent),
     };
+    lastTarget = target;
     ops = diffERD(current, target);
     overlay.querySelector('#mig-summary').textContent = `${ops.length} 个操作`;
     const opsBox = overlay.querySelector('#mig-ops');
@@ -1218,10 +1222,26 @@ function openMigrationDialog() {
     };
     opsBox.onchange = preview;
     overlay.querySelector('#mig-dialect').onchange = preview;
-    for (const id of ['mig-copy', 'mig-download', 'mig-out']) overlay.querySelector('#' + id).style.display = id === 'mig-out' ? 'block' : 'inline-block';
+    for (const id of ['mig-copy', 'mig-download', 'mig-html', 'mig-out']) overlay.querySelector('#' + id).style.display = id === 'mig-out' ? 'block' : 'inline-block';
     preview();
   };
   overlay.querySelector('#mig-run').onclick = regen;
+  overlay.querySelector('#mig-html').onclick = () => {
+    if (!ops.length) { showToast('请先生成迁移'); return; }
+    const dialect = overlay.querySelector('#mig-dialect').value;
+    const selected = new Set([...overlay.querySelectorAll('#mig-ops input[data-op]:checked')].map((el) => Number(el.dataset.op)));
+    const html = buildMigrationHtml({
+      ops: ops.map((op, i) => ({ ...op, desc: describeOp(op), selected: selected.has(i) })),
+      currentSql: generateSQL(current.entities, current.references, dialect, []),
+      targetSql: lastTarget ? generateSQL(lastTarget.entities, lastTarget.references, dialect, []) : '',
+      dialect, title: `迁移报告 — ${diagram.name}`,
+    });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+    a.download = (diagram.name || 'schema') + '-migration.html';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
   overlay.querySelector('#mig-copy').onclick = async () => {
     try { await navigator.clipboard.writeText(overlay.querySelector('#mig-out').value); showToast('已复制迁移脚本'); } catch { showToast('复制失败'); }
   };

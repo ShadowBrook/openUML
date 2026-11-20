@@ -47,6 +47,7 @@ export function isDestructiveOp(op) {
  */
 export function diffERD(current, target) {
   const ops = [];
+  const opRebuilds = []; // alter_column → rebuild 信息(SQLite 渲染用)
   const curByName = new Map((current.entities || []).map((e) => [normName(e.name), e]));
   const tgtByName = new Map((target.entities || []).map((e) => [normName(e.name), e]));
 
@@ -80,11 +81,24 @@ export function diffERD(current, target) {
         if (String(before[k]) !== String(after[k])) changes[k] = after[k];
       }
       if (Object.keys(changes).length) {
-        ops.push({
+        const destructive = 'type' in changes || 'primaryKey' in changes;
+        const opRec = {
           op: 'alter_column', table: tgtEnt.name, col: c, changes,
-          // 类型/主键变更在部分方言需重建表保数据
-          destructive: 'type' in changes || 'primaryKey' in changes,
-        });
+          destructive,
+        };
+        // SQLite 不支持 ALTER COLUMN:类型/主键变更需整表重建保数据,
+        // 预挂目标实体 + 相关 FK + 旧列清单,emit 时渲染重建序列
+        if (destructive) {
+          opRebuilds.push({
+            opRec,
+            rebuild: {
+              entity: tgtEnt,
+              oldColumns: curEnt.columns || [],
+              fks: (target.references || []).filter((r) => normName(r.child?.name) === key),
+            },
+          });
+        }
+        ops.push(opRec);
       }
     }
     const curIdx = new Map((curEnt.indexes || []).map((i) => [normName(i.name), i]));
@@ -121,7 +135,57 @@ export function diffERD(current, target) {
   for (const [k, r] of curRefs) {
     if (!tgtRefs.has(k)) ops.push({ op: 'drop_fk', table: r.child?.name, name: `fk_${r.child?.name}_${r.parent?.name}`.replace(/[^\p{L}\p{N}_]/gu, '_'), destructive: true });
   }
+  // 把 rebuild 信息挂回对应的 alter_column 操作
+  for (const { opRec, rebuild } of opRebuilds) opRec.rebuild = rebuild;
   return ops;
+}
+
+/**
+ * SQLite 整表重建序列(保数据):CREATE t_new(全列+PK/AK/CHECK/内联 FK)
+ * → 拷贝公共列 → DROP t → RENAME → 重建索引;新旧差异列以注释标注。
+ */
+function sqliteRebuildStatements(op, dialect) {
+  const { entity, oldColumns = [], fks = [] } = op.rebuild || {};
+  if (!entity) return [`-- SQLite 列类型/主键变更需重建表保数据(缺少目标实体,请人工处理):${op.table}.${op.col.name}`];
+  const cols = (entity.columns || []).filter((c) => c && c.name);
+  const pk = cols.filter((c) => c.primaryKey);
+  const lines = cols.map((c) => columnDefSQL(c, dialect, pk.length));
+  if (pk.length > 1 || (pk.length && dialect === 'postgresql')) {
+    lines.push(`PRIMARY KEY (${pk.map((c) => q(dialect, c.name)).join(', ')})`);
+  }
+  for (const ak of entity.alternateKeys || []) {
+    const akCols = String(ak.columns || '').split(',').map((s) => s.trim()).filter(Boolean);
+    if (akCols.length) lines.push(`UNIQUE (${akCols.map((c) => q(dialect, c)).join(', ')})`);
+  }
+  for (const ck of entity.checkConstraints || []) {
+    if (!ck.expression) continue;
+    lines.push(`${ck.name ? `CONSTRAINT ${q(dialect, ck.name)} ` : ''}CHECK (${ck.expression})`);
+  }
+  // SQLite 的 FK 只能在 CREATE TABLE 内联
+  for (const fk of fks) {
+    const fkCols = splitList(fk.fkColumns);
+    if (!fkCols.length || !fk.parent) continue;
+    const pc = splitList(fk.parentColumns);
+    const targets = pc.length ? pc : (fk.parent.columns || []).filter((c) => c.primaryKey).map((c) => c.name);
+    lines.push(`FOREIGN KEY (${fkCols.map((c) => q(dialect, c)).join(', ')}) REFERENCES ${q(dialect, fk.parent.name)} (${(targets.length ? targets : fkCols).map((c) => q(dialect, c)).join(', ')})`);
+  }
+  const newT = `${op.table}_new`;
+  const common = cols.filter((c) => oldColumns.some((o) => normName(o.name) === normName(c.name))).map((c) => c.name);
+  const dropped = oldColumns.filter((o) => !common.some((n) => normName(n) === normName(o.name)));
+  const stmts = [`CREATE TABLE ${q(dialect, newT)} (\n  ${lines.join(',\n  ')}\n);`];
+  if (common.length) {
+    stmts.push(`INSERT INTO ${q(dialect, newT)} (${common.map((c) => q(dialect, c)).join(', ')})\n  SELECT ${common.map((c) => q(dialect, c)).join(', ')}\n  FROM ${q(dialect, op.table)};`);
+  } else {
+    stmts.push('-- 新旧表无同名列,不拷贝数据');
+  }
+  stmts.push(`DROP TABLE ${q(dialect, op.table)};`);
+  stmts.push(`ALTER TABLE ${q(dialect, newT)} RENAME TO ${q(dialect, op.table)};`);
+  for (const idx of entity.indexes || []) {
+    const s = indexSQL(entity, idx, dialect);
+    if (s) stmts.push(s);
+  }
+  if (dropped.length) stmts.push(`-- 注意:以下列在新表中不存在,数据未迁移:${dropped.map((c) => c.name).join(', ')}`);
+  return stmts;
 }
 
 /** 单操作 → SQL 语句（多条时为数组）；返回 null 表示该方言无此操作。 */
@@ -146,10 +210,7 @@ function emitOp(op, dialect) {
       const out = [];
       const sqliteRebuild = dialect === 'sqlite'
         && ('type' in changes || 'primaryKey' in changes);
-      if (sqliteRebuild) {
-        out.push(`-- SQLite 列类型/主键变更需重建表保数据（rebuild_table 预留）：${table}.${col.name}`);
-        return out;
-      }
+      if (sqliteRebuild) return sqliteRebuildStatements(op, dialect);
       if ('type' in changes) {
         if (dialect === 'mysql') {
           out.push(`ALTER TABLE ${quote(table)} MODIFY COLUMN ${columnDefSQL({ ...col, type: changes.type }, dialect, 1)};`);
