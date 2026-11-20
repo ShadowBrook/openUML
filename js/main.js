@@ -25,6 +25,7 @@ import { generate, CODEGEN_TEMPLATES } from './codegen.js';
 import { generateSQL, collectERD, SQL_DIALECTS } from './sql.js';
 import { cdmToPDM } from './sql.js';
 import { importSQLToDiagram, parseSQL } from './sql.js';
+import { createContextLensDiagram } from './core/erd-lens.js';
 import { t, setLang, availableLangs, getLang } from './ui/i18n.js';
 import { showAiDiagramDialog } from './ai/dialog.js';
 
@@ -1081,6 +1082,17 @@ function runCDMtoPDM() {
   showToast(`已生成 ${changes.reduce((n, ch) => n + ch.cols.length, 0)} 个外键列${idxCount ? ` / ${idxCount} 个索引` : ''}`);
 }
 
+function runContextLens(viewId) {
+  const view = viewId ? repository.lookup(viewId) : null;
+  if (!view || view.$type !== 'ERDEntity') { showToast('请先选中一个 ERD 实体'); return; }
+  const owner = app.activeDiagram?.__parent || repository.root.ownedElements[0] || repository.root;
+  const res = createContextLensDiagram(viewId, owner);
+  if (!res) { showToast('上下文图生成失败：实体缺少模型元素'); return; }
+  openDiagram(res.diagram);
+  app.canvas.zoomFit();
+  showToast(`已生成上下文图（${res.nodes} 实体 / ${res.edges} 引用）`, 'success');
+}
+
 function openERDSQLDialog() {
   const diagram = app.canvas.diagram;
   if (!diagram || diagram.type !== 'ERDDiagram') { showToast('请先打开一张 ERD / PDM 图'); return; }
@@ -1453,6 +1465,52 @@ function restoreBackup() {
   }
 }
 
+// ---- 周期自动备份（Luna backupModelTime 的对应物）----
+const AUTOBACKUP_KEY = 'openuml-backup-auto';
+let lastAutoBackupAt = 0;
+
+function writeAutoBackup() {
+  if (!repository.root) return;
+  try {
+    localStorage.setItem(AUTOBACKUP_KEY, JSON.stringify({
+      savedAt: Date.now(),
+      project: serializeProject(repository.root),
+    }));
+    lastAutoBackupAt = Date.now();
+  } catch { /* 备份失败静默：主 autosave 仍在 */ }
+}
+
+function restoreAutoBackup() {
+  let rec = null;
+  try { rec = JSON.parse(localStorage.getItem(AUTOBACKUP_KEY) || 'null'); } catch { rec = null; }
+  if (!rec || !rec.project) { showToast('没有自动备份'); return; }
+  const when = new Date(rec.savedAt).toLocaleString();
+  showConfirmDialog({
+    title: '恢复自动备份',
+    message: `恢复 ${when} 的自动备份？当前项目会先转入「新建前备份」，可用「恢复新建前的项目」找回。`,
+  }).then((ok) => {
+    if (!ok) return;
+    try {
+      localStorage.setItem(BACKUP_KEY, serializeProject(repository.root));
+      app.backupAvailable = true;
+    } catch { /* 忽略配额问题,继续恢复 */ }
+    try {
+      loadProjectJSON(rec.project);
+      showToast('已恢复自动备份', 'success');
+    } catch {
+      showToast('恢复失败：备份已损坏');
+    }
+  });
+}
+
+// 5s 粒度巡检：到达偏好设定的间隔才真正写一次备份
+setInterval(() => {
+  const secs = Number(loadPreferences().autoBackupSec ?? 0);
+  if (!secs || !repository.root) return;
+  if (Date.now() - lastAutoBackupAt < secs * 1000) return;
+  writeAutoBackup();
+}, 5000);
+
 function exportCurrentSVG() {
   if (!app.activeDiagram) return;
   const ok = downloadSVG(app.canvas, app.activeDiagram.name + '.svg', {
@@ -1756,6 +1814,7 @@ function buildMenus() {
         { label: '新建', shortcut: 'Ctrl+N', action: requestNewProject },
         { label: '从模板新建…', action: requestNewFromTemplate },
         { label: '恢复新建前的项目…', disabled: !localStorage.getItem('openuml-backup'), action: restoreBackup },
+        { label: '恢复自动备份…', action: restoreAutoBackup },
         { label: '打开项目…', shortcut: 'Ctrl+O', action: openProjectFile },
         { label: '最近文件', disabled: !recentItems.length, submenu: recentItems.length ? recentItems : [{ label: '（空）', action: () => {} }] },
         { label: '保存项目', shortcut: 'Ctrl+S', action: () => saveProject(false) },
@@ -1846,6 +1905,10 @@ function buildMenus() {
         { label: 'AI 画图… (Beta)', action: openAiDrawDialog },
         { label: 'ERD / PDM 转 SQL…', action: openERDSQLDialog },
         { label: 'CDM → PDM 自动转换（生成外键列）', action: runCDMtoPDM },
+        { label: '生成上下文图（Context Lens）', disabled: repository.selectedModel?.type !== 'ERDEntity' && !([...repository.selections].some((id) => repository.lookup(id)?.$type === 'ERDEntity')), action: () => {
+          const vid = [...repository.selections].find((id) => repository.lookup(id)?.$type === 'ERDEntity');
+          runContextLens(vid);
+        } },
         { label: '从 SQL 反向导入 PDM…', action: openSQLImportDialog },
         '---',
         { label: '重命名…', shortcut: 'F2', disabled: !sel(), action: () => sel() && renameElement(sel()) },
@@ -2282,6 +2345,9 @@ function boot() {
       const model = repository.lookup(hit.view.modelRef);
       const items = [
         { label: '重命名…', action: () => model && renameElement(model) },
+        ...(hit.view.$type === 'ERDEntity' ? [
+          { label: '生成上下文图（Context Lens）', action: () => runContextLens(hit.view._id) },
+        ] : []),
         '---',
         { label: '置于顶层', action: () => canvas.bringToFront() },
         { label: '置于底层', action: () => canvas.sendToBack() },

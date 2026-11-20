@@ -20,6 +20,7 @@ export const DEFAULT_PREFERENCES = {
   erdAutoFkColumn: true,        // 拖线建立引用时自动在子表生成 FK 列
   erdCreateIndexForFk: true,    // FK 列落地时自动补覆盖索引
   erdDeleteColsWithRelation: false, // 删除引用时连带删除子表 FK 列
+  autoBackupSec: 30,            // 周期自动备份间隔（0 = 关闭）
   panels: { sidebar: true, navigator: true, toolbox: true, toolbar: true, statusbar: true },
 };
 
@@ -160,6 +161,14 @@ export function showPreferencesDialog(current = DEFAULT_PREFERENCES) {
     erdHint.textContent = t('外键列按父表主键生成（表名_列名），零端基数自动可空。');
     erdSec.appendChild(erdHint);
 
+    const backupSec = section(body, t('自动备份'));
+    const autoBackup = select([[0, t('关闭')], [15, '15 ' + t('秒')], [30, '30 ' + t('秒')], [60, '60 ' + t('秒')], [300, '5 ' + t('分钟')]], current.autoBackupSec ?? 30);
+    row(backupSec, t('备份间隔'), autoBackup);
+    const backupHint = document.createElement('div');
+    backupHint.className = 'pref-hint';
+    backupHint.textContent = t('周期快照存于浏览器本地，可通过「文件 → 恢复自动备份…」找回。');
+    backupSec.appendChild(backupHint);
+
     const buttons = document.getElementById('dialog-buttons');
     buttons.innerHTML = '';
     const reset = document.createElement('button');
@@ -198,6 +207,7 @@ export function showPreferencesDialog(current = DEFAULT_PREFERENCES) {
       erdAutoFkColumn: erdAutoFkColumn.checked,
       erdCreateIndexForFk: erdCreateIndexForFk.checked,
       erdDeleteColsWithRelation: erdDeleteCols.checked,
+      autoBackupSec: parseInt(autoBackup.value, 10),
       panels: Object.fromEntries(Object.entries(panelChecks).map(([k, el]) => [k, el.checked])),
     });
     cancel.onclick = () => close(null);
@@ -217,6 +227,7 @@ export function showPreferencesDialog(current = DEFAULT_PREFERENCES) {
       erdAutoFkColumn.checked = DEFAULT_PREFERENCES.erdAutoFkColumn;
       erdCreateIndexForFk.checked = DEFAULT_PREFERENCES.erdCreateIndexForFk;
       erdDeleteCols.checked = DEFAULT_PREFERENCES.erdDeleteColsWithRelation;
+      autoBackup.value = String(DEFAULT_PREFERENCES.autoBackupSec);
       for (const [k, el] of Object.entries(panelChecks)) el.checked = DEFAULT_PREFERENCES.panels[k] !== false;
     };
     overlay.classList.remove('hidden');
