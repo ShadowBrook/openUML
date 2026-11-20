@@ -134,3 +134,11 @@ test('generateSQL emits alternate keys as table-level UNIQUE and check constrain
   assert.ok(!s2.includes('UNIQUE'), '空 AK 跳过');
   assert.ok(!s2.includes('CHECK'), '空表达式跳过');
 });
+
+test('parseSQL reads types for quoted column names (regression)', () => {
+  // 存量缺陷:带引用符的列名原先解析出空类型,迁移会误判类型变更
+  const { entities } = parseSQL('CREATE TABLE `user` (`id` BIGINT PRIMARY KEY, "email" VARCHAR(100) NOT NULL);');
+  const user = entities[0];
+  assert.equal(user.columns[0].type, 'BIGINT');
+  assert.equal(user.columns[1].type, 'VARCHAR(100)');
+});

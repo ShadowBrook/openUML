@@ -341,7 +341,9 @@ export function parseSQL(text) {
         if (fk) references.push(fk);
         continue;
       }
-      const typeM = part.match(new RegExp('^' + quote(head) + '\\s+([\\w]+(?:\\s*\\([^)]*\\))?)', 'i'));
+      // 列名可能带引用符(`id` / "id" / [id])——类型正则允许引号包裹,
+      // 否则 `id` BIGINT 这类写法会解析出空类型(迁移会误判类型变更)
+      const typeM = part.match(new RegExp('^[`"\\[]?' + quote(head) + '["`\\]]?\\s+([\\w]+(?:\\s*\\([^)]*\\))?)', 'i'));
       const col = {
         _id: 'col-' + Math.random().toString(36).slice(2, 9),
         name: head,
