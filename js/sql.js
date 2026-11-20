@@ -123,6 +123,18 @@ export function generateSQL(entities, references, dialect = 'mysql', views = [])
     if (pk.length > 1 || (pk.length && dialect === 'postgresql')) {
       lines.push(`PRIMARY KEY (${pk.map((c) => q(dialect, c.name)).join(', ')})`);
     }
+    // 交替键(AK):表级 UNIQUE 约束(Luna TableKey isPk=false 的对应物)
+    for (const ak of table.alternateKeys || []) {
+      const akCols = String(ak.columns || '').split(',').map((s) => s.trim()).filter(Boolean);
+      if (!akCols.length) continue;
+      lines.push(`UNIQUE (${akCols.map((c) => q(dialect, c)).join(', ')})`);
+    }
+    // Check 约束
+    for (const ck of table.checkConstraints || []) {
+      if (!ck.expression) continue;
+      const nm = ck.name ? `CONSTRAINT ${q(dialect, ck.name)} ` : '';
+      lines.push(`${nm}CHECK (${ck.expression})`);
+    }
     const tbl = `${q(dialect, table.name)} (\n  ${lines.join(',\n  ')}\n)`;
     let stmt = `CREATE TABLE ${tbl}`;
     stmt += tableComment(dialect, table.documentation);
@@ -329,7 +341,9 @@ export function parseSQL(text) {
         if (fk) references.push(fk);
         continue;
       }
-      const typeM = part.match(new RegExp('^' + quote(head) + '\\s+([\\w]+(?:\\s*\\([^)]*\\))?)', 'i'));
+      // 列名可能带引用符(`id` / "id" / [id])——类型正则允许引号包裹,
+      // 否则 `id` BIGINT 这类写法会解析出空类型(迁移会误判类型变更)
+      const typeM = part.match(new RegExp('^[`"\\[]?' + quote(head) + '["`\\]]?\\s+([\\w]+(?:\\s*\\([^)]*\\))?)', 'i'));
       const col = {
         _id: 'col-' + Math.random().toString(36).slice(2, 9),
         name: head,

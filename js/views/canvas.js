@@ -6,7 +6,7 @@ import { repository } from '../core/repository.js';
 import { commandStack, compound } from '../core/commands.js';
 import { createModel, createNodeView, createEdgeView, createAttribute } from '../core/factory.js';
 import { renderNode, svgEl, TIMING_LANE_LABEL_W, viewW, viewH, fragmentOperandLayout } from './nodeviews.js';
-import { renderEdge, renderMessage, renderEndpointMessage, renderSelfLoop, renderTimingMessage, renderAssociationClassLink, distanceToPolyline, computeEdgeGeometry, ensureERDMarkers } from './edgeviews.js';
+import { renderEdge, renderMessage, renderEndpointMessage, renderSelfLoop, renderTimingMessage, renderAssociationClassLink, distanceToPolyline, computeEdgeGeometry, ensureERDMarkers, resolveErdLineMode } from './edgeviews.js';
 import { openQuickEdit, openConnectorEdit, closeQuickEdit } from '../ui/quickedit.js';
 import { loadPreferences } from '../ui/preferences.js';
 import { planFKColumns, planFKIndex, refFKColumns } from '../sql.js';
@@ -131,7 +131,8 @@ export class DiagramCanvas {
     const isBackdrop = (v) => v.$type === 'UMLSwimlaneVert' || v.$type === 'UMLSwimlaneHorz' || v.$type === 'UMLCompositeState' || v.$type === 'UMLCombinedFragment' || v.$type === 'UMLFrame' || v.$type === 'UMLStructuredActivityNode' || v.$type === 'UMLInterruptibleRegion'
       || v.$type === 'UMLNode' || v.$type === 'UMLNodeInstance'
       || v.$type === 'UMLOrthogonalState' || v.$type === 'UMLRegion'
-      || v.$type === 'UMLPackage' || v.$type === 'UMLModel' || v.$type === 'UMLSubsystem';
+      || v.$type === 'UMLPackage' || v.$type === 'UMLModel' || v.$type === 'UMLSubsystem'
+      || v.$type === 'ERDArea';
     const nodes = views.filter((v) => !v.isEdge)
       .sort((a, b) => {
         const pa = isBackdrop(a) ? 0 : 1, pb = isBackdrop(b) ? 0 : 1;
@@ -202,6 +203,7 @@ export class DiagramCanvas {
       : v.$type === 'UMLCombinedFragment' ? 'fragment'
       : v.$type === 'ERDEntity' ? 'erdentity'
       : v.$type === 'ERDView' ? 'erdview'
+      : v.$type === 'ERDArea' ? 'erdarea'
       : v.$type === 'UMLInteractionUse' ? 'ref'
       : v.$type === 'UMLInteractionUseInOverview' ? 'ref'
       : v.$type === 'UMLInteractionInOverview' ? 'interactionOverview'
@@ -235,7 +237,7 @@ export class DiagramCanvas {
       : v.$type === 'UMLDurationConstraint' ? 'durationConstraint'
       : v.$type === 'ERDEntity' ? 'erdentity'
       : v.$type === 'UMLNote' ? 'note' : 'class';
-    const meta = renderNode(g, v, model, kind);
+    const meta = renderNode(g, v, model, kind, { hideKeyBadges: this.diagram?.keysgraphics === false });
     g.dataset.id = v._id;
     this.renderers.set(v._id, { g, meta, view: v, kind: 'node' });
     // Auto-fit is derived layout, not a model edit: it grows to fit content,
@@ -276,7 +278,7 @@ export class DiagramCanvas {
   }
 
   _packageBodyRect(v) {
-    const tabH = v.$type === 'UMLSubsystem' ? 18 : 16;
+    const tabH = v.$type === 'ERDArea' ? 22 : v.$type === 'UMLSubsystem' ? 18 : 16;
     return new Rect(v.x + 1, v.y + tabH, Math.max(0, viewW(v) - 2), Math.max(0, viewH(v) - tabH - 1));
   }
 
@@ -296,7 +298,7 @@ export class DiagramCanvas {
         seen.add(cid);
         const container = repository.lookup(cid);
         if (!container) break;
-        if (['UMLPackage', 'UMLModel', 'UMLSubsystem'].includes(container.$type)) {
+        if (['UMLPackage', 'UMLModel', 'UMLSubsystem', 'ERDArea'].includes(container.$type)) {
           const body = this._packageBodyRect(container);
           rect = rect ? rect.intersect(body) : body;
         }
@@ -540,6 +542,9 @@ export class DiagramCanvas {
       if (this.autoRoute && !(e.points || []).length) {
         opts.obstacles = this._edgeObstacles(e, rects);
       }
+      if (e.$type === 'ERDReference' || e.$type === 'ERDRelationship') {
+        opts.erdLine = resolveErdLineMode(e, this.diagram);
+      }
       meta = renderEdge(g, e, model, tailRect, headRect, opts);
     }
     // communication-diagram messages stack above the link midpoint
@@ -698,7 +703,7 @@ export class DiagramCanvas {
   // ---------------- containment (swimlanes / composite states) ----------------
   static CONTAINER_TYPES = ['UMLSwimlaneVert', 'UMLSwimlaneHorz', 'UMLCompositeState', 'UMLFrame',
     'UMLStructuredActivityNode', 'UMLInterruptibleRegion', 'UMLNode', 'UMLNodeInstance',
-    'UMLOrthogonalState', 'UMLRegion', 'UMLPackage', 'UMLModel', 'UMLSubsystem'];
+    'UMLOrthogonalState', 'UMLRegion', 'UMLPackage', 'UMLModel', 'UMLSubsystem', 'ERDArea'];
   // structural containers used by composite-structure / timing diagrams
   static STRUCTURAL_CONTAINERS = ['UMLClass', 'UMLInterface', 'UMLComponent', 'UMLCollaboration', 'UMLTimingLifeline'];
   isContainerView(v) {
@@ -1628,9 +1633,13 @@ export class DiagramCanvas {
     const pts = [];
     for (const v of this.diagram.elements) {
       if (v.isEdge) continue;
+      // 防御:外部工具生成/残缺数据可能缺 x/y(或缺 isEdge 标记),
+      // 跳过非有限坐标,避免 NaN 通过 bounds 污染 zoom/pan
+      if (!Number.isFinite(v.x) || !Number.isFinite(v.y)) continue;
       const h = v.$type === 'UMLLifeLine' ? viewH(v) + (v.lifeHeight || 400) : viewH(v);
       pts.push({ x: v.x, y: v.y }, { x: v.x + viewW(v), y: v.y + h });
     }
+    if (!pts.length) { this.zoom = 1; this.panX = this.panY = 40; this._zoomChanged(); return; }
     const r = Rect.fromPoints(pts);
     // account for the diagram frame margin drawn around the content
     r.x -= 40; r.y -= 40; r.width += 70; r.height += 70;
@@ -2015,6 +2024,11 @@ export class DiagramCanvas {
     } else if (nodeType === 'ERDView') {
       model = createModel('ERDView', 'View');
       view = createNodeView('ERDView', model._id, x, y);
+    } else if (nodeType === 'ERDArea') {
+      // view-only 主题分区(Luna Area 的对应物):无模型元素,名称存视图
+      model = null;
+      view = createNodeView('ERDArea', '', x, y);
+      view.text = '分区';
     } else if (nodeType === 'UMLTextView' || nodeType === 'UMLRectView' || nodeType === 'UMLRoundRectView' || nodeType === 'UMLEllipseView') {
       // view-only annotation shapes: no model element behind them
       model = null;
@@ -2062,7 +2076,7 @@ export class DiagramCanvas {
     compound('create', ops);
     repository.select([view._id], model);
     const createdLabel = model?.name || {
-      UMLTimeTick: '时间刻度', UMLInputPin: '输入引脚', UMLOutputPin: '输出引脚',
+      UMLTimeTick: '时间刻度', UMLInputPin: '输入引脚', UMLOutputPin: '输出引脚', ERDArea: '分区',
     }[nodeType] || nodeType.replace(/^UML/, '').replace(/View$/, '');
     this.setStatusMessage(`已创建 ${createdLabel}`);
   }

@@ -25,6 +25,41 @@ export function erdCardKind(text) {
 // 垂直于表边向外，不随避障路由的拐点/末段方向漂移
 const ERD_END_AWAY = { left: [-1, 0], right: [1, 0], top: [0, -1], bottom: [0, 1] };
 
+// ---- ERD 线模式（Luna linegraphics 的对应物）----
+// 解析优先级：edge.lineMode（手动）> edge.lineGraphics（逐线）> diagram.linegraphics（图级默认）
+// detailed 系 = 正交 + 12px 法线引出段；basic 系 = 直连无引出段；鸦爪 marker 不受影响
+export const ERD_LINE_MODES = ['detailed', 'basic', 'detailed_straight', 'basic_curved', 'detailed_orthogonal', 'basic_orthogonal'];
+
+export const ERD_LINE_MODE_LABELS = {
+  detailed: '详细（正交+引出段）',
+  basic: '基础（直连）',
+  detailed_straight: '详细直线',
+  basic_curved: '基础曲线',
+  detailed_orthogonal: '详细正交',
+  basic_orthogonal: '基础正交',
+};
+
+/**
+ * 解析一条 ERD 连线最终的 {pathMode, stubs}。手动 lineMode（非默认正交）
+ * 优先，保持既有行为。
+ */
+export function resolveErdLineMode(edge, diagram) {
+  const manual = edge.lineMode;
+  if (manual && manual !== 'orthogonal') return { pathMode: manual, stubs: true };
+  const mode = (edge.lineGraphics && edge.lineGraphics !== 'default')
+    ? edge.lineGraphics
+    : (diagram?.linegraphics || 'detailed');
+  switch (mode) {
+    case 'basic':
+    case 'basic_orthogonal': return { pathMode: 'orthogonal', stubs: false };
+    case 'detailed_straight': return { pathMode: 'oblique', stubs: false };
+    case 'basic_curved': return { pathMode: 'curved', stubs: false };
+    case 'detailed':
+    case 'detailed_orthogonal':
+    default: return { pathMode: 'orthogonal', stubs: true };
+  }
+}
+
 // ---- ERD 端点记号 = SVG marker（Luna Modeler 方案）----
 // 记号不再逐帧手绘，而是预定义 <marker> 由路径端点引用：orient 沿路径
 // 切向自动定向，交汇点天然严格落在线上；stroke 用 context-stroke 跟随
@@ -439,6 +474,23 @@ function buildEdgePath(points, mode = 'orthogonal') {
   return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ');
 }
 
+const ERD_STUB_LEN = 12;
+
+/** detailed 模式:为干净路由补齐两端 12px 法线引出段(避障候选自带引出段,此处统一)。 */
+function withErdStubs(route, sSide, eSide) {
+  if (!route || route.length < 2) return route;
+  let total = 0;
+  for (let i = 1; i < route.length; i++) total += Math.hypot(route[i].x - route[i - 1].x, route[i].y - route[i - 1].y);
+  if (total < ERD_STUB_LEN * 4) return route; // 短边不补,避免来回折叠
+  const sn = ERD_END_AWAY[sSide] || [0, -1];
+  const en = ERD_END_AWAY[eSide] || [0, -1];
+  const s = route[0], e = route[route.length - 1];
+  const sIn = { x: s.x + sn[0] * ERD_STUB_LEN, y: s.y + sn[1] * ERD_STUB_LEN };
+  const eIn = { x: e.x + en[0] * ERD_STUB_LEN, y: e.y + en[1] * ERD_STUB_LEN };
+  const pts = [s, sIn, ...route.slice(1, -1), eIn, e];
+  return pts.filter((p, i) => i === 0 || Math.abs(p.x - pts[i - 1].x) > 0.01 || Math.abs(p.y - pts[i - 1].y) > 0.01);
+}
+
 /**
  * Compute the full point list of an edge, given tail/head view rects and waypoints.
  * Returns {points, tailEnd, headEnd} where ends carry {x, y, angle, side, normal}:
@@ -452,7 +504,7 @@ export function computeEdgeGeometry(edge, tailRect, headRect, opts = {}) {
   const headCenter = { x: headRect.cx, y: headRect.cy };
 
   const wps = edge.points || [];
-  const mode = edge.lineMode || 'orthogonal';
+  const mode = opts.erdLine?.pathMode || edge.lineMode || 'orthogonal';
   // pinned anchors: when set, the end attaches on that side regardless of the
   // ray direction; the point still slides along the side toward the target
   const tailToward = wps.length ? wps[0] : headCenter;
@@ -475,6 +527,8 @@ export function computeEdgeGeometry(edge, tailRect, headRect, opts = {}) {
     headB = anchorBorderPoint(headRect, edge.headAnchor, tailCenter);
     // straight elbows by default; reroute around obstacles when they are given
     route = routeAvoiding({ ...tailB, side: tailB.side }, { ...headB, side: headB.side }, opts.obstacles || null);
+    // detailed 模式:统一补齐两端法线引出段(basic 系无引出段)
+    if (opts.erdLine?.stubs) route = withErdStubs(route, tailB.side, headB.side);
   }
 
   const headEnd = route[route.length - 1];
@@ -507,11 +561,14 @@ export function renderEdge(g, edge, model, tailRect, headRect, opts = {}) {
   const connectorKind = edge.$type === 'UMLCompositeConnector'
     ? (model?.connectorKind || edge.connectorKind || 'assembly') : null;
 
-  const d = buildEdgePath(points, edge.lineMode);
+  const pathMode = opts.erdLine?.pathMode || edge.lineMode || 'orthogonal';
+  const d = buildEdgePath(points, pathMode);
+  // IE 惯例:非标定 ERD 引用渲染虚线(用户显式改过线型则以线型为准)
+  const nonIdentifying = edge.$type === 'ERDReference' && edge.identifying === false && edge.lineStyle === 'solid';
   const pathEl = svgEl('path', {
     d, fill: 'none', stroke: line,
     'stroke-width': opts.selected ? 1.6 : 1,
-    'stroke-dasharray': connectorKind === 'delegation' ? '6 4' : dashArray(edge.lineStyle),
+    'stroke-dasharray': connectorKind === 'delegation' ? '6 4' : dashArray(nonIdentifying ? 'dashed' : edge.lineStyle),
     class: 'edge-path',
   }, g);
 

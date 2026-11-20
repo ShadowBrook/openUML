@@ -294,7 +294,7 @@ export function fragmentOperandLayout(view, model) {
  * Base node renderer. view = {x,y,width,height,fillColor,lineColor,fontColor,fontSize}
  * model = the referenced model element.
  */
-export function renderNode(g, view, model, kind) {
+export function renderNode(g, view, model, kind, opts = {}) {
   model = model || {};   // view-only shapes (text, time ticks) have no model
   const x = view.x, y = view.y, w = viewW(view), h = viewH(view);
   const fill = view.fillColor || '#ffffff';
@@ -1210,6 +1210,18 @@ export function renderNode(g, view, model, kind) {
       meta.textSlots.name = { box: new Rect(x, y, w, headH), text: model.name, field: 'name', align: 'center' };
       break;
     }
+    case 'erdarea': {
+      // ERD 主题分区(Luna Area 的对应物):view-only 容器,标题带 + 半透明体
+      const name = view.text || '分区';
+      const headH = 22;
+      const areaFill = view.fillColor || '#fdf6e3';
+      svgEl('rect', { x, y: y + headH, width: w, height: Math.max(0, h - headH), fill: areaFill, 'fill-opacity': '0.55', stroke: view.lineColor || '#c9a227', 'stroke-width': 1, 'stroke-dasharray': '6 3', class: 'node-frame' }, g);
+      svgEl('rect', { x, y, width: w, height: headH, fill: view.lineColor || '#c9a227', stroke: view.lineColor || '#c9a227', 'stroke-width': 1, class: 'node-frame' }, g);
+      const at = svgEl('text', { x: x + 10, y: y + headH - 6, 'font-size': fs, 'font-weight': 700, fill: '#5c4a10' }, g);
+      at.textContent = name;
+      meta.textSlots.name = { box: new Rect(x + 4, y, Math.max(120, w * 0.7), headH), text: name, field: 'text', align: 'left' };
+      break;
+    }
     case 'erdentity': {
       // ERD table/entity: header band + column rows (PK badge, type right-aligned)
       const cols = (model.columns || []);
@@ -1230,7 +1242,8 @@ export function renderNode(g, view, model, kind) {
         const cy = ry + i * rowH;
         if (i > 0) svgEl('line', { x1: x, y1: cy, x2: x + w, y2: cy, stroke: '#e2e6e6', 'stroke-width': 0.7 }, g);
         const isPK = !!col.primaryKey, isFK = !!col.foreignKey;
-        const badge = isPK ? 'PK' : isFK ? 'FK' : '';
+        // keysgraphics:图级开关(Luna keysgraphics 的对应物),关闭时不画键徽章
+        const badge = opts.hideKeyBadges ? '' : isPK ? 'PK' : isFK ? 'FK' : '';
         if (badge) {
           const bt = svgEl('text', { x: x + 6, y: cy + rowH - 6, 'font-size': fs - 3, 'font-weight': 700, fill: isPK ? '#d9a520' : '#5c8ac7' }, g);
           bt.textContent = badge;

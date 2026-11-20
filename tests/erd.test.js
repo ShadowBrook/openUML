@@ -174,3 +174,45 @@ test('cdmToPDM withIndexes plans a covering index and respects explicit fkColumn
   assert.ok(changes[0].index, 'withIndexes 应规划覆盖索引');
   assert.equal(changes[0].index.name, 'idx_order_buyer_id');
 });
+
+// ---------- 标定关系键传播(属性面板 _applyIdentifying 的纯逻辑等价) ----------
+
+test('identifying propagation merges FK columns into child PK and reverses', () => {
+  // 模拟 _applyIdentifying(identifying=true) 的 redo/undo
+  const child = { name: 'order', columns: [
+    { name: 'id', type: 'BIGINT', primaryKey: true, notNull: true },
+    { name: 'user_id', type: 'BIGINT', primaryKey: false, notNull: true },
+  ] };
+  const targets = child.columns.filter((c) => ['user_id'].includes(c.name));
+  const oldStates = targets.map((c) => ({ c, primaryKey: c.primaryKey, notNull: c.notNull }));
+  // redo:并入主键
+  for (const t of targets) { t.primaryKey = true; t.notNull = true; }
+  assert.equal(child.columns[1].primaryKey, true);
+  assert.equal(child.columns.filter((c) => c.primaryKey).length, 2, '复合主键形成');
+  // undo:还原
+  for (const o of oldStates) { o.c.primaryKey = o.primaryKey; o.c.notNull = o.notNull; }
+  assert.equal(child.columns[1].primaryKey, false);
+  assert.equal(child.columns[1].notNull, true, 'notNull 还原为原值');
+});
+
+// ---------- ERD 线模式解析(Luna linegraphics 对应物) ----------
+
+import { resolveErdLineMode, ERD_LINE_MODES } from '../js/views/edgeviews.js';
+
+test('resolveErdLineMode precedence: manual > per-edge > diagram > detailed', () => {
+  const dg = { linegraphics: 'basic' };
+  // 手动 lineMode(非默认正交)永远优先
+  assert.deepEqual(resolveErdLineMode({ lineMode: 'oblique' }, dg), { pathMode: 'oblique', stubs: true });
+  // 逐线覆盖压过图级默认
+  assert.deepEqual(resolveErdLineMode({ lineGraphics: 'basic_curved' }, dg), { pathMode: 'curved', stubs: false });
+  // 图级默认生效
+  assert.deepEqual(resolveErdLineMode({}, dg), { pathMode: 'orthogonal', stubs: false });
+  // 缺省 = detailed(正交+引出段)
+  assert.deepEqual(resolveErdLineMode({}, {}), { pathMode: 'orthogonal', stubs: true });
+  assert.deepEqual(resolveErdLineMode({ lineGraphics: 'default' }, {}), { pathMode: 'orthogonal', stubs: true });
+  // 映射矩阵
+  assert.deepEqual(resolveErdLineMode({ lineGraphics: 'detailed_straight' }, {}), { pathMode: 'oblique', stubs: false });
+  assert.deepEqual(resolveErdLineMode({ lineGraphics: 'basic_orthogonal' }, {}), { pathMode: 'orthogonal', stubs: false });
+  assert.deepEqual(resolveErdLineMode({ lineGraphics: 'detailed_orthogonal' }, {}), { pathMode: 'orthogonal', stubs: true });
+  assert.equal(ERD_LINE_MODES.length, 6);
+});

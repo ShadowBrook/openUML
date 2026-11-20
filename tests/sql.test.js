@@ -105,3 +105,40 @@ test('parseSQL round-trips tables, inline constraints and ALTER FKs', () => {
 test('SQL_DIALECTS keeps the four supported dialects', () => {
   assert.deepEqual(Object.keys(SQL_DIALECTS), ['mysql', 'postgresql', 'sqlite', 'ansi']);
 });
+
+// ---------- 交替键 / Check 约束 DDL ----------
+
+test('generateSQL emits alternate keys as table-level UNIQUE and check constraints', () => {
+  const ent = {
+    _id: 'e1', type: 'ERDEntity', name: 'user', documentation: '',
+    columns: [{ name: 'id', type: 'BIGINT', primaryKey: true, notNull: true }],
+    indexes: [],
+    alternateKeys: [
+      { _id: 'ak1', name: 'ak_user_email', columns: 'email' },
+      { _id: 'ak2', name: 'ak_user_login', columns: 'domain, handle' },
+    ],
+    checkConstraints: [
+      { _id: 'ck1', name: 'ck_age', expression: 'age >= 0' },
+      { _id: 'ck2', name: '', expression: 'len > 0' },
+    ],
+  };
+  const sql = generateSQL([ent], [], 'mysql', []);
+  const s = stmtsOf(sql)[0];
+  assert.ok(s.includes('UNIQUE (`email`)'), '单列 AK');
+  assert.ok(s.includes('UNIQUE (`domain`, `handle`)'), '复合 AK');
+  assert.ok(s.includes('CONSTRAINT `ck_age` CHECK (age >= 0)'), '命名 Check');
+  assert.ok(s.includes('CHECK (len > 0)'), '未命名 Check');
+  // AK 空列与空表达式不产生行
+  const bare = { ...ent, alternateKeys: [{ _id: 'ak3', name: 'x', columns: '' }], checkConstraints: [{ _id: 'ck3', name: 'y', expression: '' }] };
+  const s2 = stmtsOf(generateSQL([bare], [], 'ansi', []))[0];
+  assert.ok(!s2.includes('UNIQUE'), '空 AK 跳过');
+  assert.ok(!s2.includes('CHECK'), '空表达式跳过');
+});
+
+test('parseSQL reads types for quoted column names (regression)', () => {
+  // 存量缺陷:带引用符的列名原先解析出空类型,迁移会误判类型变更
+  const { entities } = parseSQL('CREATE TABLE `user` (`id` BIGINT PRIMARY KEY, "email" VARCHAR(100) NOT NULL);');
+  const user = entities[0];
+  assert.equal(user.columns[0].type, 'BIGINT');
+  assert.equal(user.columns[1].type, 'VARCHAR(100)');
+});

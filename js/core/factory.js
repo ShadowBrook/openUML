@@ -71,6 +71,8 @@ export function createModel(type, name, extra = {}) {
   }
   if (type === 'ERDEntity') {
     el.indexes = [];
+    el.alternateKeys = [];      // 交替键(AK):[{_id, name, columns:'a,b'}]
+    el.checkConstraints = [];   // Check 约束:[{_id, name, expression}]
   }
   if (type === 'ERDView') {
     el.sql = 'SELECT ...';

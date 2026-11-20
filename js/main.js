@@ -7,6 +7,7 @@ import {
 } from './core/factory.js';
 import { diagramIcon, ModelKinds } from './core/metamodel.js';
 import { DiagramCanvas } from './views/canvas.js';
+import { ERD_LINE_MODES, ERD_LINE_MODE_LABELS } from './views/edgeviews.js';
 import { initToolbox } from './ui/toolbox.js';
 import { ModelExplorer } from './ui/model-explorer.js';
 import { PropertyEditor } from './ui/property-editor.js';
@@ -24,9 +25,11 @@ import { initPluginApi } from './plugins.js';
 import { generate, CODEGEN_TEMPLATES } from './codegen.js';
 import { generateSQL, collectERD, SQL_DIALECTS } from './sql.js';
 import { diffERD, emitMigration, describeOp, isDestructiveOp } from './core/erd-diff.js';
+import { buildMigrationHtml } from './core/erd-report.js';
 import { cdmToPDM } from './sql.js';
 import { importSQLToDiagram, parseSQL } from './sql.js';
 import { createContextLensDiagram } from './core/erd-lens.js';
+import { layoutERD } from './core/erd-layout.js';
 import { t, setLang, availableLangs, getLang } from './ui/i18n.js';
 import { showAiDiagramDialog } from './ai/dialog.js';
 
@@ -1083,6 +1086,61 @@ function runCDMtoPDM() {
   showToast(`已生成 ${changes.reduce((n, ch) => n + ch.cols.length, 0)} 个外键列${idxCount ? ` / ${idxCount} 个索引` : ''}`);
 }
 
+/**
+ * ERD 自动布局(Luna autolayout 的对应物):实体按 FK 依赖分层(父上子下)、
+ * 分区聚组、重心法消交叉;单 compound 可撤销;分区自动收缩包裹子项。
+ */
+function runErdAutoLayout(diagram = app.canvas.diagram) {
+  if (!diagram || diagram.type !== 'ERDDiagram') { showToast('请先打开一张 ERD 图'); return; }
+  const entityViews = (diagram.elements || []).filter((v) => v.$type === 'ERDEntity');
+  if (entityViews.length < 2) { showToast('实体不足,无需布局'); return; }
+  const refViews = (diagram.elements || []).filter((v) => v.isEdge
+    && (v.$type === 'ERDReference' || v.$type === 'ERDRelationship'));
+  const moves = layoutERD(entityViews, refViews, { grid: app.prefs.gridSize || 10 });
+  if (!moves.size) return;
+  // 画布原点留白:布局从 (0,0) 起算,整体平移到 (80,80) 视口内
+  const ORIGIN = 80;
+  for (const [id, p] of moves) moves.set(id, { x: p.x + ORIGIN, y: p.y + ORIGIN });
+  const olds = new Map(entityViews.map((v) => [v._id, { x: v.x, y: v.y }]));
+  // 分区收缩:包围新位置的子项(+标题带与内边距)
+  const areas = (diagram.elements || []).filter((v) => v.$type === 'ERDArea');
+  const areaStates = areas.map((a) => {
+    const kids = entityViews.filter((v) => v.container === a._id);
+    const old = { x: a.x, y: a.y, width: a.width, height: a.height };
+    if (!kids.length) return { area: a, old, next: null };
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const k of kids) {
+      const p = moves.get(k._id);
+      minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x + (k.width || 120)); maxY = Math.max(maxY, p.y + (k.height || 60));
+    }
+    return { area: a, old, next: { x: minX - 20, y: minY - 30, width: maxX - minX + 40, height: maxY - minY + 50 } };
+  });
+  compound('erd-autolayout', [{
+    redo: () => {
+      for (const [id, p] of moves) { const v = repository.lookup(id); if (v) { v.x = p.x; v.y = p.y; } }
+      for (const s of areaStates) {
+        if (!s.next) continue;
+        s.area.x = s.next.x; s.area.y = s.next.y;
+        s.area.width = s.next.width; s.area.height = s.next.height;
+      }
+      repository._reindex();
+      app.canvas.requestRender();
+    },
+    undo: () => {
+      for (const [id, o] of olds) { const v = repository.lookup(id); if (v) { v.x = o.x; v.y = o.y; } }
+      for (const s of areaStates) {
+        s.area.x = s.old.x; s.area.y = s.old.y;
+        s.area.width = s.old.width; s.area.height = s.old.height;
+      }
+      repository._reindex();
+      app.canvas.requestRender();
+    },
+  }]);
+  app.canvas.zoomFit();
+  showToast(`已自动布局 ${entityViews.length} 张表`, 'success');
+}
+
 function runContextLens(viewId) {
   const view = viewId ? repository.lookup(viewId) : null;
   if (!view || view.$type !== 'ERDEntity') { showToast('请先选中一个 ERD 实体'); return; }
@@ -1125,6 +1183,7 @@ function openMigrationDialog() {
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn" id="mig-copy" style="display:none">复制</button>
         <button class="btn" id="mig-download" style="display:none">下载 .sql</button>
+        <button class="btn" id="mig-html" style="display:none">HTML 报告</button>
       </div>
       <textarea id="mig-out" readonly style="flex:1;font-family:monospace;white-space:pre;resize:none;display:none"></textarea>
     </div>
@@ -1134,6 +1193,7 @@ function openMigrationDialog() {
   </div>`;
   document.body.appendChild(overlay);
   let ops = [];
+  let lastTarget = null;
   const regen = () => {
     const text = overlay.querySelector('#mig-in').value;
     if (!text.trim()) { showToast('请先粘贴目标 DDL'); return; }
@@ -1149,6 +1209,7 @@ function openMigrationDialog() {
         onDelete: r.onDelete, onUpdate: r.onUpdate,
       })).filter((r) => r.child && r.parent),
     };
+    lastTarget = target;
     ops = diffERD(current, target);
     overlay.querySelector('#mig-summary').textContent = `${ops.length} 个操作`;
     const opsBox = overlay.querySelector('#mig-ops');
@@ -1164,10 +1225,26 @@ function openMigrationDialog() {
     };
     opsBox.onchange = preview;
     overlay.querySelector('#mig-dialect').onchange = preview;
-    for (const id of ['mig-copy', 'mig-download', 'mig-out']) overlay.querySelector('#' + id).style.display = id === 'mig-out' ? 'block' : 'inline-block';
+    for (const id of ['mig-copy', 'mig-download', 'mig-html', 'mig-out']) overlay.querySelector('#' + id).style.display = id === 'mig-out' ? 'block' : 'inline-block';
     preview();
   };
   overlay.querySelector('#mig-run').onclick = regen;
+  overlay.querySelector('#mig-html').onclick = () => {
+    if (!ops.length) { showToast('请先生成迁移'); return; }
+    const dialect = overlay.querySelector('#mig-dialect').value;
+    const selected = new Set([...overlay.querySelectorAll('#mig-ops input[data-op]:checked')].map((el) => Number(el.dataset.op)));
+    const html = buildMigrationHtml({
+      ops: ops.map((op, i) => ({ ...op, desc: describeOp(op), selected: selected.has(i) })),
+      currentSql: generateSQL(current.entities, current.references, dialect, []),
+      targetSql: lastTarget ? generateSQL(lastTarget.entities, lastTarget.references, dialect, []) : '',
+      dialect, title: `迁移报告 — ${diagram.name}`,
+    });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+    a.download = (diagram.name || 'schema') + '-migration.html';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
   overlay.querySelector('#mig-copy').onclick = async () => {
     try { await navigator.clipboard.writeText(overlay.querySelector('#mig-out').value); showToast('已复制迁移脚本'); } catch { showToast('复制失败'); }
   };
@@ -1992,6 +2069,7 @@ function buildMenus() {
         { label: '代码生成…', action: openCodegenDialog },
         { label: 'AI 画图… (Beta)', action: openAiDrawDialog },
         { label: 'ERD / PDM 转 SQL…', action: openERDSQLDialog },
+        { label: 'ERD 自动布局', shortcut: 'Shift+L', action: () => runErdAutoLayout() },
         { label: 'SQL → 迁移脚本（与当前图 diff）…', action: openMigrationDialog },
         { label: 'CDM → PDM 自动转换（生成外键列）', action: runCDMtoPDM },
         { label: '生成上下文图（Context Lens）', action: () => {
@@ -2084,6 +2162,36 @@ function elementContextItems(node, canvas) {
     items.push(
       { label: '打开图表', action: () => openDiagram(node) },
       { label: '重命名…', action: () => renameElement(node) },
+    );
+    if (node.type === 'ERDDiagram') {
+      // Luna keysgraphics:图级键徽章开关
+      const on = node.keysgraphics !== false;
+      items.push({ label: (on ? '✓ ' : '') + '显示键徽章', action: () => {
+        const old = node.keysgraphics;
+        commandStack.exec({
+          label: 'toggle keysgraphics',
+          redo: () => { node.keysgraphics = !on; },
+          undo: () => { node.keysgraphics = old; },
+        });
+      } });
+      items.push({ label: 'ERD 自动布局', shortcut: 'Shift+L', action: () => {
+        openDiagram(node);
+        runErdAutoLayout(node);
+      } });
+      // 图级线模式默认(逐线可在属性面板覆盖)
+      const lg = node.linegraphics || 'detailed';
+      const idx = ERD_LINE_MODES.indexOf(lg);
+      const nextLg = ERD_LINE_MODES[(idx + 1) % ERD_LINE_MODES.length];
+      items.push({ label: `线模式: ${ERD_LINE_MODE_LABELS[lg]}（点击切换）`, action: () => {
+        const old = node.linegraphics;
+        commandStack.exec({
+          label: 'cycle linegraphics',
+          redo: () => { node.linegraphics = nextLg; },
+          undo: () => { node.linegraphics = old; },
+        });
+      } });
+    }
+    items.push(
       '---',
       { label: '删除图表', action: () => removeDiagram(node) },
     );
@@ -2213,6 +2321,7 @@ function bindKeys() {
     if (ctrl && e.shiftKey && e.key.toLowerCase() === 'g') { e.preventDefault(); toggleSnap(); return; }
     if (ctrl && e.shiftKey && e.key.toLowerCase() === 'i') { e.preventDefault(); if (repository.selections.length) pickColor('fill', (v) => applyColor('fillColor', v)); return; }
     if (ctrl && e.shiftKey && e.key.toLowerCase() === 'l') { e.preventDefault(); if (repository.selections.length) pickColor('line', (v) => applyColor('lineColor', v)); return; }
+    if (e.shiftKey && !ctrl && e.key.toLowerCase() === 'l') { e.preventDefault(); runErdAutoLayout(); return; }
     // line style (StarUML: Format > Line Style)
     if (ctrl && e.altKey && e.key.toLowerCase() === 'l') { e.preventDefault(); setEdgeLineMode('rounded'); return; }
     if (ctrl && e.altKey && e.key.toLowerCase() === 'b') { e.preventDefault(); setEdgeLineMode('curved'); return; }
@@ -2449,6 +2558,10 @@ function boot() {
       const items = [
         { label: '添加类图', action: () => addDiagram('UMLClassDiagram') },
         { label: '添加用例图', action: () => addDiagram('UMLUseCaseDiagram') },
+        ...(app.activeDiagram?.type === 'ERDDiagram' ? [
+          '---',
+          { label: 'ERD 自动布局', shortcut: 'Shift+L', action: () => runErdAutoLayout() },
+        ] : []),
         '---',
         { label: '适应窗口', action: () => canvas.zoomFit() },
         { label: '重置缩放', action: () => { canvas.zoom = 1; canvas._zoomChanged(); } },

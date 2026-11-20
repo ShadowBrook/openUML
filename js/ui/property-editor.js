@@ -4,6 +4,7 @@ import { repository } from '../core/repository.js';
 import { commandStack } from '../core/commands.js';
 import { ModelKinds, VISIBILITY } from '../core/metamodel.js';
 import { createAttribute, createOperation, createLiteral, createSlot } from '../core/factory.js';
+import { ERD_LINE_MODES, ERD_LINE_MODE_LABELS } from '../views/edgeviews.js';
 import { t } from './i18n.js';
 
 /** Walk to the project root and find the UMLStereotype definition by applied name. */
@@ -263,6 +264,24 @@ export class PropertyEditor {
           { key: 'columns', label: '列 (逗号分隔)' },
           { key: 'unique', label: 'UNIQUE', bool: true },
         ]);
+      // 交替键(AK,Luna TableKey isPk=false 的对应物):表级 UNIQUE 约束
+      const akSec = this._section('交替键 (Alternate Keys)');
+      this._listEditor(akSec, model, 'alternateKeys',
+        () => ({ _id: 'ak-' + Math.random().toString(36).slice(2, 9), name: 'ak_' + (model.name || 'tbl'), columns: '' }),
+        (ak) => ({ vis: 'AK', name: ak.name, type: ak.columns }),
+        [
+          { key: 'name', label: '键名' },
+          { key: 'columns', label: '列 (逗号分隔)' },
+        ]);
+      // Check 约束
+      const ckSec = this._section('Check 约束');
+      this._listEditor(ckSec, model, 'checkConstraints',
+        () => ({ _id: 'ck-' + Math.random().toString(36).slice(2, 9), name: 'ck_' + (model.name || 'tbl'), expression: '' }),
+        (ck) => ({ vis: 'CK', name: ck.name, type: ck.expression }),
+        [
+          { key: 'name', label: '约束名' },
+          { key: 'expression', label: '表达式' },
+        ]);
     }
     // ERD view: SQL text
     if (model.type === 'ERDView') {
@@ -514,11 +533,46 @@ export class PropertyEditor {
     }
   }
 
+  /**
+   * 标定关系切换（Luna identifying 的键传播）：标定 → 子表 FK 列并入主键
+   * （primaryKey+notNull），解除 → 从主键移除本关系并入的列。
+   * 单个可撤销步骤；列以 fkColumns 名单匹配。
+   */
+  _applyIdentifying(v, identifying) {
+    const childV = repository.lookup(v.tail);
+    const child = childV ? repository.lookup(childV.modelRef) : null;
+    const fkNames = String(v.fkColumns || '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+    const targets = (child?.columns || []).filter((c) => fkNames.includes(c.name.toLowerCase()));
+    if (identifying) {
+      const oldStates = targets.map((c) => ({ c, primaryKey: c.primaryKey, notNull: c.notNull }));
+      commandStack.exec({
+        label: 'apply identifying relation',
+        redo: () => { v.identifying = true; for (const t of targets) { t.primaryKey = true; t.notNull = true; } },
+        undo: () => { v.identifying = false; for (const o of oldStates) { o.c.primaryKey = o.primaryKey; o.c.notNull = o.notNull; } },
+      });
+    } else {
+      const affected = targets.filter((c) => c.primaryKey);
+      const oldStates = affected.map((c) => ({ c, primaryKey: c.primaryKey, notNull: c.notNull }));
+      commandStack.exec({
+        label: 'unapply identifying relation',
+        redo: () => { v.identifying = false; for (const t of affected) t.primaryKey = false; },
+        undo: () => { v.identifying = true; for (const o of oldStates) { o.c.primaryKey = o.primaryKey; o.c.notNull = o.notNull; } },
+      });
+    }
+  }
+
   /** ERD 引用/关系属性区（基数/端标签/锚点/FK 映射/RI 动作）——
    *  模型选区与 view-only 选区两条路径共用。 */
   _renderErdEdgeSection(v) {
     const isRef = v.$type === 'ERDReference';
     const sec = this._section(isRef ? '引用 (Reference)' : '关系 (Relationship)');
+    // 标定关系（Luna type=identifying 的对应物）：标定时 FK 列并入子表主键，
+    // 非标定按 IE 惯例渲染虚线；切换为单个可撤销步骤
+    if (isRef) {
+      this._row(sec, '关系类型', v.identifying ? 'identifying' : 'simple',
+        (val) => this._applyIdentifying(v, val === 'identifying'), 'select',
+        [['identifying', '标定 (FK 并入子表主键)'], ['simple', '非标定 (虚线)']]);
+    }
     // StarUML 基数枚举；已存的自定义文本（如 0..*、1..N）保留为额外选项
     const cardOpts = () => {
       const base = [
@@ -540,6 +594,10 @@ export class PropertyEditor {
     const anchorOpts = [['default', '自动'], ['left', '左边'], ['right', '右边'], ['top', '上边'], ['bottom', '下边']];
     this._row(sec, 'tail 锚点', v.tailAnchor || 'default', (val) => this._setView(v, 'tailAnchor', val), 'select', anchorOpts);
     this._row(sec, 'head 锚点', v.headAnchor || 'default', (val) => this._setView(v, 'headAnchor', val), 'select', anchorOpts);
+    // 线模式（逐线覆盖图级默认；手动“路径”优先于本项）
+    const lgOpts = [['default', '默认（跟随图）'],
+      ...ERD_LINE_MODES.map((m) => [m, ERD_LINE_MODE_LABELS[m]])];
+    this._row(sec, '线模式', v.lineGraphics || 'default', (val) => this._setView(v, 'lineGraphics', val), 'select', lgOpts);
     if (isRef) {
       this._fkPairEditor(sec, v);
       this._row(sec, 'ON DELETE', v.onDelete || 'RESTRICT', (val) => this._setView(v, 'onDelete', val), 'select',

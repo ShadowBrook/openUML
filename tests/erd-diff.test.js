@@ -84,7 +84,8 @@ test('emitMigration honors selected op set and dialect profiles', () => {
   const mysql = emitMigration(ops, 'mysql', { selected: new Set([0]) });
   assert.ok(mysql.includes('MODIFY COLUMN `email` VARCHAR(200)'));
   const sqlite = emitMigration(ops, 'sqlite', { selected: new Set([0]) });
-  assert.ok(sqlite.includes('SQLite 列类型/主键变更需重建表保数据'));
+  assert.ok(sqlite.includes('CREATE TABLE "user_new"'), 'SQLite 走整表重建');
+  assert.ok(sqlite.includes('ALTER TABLE "user_new" RENAME TO "user";'));
 });
 
 test('describeOp gives human-readable summaries', () => {
@@ -101,4 +102,70 @@ test('add_fk ops reuse the DDL emission convention', () => {
   const sql = emitMigration(ops, 'mysql', { selected: new Set([ops.indexOf(fk)]) });
   assert.ok(sql.includes('ADD CONSTRAINT `fk_order_user`'));
   assert.ok(sql.includes('ON DELETE CASCADE'));
+});
+
+test('diffERD detects check constraint add/drop and emits ALTER', () => {
+  const current = { entities: [ent('user', [pkc('id')], [],
+    )], references: [] };
+  current.entities[0].checkConstraints = [{ name: 'ck_age', expression: 'age >= 0' }];
+  const target = { entities: [ent('user', [pkc('id')], [])], references: [] };
+  target.entities[0].checkConstraints = [{ name: 'ck_age', expression: 'age >= 0 AND age < 200' }];
+  const ops = diffERD(current, target);
+  // 表达式变化 = 先 drop(破坏性)后 add
+  assert.ok(ops.some((o) => o.op === 'add_check'));
+  assert.ok(ops.some((o) => o.op === 'drop_check' && o.destructive));
+  const sql = emitMigration(ops, 'postgresql', { selected: new Set([ops.indexOf(ops.find((o) => o.op === 'add_check'))]) });
+  assert.ok(sql.includes('ADD CONSTRAINT "ck_age" CHECK (age >= 0 AND age < 200);'));
+  assert.ok(sql.includes('-- ALTER TABLE "user" DROP CONSTRAINT "ck_age";'));
+});
+
+// ---------- SQLite 保数据重建 ----------
+
+test('sqlite alter_column renders full data-preserving rebuild sequence', () => {
+  const current = {
+    entities: [ent('user', [pkc('id'), col('email', 'VARCHAR(100)', { notNull: true })])],
+    references: [],
+  };
+  const target = {
+    entities: [ent('user', [pkc('id'), { name: 'email', type: 'VARCHAR(200)', primaryKey: false, notNull: true }], [{ name: 'idx_email', columns: 'email', unique: false }])],
+    references: [],
+  };
+  const ops = diffERD(current, target);
+  const alt = ops.find((o) => o.op === 'alter_column');
+  assert.ok(alt?.rebuild, 'SQLite 破坏性变更应挂 rebuild 信息');
+  assert.equal(alt.rebuild.entity.name, 'user');
+  const sql = emitMigration(ops, 'sqlite', { selected: new Set([0]) });
+  assert.ok(sql.includes('CREATE TABLE "user_new"'), '先建新表');
+  assert.ok(sql.includes('INSERT INTO "user_new" ("id", "email")'), '拷贝公共列');
+  assert.ok(sql.includes('SELECT "id", "email"\n  FROM "user";'));
+  assert.ok(sql.includes('DROP TABLE "user";'));
+  assert.ok(sql.includes('ALTER TABLE "user_new" RENAME TO "user";'));
+  assert.ok(sql.includes('CREATE INDEX "idx_email" ON "user"'), '重建索引');
+  assert.ok(!sql.includes('ALTER COLUMN'), 'SQLite 不再输出注释占位');
+});
+
+test('sqlite rebuild inlines FK constraints from target references', () => {
+  const current = {
+    entities: [ent('order', [pkc('id'), { name: 'uid', type: 'BIGINT', primaryKey: false, notNull: true }])],
+    references: [],
+  };
+  const user = ent('user', [pkc('id')]);
+  const orderTarget = ent('order', [pkc('id'), { name: 'uid', type: 'INT', primaryKey: false, notNull: true }]);
+  const target = {
+    entities: [orderTarget],
+    references: [{ child: orderTarget, parent: user, fkColumns: 'uid', parentColumns: 'id', onDelete: 'CASCADE' }],
+  };
+  const ops = diffERD(current, target);
+  const sql = emitMigration(ops, 'sqlite', { selected: new Set([0]) });
+  assert.ok(sql.includes('FOREIGN KEY ("uid") REFERENCES "user" ("id")'), '内联 FK 随重建保留');
+});
+
+test('non-destructive alter stays as plain ALTER on sqlite', () => {
+  const current = { entities: [ent('user', [pkc('id'), col('age')])], references: [] };
+  const target = { entities: [ent('user', [pkc('id'), col('age', 'INT', { defaultValue: '0' })])], references: [] };
+  const ops = diffERD(current, target);
+  const alt = ops.find((o) => o.op === 'alter_column');
+  assert.ok(!alt.destructive, '默认值变更非破坏性');
+  const sql = emitMigration(ops, 'sqlite', { selected: new Set([0]) });
+  assert.ok(sql.includes('SET DEFAULT 0'));
 });
