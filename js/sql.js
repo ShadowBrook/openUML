@@ -12,29 +12,53 @@ export const SQL_DIALECTS = {
   ansi: 'ANSI SQL',
 };
 
+/**
+ * 方言 profile（Luna platforms/ + quotation.js 的对应物）：标识符引用符与
+ * 注释输出位置。新增方言 = 增加一个 profile 对象，不再加 if-else 分支。
+ */
+export const DIALECT_PROFILES = {
+  mysql: { label: 'MySQL', quote: '`', tableComment: true, postComments: false },
+  postgresql: { label: 'PostgreSQL', quote: '"', tableComment: false, postComments: true },
+  sqlite: { label: 'SQLite', quote: '"', tableComment: false, postComments: false },
+  ansi: { label: 'ANSI SQL', quote: '"', tableComment: false, postComments: false },
+};
+
+const profileOf = (dialect) => DIALECT_PROFILES[dialect] || DIALECT_PROFILES.ansi;
+
+/**
+ * 列内联属性 × 方言支持矩阵（Luna x-platforms 注解的直译）：
+ * 每个属性只在列出的方言下内联输出；扩展列属性时在此登记，
+ * 生成器无需新分支。
+ */
+export const COL_ATTRS = {
+  notNull: ['mysql', 'postgresql', 'sqlite', 'ansi'],
+  unique: ['mysql', 'postgresql', 'sqlite', 'ansi'],
+  defaultValue: ['mysql', 'postgresql', 'sqlite', 'ansi'],
+  comment: ['mysql'],
+  inlinePK: ['mysql', 'sqlite'],
+};
+
+const supports = (dialect, attr) => COL_ATTRS[attr].includes(dialect);
+
 function q(dialect, name) {
-  if (dialect === 'mysql') return '`' + name + '`';
-  if (dialect === 'postgresql') return '"' + name + '"';
-  return '"' + name + '"';
+  const p = profileOf(dialect);
+  return p.quote + name + p.quote;
 }
 
-function comment(dialect, text, indent = '') {
-  if (!text) return '';
+function tableComment(dialect, text, indent = '') {
+  if (!text || !profileOf(dialect).tableComment) return '';
   const t = String(text).replace(/'/g, "''").replace(/\n/g, ' ');
-  if (dialect === 'mysql') return `${indent}COMMENT = '${t}'`;
-  return '';
+  return `${indent}COMMENT = '${t}'`;
 }
 
-function columnComment(dialect, table, col, text) {
-  if (!text) return '';
+function columnComment(dialect, text) {
+  if (!text || !supports(dialect, 'comment')) return '';
   const t = String(text).replace(/'/g, "''").replace(/\n/g, ' ');
-  if (dialect === 'mysql') return ` COMMENT '${t}'`;
-  if (dialect === 'postgresql') return '';
-  return '';
+  return ` COMMENT '${t}'`;
 }
 
 function postComments(dialect, out, table, columns) {
-  if (dialect !== 'postgresql') return;
+  if (!profileOf(dialect).postComments) return;
   for (const col of columns) {
     if (col.comment) {
       out.push(`COMMENT ON COLUMN ${q(dialect, table.name)}.${q(dialect, col.name)} IS '${String(col.comment).replace(/'/g, "''")}'`);
@@ -63,28 +87,19 @@ export function generateSQL(entities, references, dialect = 'mysql', views = [])
     const lines = [];
     for (const col of cols) {
       let line = `${q(dialect, col.name)} ${col.type || 'VARCHAR(50)'}`;
-      if (col.notNull || col.primaryKey) line += ' NOT NULL';
-      if (col.unique && !col.primaryKey) line += ' UNIQUE';
-      if (col.defaultValue) line += ` DEFAULT ${col.defaultValue}`;
-      if (dialect === 'mysql' && col.comment) line += columnComment(dialect, table.name, col, col.comment);
-      if (dialect === 'mysql' && col.primaryKey && cols.filter((c) => c.primaryKey).length === 1) line += ' PRIMARY KEY';
-      if (dialect === 'sqlite' && col.primaryKey && cols.filter((c) => c.primaryKey).length === 1) line += ' PRIMARY KEY';
+      if (supports(dialect, 'notNull') && (col.notNull || col.primaryKey)) line += ' NOT NULL';
+      if (supports(dialect, 'unique') && col.unique && !col.primaryKey) line += ' UNIQUE';
+      if (supports(dialect, 'defaultValue') && col.defaultValue) line += ` DEFAULT ${col.defaultValue}`;
+      if (col.comment) line += columnComment(dialect, col.comment);
+      if (supports(dialect, 'inlinePK') && col.primaryKey && cols.filter((c) => c.primaryKey).length === 1) line += ' PRIMARY KEY';
       lines.push(line);
     }
     if (pk.length > 1 || (pk.length && dialect === 'postgresql')) {
       lines.push(`PRIMARY KEY (${pk.map((c) => q(dialect, c.name)).join(', ')})`);
     }
-    const uniques = cols.filter((c) => c.unique && !c.primaryKey);
-    if (uniques.length === 1) {
-      // already inline UNIQUE per column
-    }
     const tbl = `${q(dialect, table.name)} (\n  ${lines.join(',\n  ')}\n)`;
     let stmt = `CREATE TABLE ${tbl}`;
-    if (dialect === 'mysql') {
-      const opts = [];
-      if (table.documentation) opts.push(comment(dialect, table.documentation, ''));
-      if (opts.length) stmt += opts.join('');
-    }
+    stmt += tableComment(dialect, table.documentation);
     stmt += ';';
     out.push(stmt);
     postComments(dialect, out, table, cols);
@@ -104,8 +119,7 @@ export function generateSQL(entities, references, dialect = 'mysql', views = [])
       const cols = String(idx.columns).split(',').map((x) => x.trim()).filter(Boolean);
       if (!cols.length) continue;
       const kw = idx.unique ? 'CREATE UNIQUE INDEX' : 'CREATE INDEX';
-      const naming = dialect === 'postgresql' ? `ON ${q(dialect, table.name)}` : `ON ${q(dialect, table.name)}`;
-      out.push(`${kw} ${q(dialect, idx.name)} ${naming} (${cols.map((c) => q(dialect, c)).join(', ')});`);
+      out.push(`${kw} ${q(dialect, idx.name)} ON ${q(dialect, table.name)} (${cols.map((c) => q(dialect, c)).join(', ')});`);
     }
   }
 
