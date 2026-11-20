@@ -598,6 +598,31 @@ export function renderEdge(g, edge, model, tailRect, headRect, opts = {}) {
     applyErdEndMarkers(pathEl, tailKind, headKind);
     if (tailKind === 'text') drawErdTextEnd(g, edge.tailCardinality, points, { color: fontColor, fontSize: fs, fromStart: true });
     if (headKind === 'text') drawErdTextEnd(g, edge.headCardinality, points, { color: fontColor, fontSize: fs, fromStart: false });
+    // 端点文字标签（Luna caption_parent/caption_child 的对应物）：复用
+    // tailRoleName/headRoleName 存储,沿端点法线向外偏移,支持既有的
+    // *RoleOffset 拖拽偏移机制
+    const erdEndLabels = [
+      ['erdTailRole', edge.tailRoleName, tailEnd, 'tailRoleOffset'],
+      ['erdHeadRole', edge.headRoleName, headEnd, 'headRoleOffset'],
+    ];
+    for (const [kind, text, end, field] of erdEndLabels) {
+      if (!text) continue;
+      const o = edge[field] || { dx: 0, dy: 0 };
+      const [nx, ny] = end.normal || [0, -1];
+      const bx = end.x + nx * 12 + o.dx, by = end.y + ny * 12 + o.dy;
+      const horiz = Math.abs(nx) >= Math.abs(ny);
+      const t = svgEl('text', {
+        x: bx, y: by + fs * 0.35,
+        'text-anchor': horiz ? (nx > 0 ? 'start' : 'end') : 'middle',
+        'font-size': fs, fill: fontColor,
+      }, g);
+      t.textContent = text;
+      const tw = Math.max(24, text.length * fs * 0.6 + 8);
+      meta.labels.push({
+        el: t, kind, field,
+        box: { x: bx - (horiz && nx < 0 ? tw : horiz ? 0 : tw / 2), y: by - fs, width: tw, height: fs + 6 },
+      });
+    }
   }
   if (labelParts.length) {
     const t = svgEl('text', {

@@ -505,12 +505,15 @@ export class PropertyEditor {
         if (cur && !opts.some(([val]) => val === cur)) opts.push([cur, `${cur}（自定义）`]);
         this._row(sec, label, cur, (val) => this._setView(v, field, val), 'select', opts);
       }
+      // 端点文字标签（渲染在线端旁，Luna caption 对应物）
+      this._row(sec, 'tail 标签', v.tailRoleName || '', (val) => this._setView(v, 'tailRoleName', val));
+      this._row(sec, 'head 标签', v.headRoleName || '', (val) => this._setView(v, 'headRoleName', val));
       // 锚点枚举（钉死出线边；default = 按对端中心自动推导）
       const anchorOpts = [['default', '自动'], ['left', '左边'], ['right', '右边'], ['top', '上边'], ['bottom', '下边']];
       this._row(sec, 'tail 锚点', v.tailAnchor || 'default', (val) => this._setView(v, 'tailAnchor', val), 'select', anchorOpts);
       this._row(sec, 'head 锚点', v.headAnchor || 'default', (val) => this._setView(v, 'headAnchor', val), 'select', anchorOpts);
       if (isRef) {
-        this._row(sec, 'FK 列 (子表)', v.fkColumns || '', (val) => this._setView(v, 'fkColumns', val));
+        this._fkPairEditor(sec, v);
         this._row(sec, 'ON DELETE', v.onDelete || 'RESTRICT', (val) => this._setView(v, 'onDelete', val), 'select',
           [['RESTRICT', 'RESTRICT'], ['CASCADE', 'CASCADE'], ['SET NULL', 'SET NULL'], ['NO ACTION', 'NO ACTION']]);
         this._row(sec, 'ON UPDATE', v.onUpdate || 'RESTRICT', (val) => this._setView(v, 'onUpdate', val), 'select',
@@ -534,6 +537,96 @@ export class PropertyEditor {
       this._row(sec, '路径', this.currentView.lineMode || 'orthogonal', (val) => this._setView(this.currentView, 'lineMode', val), 'select',
         [['orthogonal', '直角'], ['oblique', '斜线'], ['rounded', '圆角'], ['curved', '曲线']]);
     }
+  }
+
+  /**
+   * FK 列映射对编辑器（Luna RelationColumn 的对应物）：子列 ↔ 父列成对选择，
+   * 复合 FK = 多对按位对应。写回 fkColumns/parentColumns 逗号串（存储格式与
+   * SQL 导入/DDL 生成保持一致）；一次编辑合并为单个撤销步骤。
+   * 任一端实体不可解析（如纯视图引用）时退回自由文本输入。
+   */
+  _fkPairEditor(parent, v) {
+    const entityOf = (viewId) => {
+      const vw = repository.lookup(viewId);
+      return vw ? repository.lookup(vw.modelRef) : null;
+    };
+    const child = entityOf(v.tail);
+    const parentEntity = entityOf(v.head);
+    const colsOf = (m) => (m && Array.isArray(m.columns) ? m.columns.map((c) => c.name) : []);
+    const childCols = colsOf(child);
+    const parentCols = colsOf(parentEntity);
+    const parseList = (s) => String(s || '').split(',').map((x) => x.trim()).filter(Boolean);
+
+    if (!child && !parentEntity) {
+      this._row(parent, 'FK 列 (子表)', v.fkColumns || '', (val) => this._setView(v, 'fkColumns', val));
+      this._row(parent, '父列', v.parentColumns || '', (val) => this._setView(v, 'parentColumns', val));
+      return;
+    }
+
+    let pairs = parseList(v.fkColumns).map((c, i) => ({ child: c, parent: parseList(v.parentColumns)[i] || '' }));
+    const commit = (nextPairs) => {
+      pairs = nextPairs;
+      const fk = nextPairs.map((p) => p.child).filter(Boolean).join(', ');
+      const pc = nextPairs.map((p) => p.parent).filter(Boolean).join(', ');
+      const oldFk = v.fkColumns || '', oldPc = v.parentColumns || '';
+      commandStack.exec({
+        label: 'edit FK column mapping',
+        redo: () => { v.fkColumns = fk; v.parentColumns = pc; },
+        undo: () => { v.fkColumns = oldFk; v.parentColumns = oldPc; },
+      });
+    };
+    const colOpts = (list, cur) => [
+      ['', '（未选）'],
+      ...list.map((n) => [n, n]),
+      ...(cur && !list.includes(cur) ? [[cur, `${cur}（自定义）`]] : []),
+    ];
+
+    const row = document.createElement('div');
+    row.className = 'prop-row';
+    const l = document.createElement('label');
+    l.textContent = t('FK 列映射');
+    l.title = t('子表列 ↔ 父表列,多对按位对应(复合外键)');
+    row.appendChild(l);
+    const val = document.createElement('div');
+    val.className = 'prop-value';
+    const renderPairs = () => {
+      val.innerHTML = '';
+      pairs.forEach((p, i) => {
+        const line = document.createElement('div');
+        line.style.cssText = 'display:flex;gap:4px;align-items:center;margin-bottom:4px;';
+        const mkSelect = (list, cur, side) => {
+          const s = document.createElement('select');
+          for (const [optVal, text] of colOpts(list, cur)) {
+            const o = document.createElement('option');
+            o.value = optVal; o.textContent = text;
+            if (optVal === cur) o.selected = true;
+            s.appendChild(o);
+          }
+          s.addEventListener('change', () => {
+            const next = pairs.map((pp, j) => (j === i ? { ...pp, [side]: s.value } : pp));
+            commit(next);
+          });
+          s.addEventListener('keydown', (e) => e.stopPropagation());
+          return s;
+        };
+        line.appendChild(mkSelect(childCols, p.child, 'child'));
+        line.appendChild(document.createTextNode('↔'));
+        line.appendChild(mkSelect(parentCols, p.parent, 'parent'));
+        const del = document.createElement('button');
+        del.textContent = '✕';
+        del.title = t('移除该映射');
+        del.addEventListener('click', () => commit(pairs.filter((_, j) => j !== i)));
+        line.appendChild(del);
+        val.appendChild(line);
+      });
+      const add = document.createElement('button');
+      add.textContent = t('＋ 添加列映射');
+      add.addEventListener('click', () => commit([...pairs, { child: '', parent: '' }]));
+      val.appendChild(add);
+    };
+    renderPairs();
+    row.appendChild(val);
+    parent.appendChild(row);
   }
 
   _listEditor(parent, model, listKey, creator, formatter, editableFields) {
