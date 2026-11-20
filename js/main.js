@@ -23,6 +23,7 @@ import { convertMdj } from './io/mdj.js';
 import { initPluginApi } from './plugins.js';
 import { generate, CODEGEN_TEMPLATES } from './codegen.js';
 import { generateSQL, collectERD, SQL_DIALECTS } from './sql.js';
+import { diffERD, emitMigration, describeOp, isDestructiveOp } from './core/erd-diff.js';
 import { cdmToPDM } from './sql.js';
 import { importSQLToDiagram, parseSQL } from './sql.js';
 import { createContextLensDiagram } from './core/erd-lens.js';
@@ -1093,6 +1094,93 @@ function runContextLens(viewId) {
   showToast(`已生成上下文图（${res.nodes} 实体 / ${res.edges} 引用）`, 'success');
 }
 
+/**
+ * SQL → 迁移脚本：粘贴目标 DDL,与当前图 diff,勾选操作生成 ALTER 脚本。
+ * （Luna compare/alter-script 的轻量对应物；破坏性操作默认不勾选,以注释
+ * 保留在脚本中供审阅。）
+ */
+function openMigrationDialog() {
+  const diagram = app.canvas.diagram;
+  if (!diagram || diagram.type !== 'ERDDiagram') { showToast('请先打开一张 ERD / PDM 图'); return; }
+  const current = collectERD(diagram);
+  if (!current.entities.length) { showToast('当前图中没有实体/表'); return; }
+  const overlay = document.createElement('div');
+  overlay.className = 'dialog-overlay';
+  overlay.innerHTML = `<div class="dialog-box" style="width:780px;height:600px;display:flex;flex-direction:column">
+    <div class="dialog-title">SQL → 迁移脚本（与当前图 diff）</div>
+    <div class="dialog-body" style="flex:1;display:flex;flex-direction:column;gap:6px;min-height:0">
+      <div style="display:flex;gap:8px;align-items:center">
+        <label style="color:var(--text-dim)">目标方言</label>
+        <select id="mig-dialect">
+          ${Object.entries(SQL_DIALECTS).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
+        </select>
+        <span style="color:var(--text-dim)">粘贴目标结构 DDL（CREATE TABLE / ALTER FOREIGN KEY）：</span>
+      </div>
+      <textarea id="mig-in" placeholder="CREATE TABLE user (id BIGINT PRIMARY KEY, email VARCHAR(200));&#10;..." style="height:140px;font-family:monospace;white-space:pre;resize:vertical"></textarea>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn primary" id="mig-run">对比 → 生成迁移</button>
+        <span id="mig-summary" style="color:var(--text-dim)"></span>
+      </div>
+      <div id="mig-ops" style="max-height:150px;overflow:auto;border:1px solid var(--border,#888);padding:6px;display:none"></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn" id="mig-copy" style="display:none">复制</button>
+        <button class="btn" id="mig-download" style="display:none">下载 .sql</button>
+      </div>
+      <textarea id="mig-out" readonly style="flex:1;font-family:monospace;white-space:pre;resize:none;display:none"></textarea>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn" id="mig-close">关闭</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  let ops = [];
+  const regen = () => {
+    const text = overlay.querySelector('#mig-in').value;
+    if (!text.trim()) { showToast('请先粘贴目标 DDL'); return; }
+    const parsed = parseSQL(text);
+    if (!parsed.entities.length) { showToast('未解析到 CREATE TABLE 语句'); return; }
+    const byName = new Map(parsed.entities.map((e) => [e.name.toLowerCase(), e]));
+    const target = {
+      entities: parsed.entities,
+      references: parsed.references.map((r) => ({
+        child: byName.get(String(r.childTable).toLowerCase()),
+        parent: byName.get(String(r.parentTable).toLowerCase()),
+        fkColumns: r.fkColumns, parentColumns: r.parentColumns,
+        onDelete: r.onDelete, onUpdate: r.onUpdate,
+      })).filter((r) => r.child && r.parent),
+    };
+    ops = diffERD(current, target);
+    overlay.querySelector('#mig-summary').textContent = `${ops.length} 个操作`;
+    const opsBox = overlay.querySelector('#mig-ops');
+    opsBox.style.display = 'block';
+    opsBox.innerHTML = ops.map((op, i) => {
+      const destructive = isDestructiveOp(op);
+      return `<label style="display:flex;gap:6px;align-items:center;${destructive ? 'color:var(--text-dim)' : ''}">
+        <input type="checkbox" data-op="${i}" ${destructive ? '' : 'checked'}> ${describeOp(op)}${destructive ? '（破坏性）' : ''}</label>`;
+    }).join('');
+    const preview = () => {
+      const selected = new Set([...opsBox.querySelectorAll('input[data-op]:checked')].map((el) => Number(el.dataset.op)));
+      overlay.querySelector('#mig-out').value = emitMigration(ops, overlay.querySelector('#mig-dialect').value, { selected });
+    };
+    opsBox.onchange = preview;
+    overlay.querySelector('#mig-dialect').onchange = preview;
+    for (const id of ['mig-copy', 'mig-download', 'mig-out']) overlay.querySelector('#' + id).style.display = id === 'mig-out' ? 'block' : 'inline-block';
+    preview();
+  };
+  overlay.querySelector('#mig-run').onclick = regen;
+  overlay.querySelector('#mig-copy').onclick = async () => {
+    try { await navigator.clipboard.writeText(overlay.querySelector('#mig-out').value); showToast('已复制迁移脚本'); } catch { showToast('复制失败'); }
+  };
+  overlay.querySelector('#mig-download').onclick = () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([overlay.querySelector('#mig-out').value], { type: 'application/sql' }));
+    a.download = (diagram.name || 'schema') + '-migration.sql';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+  overlay.querySelector('#mig-close').onclick = () => overlay.remove();
+}
+
 function openERDSQLDialog() {
   const diagram = app.canvas.diagram;
   if (!diagram || diagram.type !== 'ERDDiagram') { showToast('请先打开一张 ERD / PDM 图'); return; }
@@ -1904,6 +1992,7 @@ function buildMenus() {
         { label: '代码生成…', action: openCodegenDialog },
         { label: 'AI 画图… (Beta)', action: openAiDrawDialog },
         { label: 'ERD / PDM 转 SQL…', action: openERDSQLDialog },
+        { label: 'SQL → 迁移脚本（与当前图 diff）…', action: openMigrationDialog },
         { label: 'CDM → PDM 自动转换（生成外键列）', action: runCDMtoPDM },
         { label: '生成上下文图（Context Lens）', disabled: repository.selectedModel?.type !== 'ERDEntity' && !([...repository.selections].some((id) => repository.lookup(id)?.$type === 'ERDEntity')), action: () => {
           const vid = [...repository.selections].find((id) => repository.lookup(id)?.$type === 'ERDEntity');
