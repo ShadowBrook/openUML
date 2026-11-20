@@ -102,3 +102,18 @@ test('add_fk ops reuse the DDL emission convention', () => {
   assert.ok(sql.includes('ADD CONSTRAINT `fk_order_user`'));
   assert.ok(sql.includes('ON DELETE CASCADE'));
 });
+
+test('diffERD detects check constraint add/drop and emits ALTER', () => {
+  const current = { entities: [ent('user', [pkc('id')], [],
+    )], references: [] };
+  current.entities[0].checkConstraints = [{ name: 'ck_age', expression: 'age >= 0' }];
+  const target = { entities: [ent('user', [pkc('id')], [])], references: [] };
+  target.entities[0].checkConstraints = [{ name: 'ck_age', expression: 'age >= 0 AND age < 200' }];
+  const ops = diffERD(current, target);
+  // 表达式变化 = 先 drop(破坏性)后 add
+  assert.ok(ops.some((o) => o.op === 'add_check'));
+  assert.ok(ops.some((o) => o.op === 'drop_check' && o.destructive));
+  const sql = emitMigration(ops, 'postgresql', { selected: new Set([ops.indexOf(ops.find((o) => o.op === 'add_check'))]) });
+  assert.ok(sql.includes('ADD CONSTRAINT "ck_age" CHECK (age >= 0 AND age < 200);'));
+  assert.ok(sql.includes('-- ALTER TABLE "user" DROP CONSTRAINT "ck_age";'));
+});

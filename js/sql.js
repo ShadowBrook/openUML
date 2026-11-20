@@ -123,6 +123,18 @@ export function generateSQL(entities, references, dialect = 'mysql', views = [])
     if (pk.length > 1 || (pk.length && dialect === 'postgresql')) {
       lines.push(`PRIMARY KEY (${pk.map((c) => q(dialect, c.name)).join(', ')})`);
     }
+    // 交替键(AK):表级 UNIQUE 约束(Luna TableKey isPk=false 的对应物)
+    for (const ak of table.alternateKeys || []) {
+      const akCols = String(ak.columns || '').split(',').map((s) => s.trim()).filter(Boolean);
+      if (!akCols.length) continue;
+      lines.push(`UNIQUE (${akCols.map((c) => q(dialect, c)).join(', ')})`);
+    }
+    // Check 约束
+    for (const ck of table.checkConstraints || []) {
+      if (!ck.expression) continue;
+      const nm = ck.name ? `CONSTRAINT ${q(dialect, ck.name)} ` : '';
+      lines.push(`${nm}CHECK (${ck.expression})`);
+    }
     const tbl = `${q(dialect, table.name)} (\n  ${lines.join(',\n  ')}\n)`;
     let stmt = `CREATE TABLE ${tbl}`;
     stmt += tableComment(dialect, table.documentation);

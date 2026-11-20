@@ -508,10 +508,12 @@ export function renderEdge(g, edge, model, tailRect, headRect, opts = {}) {
     ? (model?.connectorKind || edge.connectorKind || 'assembly') : null;
 
   const d = buildEdgePath(points, edge.lineMode);
+  // IE 惯例:非标定 ERD 引用渲染虚线(用户显式改过线型则以线型为准)
+  const nonIdentifying = edge.$type === 'ERDReference' && edge.identifying === false && edge.lineStyle === 'solid';
   const pathEl = svgEl('path', {
     d, fill: 'none', stroke: line,
     'stroke-width': opts.selected ? 1.6 : 1,
-    'stroke-dasharray': connectorKind === 'delegation' ? '6 4' : dashArray(edge.lineStyle),
+    'stroke-dasharray': connectorKind === 'delegation' ? '6 4' : dashArray(nonIdentifying ? 'dashed' : edge.lineStyle),
     class: 'edge-path',
   }, g);
 

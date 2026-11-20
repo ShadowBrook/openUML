@@ -95,6 +95,21 @@ export function diffERD(current, target) {
     for (const i of curEnt.indexes || []) {
       if (!tgtIdx.has(normName(i.name))) ops.push({ op: 'drop_index', table: tgtEnt.name, name: i.name, destructive: true });
     }
+    // Check 约束 diff(按 name 匹配;表达式变化按先删后加处理)
+    const curCk = new Map((curEnt.checkConstraints || []).map((c) => [normName(c.name), c]));
+    const tgtCk = new Map((tgtEnt.checkConstraints || []).map((c) => [normName(c.name), c]));
+    for (const c of tgtEnt.checkConstraints || []) {
+      const cur = curCk.get(normName(c.name));
+      if (!cur || String(cur.expression).trim() !== String(c.expression).trim()) {
+        ops.push({ op: 'add_check', table: tgtEnt.name, constraint: c });
+      }
+    }
+    for (const c of curEnt.checkConstraints || []) {
+      const tgt = tgtCk.get(normName(c.name));
+      if (!tgt || String(tgt.expression).trim() !== String(c.expression).trim()) {
+        ops.push({ op: 'drop_check', table: tgtEnt.name, name: c.name, destructive: true });
+      }
+    }
   }
 
   // 引用 diff：按 子表>父表:fk列>父列 匹配
@@ -180,6 +195,12 @@ function emitOp(op, dialect) {
       return [dialect === 'mysql'
         ? `ALTER TABLE ${quote(op.table)} DROP FOREIGN KEY ${quote(op.name)};`
         : `ALTER TABLE ${quote(op.table)} DROP CONSTRAINT ${quote(op.name)};`];
+    case 'add_check':
+      return [`ALTER TABLE ${quote(op.table)} ADD ${op.constraint.name ? `CONSTRAINT ${quote(op.constraint.name)} ` : ''}CHECK (${op.constraint.expression});`];
+    case 'drop_check':
+      return [dialect === 'mysql'
+        ? `ALTER TABLE ${quote(op.table)} DROP CHECK ${quote(op.name)};`
+        : `ALTER TABLE ${quote(op.table)} DROP CONSTRAINT ${quote(op.name)};`];
     case 'rebuild_table': // 预留：temp-table 保数据迁移命令
       return [`-- rebuild_table: ${op.name}（未实现）`];
     default:
@@ -220,6 +241,8 @@ export function describeOp(op) {
     case 'drop_index': return `删索引 ${op.name}`;
     case 'add_fk': return `加外键 ${op.ref.child?.name} → ${op.ref.parent?.name}`;
     case 'drop_fk': return `删外键 ${op.name}`;
+    case 'add_check': return `加 Check ${op.table}.${op.constraint.name}`;
+    case 'drop_check': return `删 Check ${op.name}`;
     default: return op.op;
   }
 }

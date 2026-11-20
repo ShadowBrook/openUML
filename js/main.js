@@ -2084,6 +2084,20 @@ function elementContextItems(node, canvas) {
     items.push(
       { label: '打开图表', action: () => openDiagram(node) },
       { label: '重命名…', action: () => renameElement(node) },
+    );
+    if (node.type === 'ERDDiagram') {
+      // Luna keysgraphics:图级键徽章开关
+      const on = node.keysgraphics !== false;
+      items.push({ label: (on ? '✓ ' : '') + '显示键徽章', action: () => {
+        const old = node.keysgraphics;
+        commandStack.exec({
+          label: 'toggle keysgraphics',
+          redo: () => { node.keysgraphics = !on; },
+          undo: () => { node.keysgraphics = old; },
+        });
+      } });
+    }
+    items.push(
       '---',
       { label: '删除图表', action: () => removeDiagram(node) },
     );

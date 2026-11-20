@@ -235,7 +235,7 @@ export class DiagramCanvas {
       : v.$type === 'UMLDurationConstraint' ? 'durationConstraint'
       : v.$type === 'ERDEntity' ? 'erdentity'
       : v.$type === 'UMLNote' ? 'note' : 'class';
-    const meta = renderNode(g, v, model, kind);
+    const meta = renderNode(g, v, model, kind, { hideKeyBadges: this.diagram?.keysgraphics === false });
     g.dataset.id = v._id;
     this.renderers.set(v._id, { g, meta, view: v, kind: 'node' });
     // Auto-fit is derived layout, not a model edit: it grows to fit content,

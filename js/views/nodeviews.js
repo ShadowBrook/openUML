@@ -294,7 +294,7 @@ export function fragmentOperandLayout(view, model) {
  * Base node renderer. view = {x,y,width,height,fillColor,lineColor,fontColor,fontSize}
  * model = the referenced model element.
  */
-export function renderNode(g, view, model, kind) {
+export function renderNode(g, view, model, kind, opts = {}) {
   model = model || {};   // view-only shapes (text, time ticks) have no model
   const x = view.x, y = view.y, w = viewW(view), h = viewH(view);
   const fill = view.fillColor || '#ffffff';
@@ -1230,7 +1230,8 @@ export function renderNode(g, view, model, kind) {
         const cy = ry + i * rowH;
         if (i > 0) svgEl('line', { x1: x, y1: cy, x2: x + w, y2: cy, stroke: '#e2e6e6', 'stroke-width': 0.7 }, g);
         const isPK = !!col.primaryKey, isFK = !!col.foreignKey;
-        const badge = isPK ? 'PK' : isFK ? 'FK' : '';
+        // keysgraphics:图级开关(Luna keysgraphics 的对应物),关闭时不画键徽章
+        const badge = opts.hideKeyBadges ? '' : isPK ? 'PK' : isFK ? 'FK' : '';
         if (badge) {
           const bt = svgEl('text', { x: x + 6, y: cy + rowH - 6, 'font-size': fs - 3, 'font-weight': 700, fill: isPK ? '#d9a520' : '#5c8ac7' }, g);
           bt.textContent = badge;
