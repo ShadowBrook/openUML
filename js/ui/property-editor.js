@@ -4,6 +4,7 @@ import { repository } from '../core/repository.js';
 import { commandStack } from '../core/commands.js';
 import { ModelKinds, VISIBILITY } from '../core/metamodel.js';
 import { createAttribute, createOperation, createLiteral, createSlot } from '../core/factory.js';
+import { ERD_LINE_MODES, ERD_LINE_MODE_LABELS } from '../views/edgeviews.js';
 import { t } from './i18n.js';
 
 /** Walk to the project root and find the UMLStereotype definition by applied name. */
@@ -593,6 +594,10 @@ export class PropertyEditor {
     const anchorOpts = [['default', '自动'], ['left', '左边'], ['right', '右边'], ['top', '上边'], ['bottom', '下边']];
     this._row(sec, 'tail 锚点', v.tailAnchor || 'default', (val) => this._setView(v, 'tailAnchor', val), 'select', anchorOpts);
     this._row(sec, 'head 锚点', v.headAnchor || 'default', (val) => this._setView(v, 'headAnchor', val), 'select', anchorOpts);
+    // 线模式（逐线覆盖图级默认；手动“路径”优先于本项）
+    const lgOpts = [['default', '默认（跟随图）'],
+      ...ERD_LINE_MODES.map((m) => [m, ERD_LINE_MODE_LABELS[m]])];
+    this._row(sec, '线模式', v.lineGraphics || 'default', (val) => this._setView(v, 'lineGraphics', val), 'select', lgOpts);
     if (isRef) {
       this._fkPairEditor(sec, v);
       this._row(sec, 'ON DELETE', v.onDelete || 'RESTRICT', (val) => this._setView(v, 'onDelete', val), 'select',

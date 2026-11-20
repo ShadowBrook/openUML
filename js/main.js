@@ -7,6 +7,7 @@ import {
 } from './core/factory.js';
 import { diagramIcon, ModelKinds } from './core/metamodel.js';
 import { DiagramCanvas } from './views/canvas.js';
+import { ERD_LINE_MODES, ERD_LINE_MODE_LABELS } from './views/edgeviews.js';
 import { initToolbox } from './ui/toolbox.js';
 import { ModelExplorer } from './ui/model-explorer.js';
 import { PropertyEditor } from './ui/property-editor.js';
@@ -2094,6 +2095,18 @@ function elementContextItems(node, canvas) {
           label: 'toggle keysgraphics',
           redo: () => { node.keysgraphics = !on; },
           undo: () => { node.keysgraphics = old; },
+        });
+      } });
+      // 图级线模式默认(逐线可在属性面板覆盖)
+      const lg = node.linegraphics || 'detailed';
+      const idx = ERD_LINE_MODES.indexOf(lg);
+      const nextLg = ERD_LINE_MODES[(idx + 1) % ERD_LINE_MODES.length];
+      items.push({ label: `线模式: ${ERD_LINE_MODE_LABELS[lg]}（点击切换）`, action: () => {
+        const old = node.linegraphics;
+        commandStack.exec({
+          label: 'cycle linegraphics',
+          redo: () => { node.linegraphics = nextLg; },
+          undo: () => { node.linegraphics = old; },
         });
       } });
     }
