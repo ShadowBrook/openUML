@@ -65,6 +65,25 @@ export function borderIntersect(rect, p) {
 }
 
 /**
+ * Pinned-side anchor attach (Luna-style anchor enum): instead of deriving the
+ * border side from the center ray each render, the user pins which side of the
+ * node the edge attaches to. 'default' keeps the derived behavior; the point
+ * along the pinned side still slides toward the other end (clamped to the side).
+ */
+export function anchorBorderPoint(rect, anchor, towardPt) {
+  if (!anchor || anchor === 'default') return borderIntersect(rect, towardPt);
+  const tx = Math.max(rect.x, Math.min(rect.x2, towardPt.x));
+  const ty = Math.max(rect.y, Math.min(rect.y2, towardPt.y));
+  switch (anchor) {
+    case 'left': return { x: rect.x, y: ty, side: 'left' };
+    case 'right': return { x: rect.x2, y: ty, side: 'right' };
+    case 'top': return { x: tx, y: rect.y, side: 'top' };
+    case 'bottom': return { x: tx, y: rect.y2, side: 'bottom' };
+    default: return borderIntersect(rect, towardPt);
+  }
+}
+
+/**
  * Simple orthogonal route between two border points.
  * Produces intermediate waypoints so the edge looks UML-clean.
  */

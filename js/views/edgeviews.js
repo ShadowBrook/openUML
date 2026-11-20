@@ -1,7 +1,7 @@
 // edgeviews.js — SVG rendering for UML relationships with UML arrowheads
 
 import { svgEl, TIMING_LANE_LABEL_W } from './nodeviews.js';
-import { borderIntersect, orthogonalRoute, routeAvoiding, Rect } from '../core/geometry.js';
+import { anchorBorderPoint, borderIntersect, orthogonalRoute, routeAvoiding, Rect } from '../core/geometry.js';
 
 function dashArray(style) {
   if (style === 'dashed') return '6 4';
@@ -10,7 +10,7 @@ function dashArray(style) {
 }
 
 // ERD 鸦爪记号：把基数字符串解析为端点记号类型（覆盖 StarUML 枚举与常见文本写法）
-function erdCardKind(text) {
+export function erdCardKind(text) {
   const t = String(text || '').trim().toUpperCase().replace(/\s+/g, '');
   if (!t) return null;
   if (t === 'ZERO' || t === '0') return 'zero';
@@ -25,77 +25,91 @@ function erdCardKind(text) {
 // 垂直于表边向外，不随避障路由的拐点/末段方向漂移
 const ERD_END_AWAY = { left: [-1, 0], right: [1, 0], top: [0, -1], bottom: [0, 1] };
 
-// 从折线端点沿线回退 d（可跨拐点），返回位置与所在段方向
-function backtrackPoint(pts, d, fromStart) {
-  const list = fromStart ? pts : [...pts].reverse();
-  let acc = 0;
-  for (let i = 1; i < list.length; i++) {
-    const a = list[i - 1], b = list[i];
-    const len = Math.hypot(b.x - a.x, b.y - a.y);
-    if (len < 1e-6) continue;
-    if (acc + len >= d) {
-      const t = (d - acc) / len;
-      return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, ux: (b.x - a.x) / len, uy: (b.y - a.y) / len };
-    }
-    acc += len;
-  }
-  const last = list[list.length - 1];
-  return { x: last.x, y: last.y, ux: 0, uy: 0 };
+// ---- ERD 端点记号 = SVG marker（Luna Modeler 方案）----
+// 记号不再逐帧手绘，而是预定义 <marker> 由路径端点引用：orient 沿路径
+// 切向自动定向，交汇点天然严格落在线上；stroke 用 context-stroke 跟随
+// 路径描边色（含选中高亮变色）。
+//
+// marker 局部坐标系：原点 = 路径端点，+x 指向表体（auto-start-reverse 使
+// 始/末端共用同一套 glyph 几何，均朝 -x 向外伸出）。
+
+export const ERD_MARKER_KINDS = ['zero', 'one', 'zeroOrOne', 'many', 'oneOrMany'];
+
+export function erdMarkerId(kind, atStart) {
+  return `erd-${atStart ? 'start' : 'end'}-${kind}`;
 }
 
-// 在 ERD 连线一端绘制鸦爪记号（StarUML ERD 记号：○ 零、| 一、
-// ○| 零或一、三叉爪 多、爪| 一或多）；记号沿连线自身回退放置（可跨
-// 拐点），横向以表边法线为准——交汇点永远在线上；无法识别的取值退回
-// 文字标签
-function drawErdEnd(g, text, points, opts = {}) {
-  if (!text) return;
+/**
+ * 记号几何描述（纯数据，便于测试）：tick=一（半长4.5，距端点7/16），
+ * ring=零（r3.4，class erd-marker-ring 用纸面色遮挡穿线），
+ * claw=三叉爪（根距端点12，尖端 ±5 展开）——与旧手绘参数一致。
+ */
+export function erdGlyphSpecs(kind) {
+  const seg = (x1, y1, x2, y2) => ({ tag: 'line', attrs: { x1, y1, x2, y2, fill: 'none' } });
+  const tick = (d) => seg(-d, -4.5, -d, 4.5);
+  const ring = (d) => ({ tag: 'circle', attrs: { cx: -d, cy: 0, r: 3.4, fill: 'none', class: 'erd-marker-ring' } });
+  const claw = () => [seg(-12, 0, -1, -5), seg(-12, 0, -1, 0), seg(-12, 0, -1, 5)];
+  switch (kind) {
+    case 'one': return [tick(7)];
+    case 'zero': return [ring(7)];
+    case 'zeroOrOne': return [ring(7), tick(16)];
+    case 'many': return claw();
+    case 'oneOrMany': return [tick(16), ...claw()];
+    default: return [];
+  }
+}
+
+/** 在 defs 中维护 ERD 记号定义（幂等）；exporter 克隆 defs 时自动带出。 */
+export function ensureERDMarkers(defs) {
+  if (!defs) return null;
+  let holder = defs.querySelector('#erd-markers');
+  if (holder) return holder;
+  holder = svgEl('g', { id: 'erd-markers' }, defs);
+  for (const kind of ERD_MARKER_KINDS) {
+    for (const atStart of [true, false]) {
+      const m = svgEl('marker', {
+        id: erdMarkerId(kind, atStart),
+        viewBox: '-18 -6 20 12',
+        refX: '0', refY: '0',
+        markerWidth: '20', markerHeight: '12',
+        markerUnits: 'userSpaceOnUse', // 与旧手绘一致：记号随画布缩放
+        orient: atStart ? 'auto-start-reverse' : 'auto',
+      }, holder);
+      for (const spec of erdGlyphSpecs(kind)) {
+        svgEl(spec.tag, { ...spec.attrs, stroke: 'context-stroke', 'stroke-width': 1.3 }, m);
+      }
+    }
+  }
+  return holder;
+}
+
+/** 把端点记号以 marker 引用挂到路径上；text/空 基数由调用方手绘回退。 */
+function applyErdEndMarkers(pathEl, tailKind, headKind) {
+  if (tailKind && tailKind !== 'text') pathEl.setAttribute('marker-start', `url(#${erdMarkerId(tailKind, true)})`);
+  else pathEl.removeAttribute('marker-start');
+  if (headKind && headKind !== 'text') pathEl.setAttribute('marker-end', `url(#${erdMarkerId(headKind, false)})`);
+  else pathEl.removeAttribute('marker-end');
+}
+
+// 无法识别的基数取值：沿连线端退回文字标签（沿用旧定位算法）
+function drawErdTextEnd(g, text, points, opts = {}) {
   const color = opts.color || '#353535';
   const fs = opts.fontSize || 11;
   const fromStart = opts.fromStart !== false;
-  const kind = erdCardKind(text);
   const end = fromStart ? points[0] : points[points.length - 1];
   const toward = fromStart
     ? (points[1] || { x: end.x + 1, y: end.y })
     : (points[points.length - 2] || { x: end.x + 1, y: end.y });
-  if (kind === 'text') {
-    const dx = toward.x - end.x, dy = toward.y - end.y;
-    const horiz = Math.abs(dx) >= Math.abs(dy);
-    const len = Math.hypot(dx, dy) || 1;
-    const t = svgEl('text', {
-      x: end.x + (dx / len) * 14 + (horiz ? 0 : 6),
-      y: end.y + (dy / len) * 14 + (horiz ? -5 : 4),
-      'text-anchor': horiz ? 'middle' : 'start',
-      'font-size': fs, fill: color,
-    }, g);
-    t.textContent = text;
-    return;
-  }
-  const away = opts.away || null;
-  const at = (d) => backtrackPoint(points, d, fromStart);
-  // 记号的横向轴：优先表边法线（与引出段一致），回退跨过拐点时跟随所在段
-  const axis = (p) => {
-    if (away) return away;
-    return [p.ux || 1, p.uy || 0];
-  };
-  const seg = (a, b) => svgEl('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: color, 'stroke-width': 1.3 }, g);
-  const tick = (d) => {
-    const p = at(d), [ax, ay] = axis(p), px = -ay, py = ax;
-    seg({ x: p.x - px * 4.5, y: p.y - py * 4.5 }, { x: p.x + px * 4.5, y: p.y + py * 4.5 });
-  };
-  const circle = (d) => {
-    const p = at(d);
-    svgEl('circle', { cx: p.x, cy: p.y, r: 3.4, fill: 'none', stroke: color, 'stroke-width': 1.3 }, g);
-  };
-  const claw = () => {
-    const tip = at(1), root = at(12);
-    const [ax, ay] = axis(root), px = -ay, py = ax;
-    for (const off of [5, 0, -5]) seg(root, { x: tip.x + px * off, y: tip.y + py * off });
-  };
-  if (kind === 'one') tick(7);
-  else if (kind === 'zero') circle(7);
-  else if (kind === 'zeroOrOne') { circle(7); tick(16); }
-  else if (kind === 'many') claw();
-  else if (kind === 'oneOrMany') { tick(16); claw(); }
+  const dx = toward.x - end.x, dy = toward.y - end.y;
+  const horiz = Math.abs(dx) >= Math.abs(dy);
+  const len = Math.hypot(dx, dy) || 1;
+  const t = svgEl('text', {
+    x: end.x + (dx / len) * 14 + (horiz ? 0 : 6),
+    y: end.y + (dy / len) * 14 + (horiz ? -5 : 4),
+    'text-anchor': horiz ? 'middle' : 'start',
+    'font-size': fs, fill: color,
+  }, g);
+  t.textContent = text;
 }
 
 const ARROW = {
@@ -166,7 +180,7 @@ export function renderSelfLoop(g, edge, model, rect) {
     { x: x2, y: ym - 26 },
   ];
   const d = buildEdgePath(points, edge.lineMode);
-  svgEl('path', {
+  const pathEl = svgEl('path', {
     d, fill: 'none', stroke: line, 'stroke-width': 1,
     'stroke-dasharray': dashArray(edge.lineStyle),
     class: 'edge-path',
@@ -188,11 +202,14 @@ export function renderSelfLoop(g, edge, model, rect) {
     if (conveyed.length) labelParts.push(conveyed.join(', '));
   }
   // ERD reference/relationship: crow's-foot notation at each end (self loop
-  // anchors on the entity's right edge, so the outward normal is +x)
+  // anchors on the entity's right edge; markers orient along the path ends)
   if (edge.$type === 'ERDReference' || edge.$type === 'ERDRelationship') {
+    const tailKind = erdCardKind(edge.tailCardinality);
+    const headKind = erdCardKind(edge.headCardinality);
+    applyErdEndMarkers(pathEl, tailKind, headKind);
     const color = edge.fontColor || '#353535';
-    drawErdEnd(g, edge.tailCardinality, points, { color, fontSize: fs, away: ERD_END_AWAY.right, fromStart: true });
-    drawErdEnd(g, edge.headCardinality, points, { color, fontSize: fs, away: ERD_END_AWAY.right, fromStart: false });
+    if (tailKind === 'text') drawErdTextEnd(g, edge.tailCardinality, points, { color, fontSize: fs, fromStart: true });
+    if (headKind === 'text') drawErdTextEnd(g, edge.headCardinality, points, { color, fontSize: fs, fromStart: false });
   }
   if (edge.$type === 'UMLExtension' && model?.multiplicity) {
     const mt = svgEl('text', {
@@ -424,7 +441,10 @@ function buildEdgePath(points, mode = 'orthogonal') {
 
 /**
  * Compute the full point list of an edge, given tail/head view rects and waypoints.
- * Returns {points, tailEnd, headEnd} where ends are {x,y,angle} for arrow drawing.
+ * Returns {points, tailEnd, headEnd} where ends carry {x, y, angle, side, normal}:
+ * the attach border point, the arrow angle, which node side the end sits on, and
+ * that side's outward normal — the Luna-style "endpoint quantities" so downstream
+ * consumers (ERD crow's-foot, labels) never re-derive attachment independently.
  */
 export function computeEdgeGeometry(edge, tailRect, headRect, opts = {}) {
   // start from center points, trim to borders
@@ -433,22 +453,26 @@ export function computeEdgeGeometry(edge, tailRect, headRect, opts = {}) {
 
   const wps = edge.points || [];
   const mode = edge.lineMode || 'orthogonal';
+  // pinned anchors: when set, the end attaches on that side regardless of the
+  // ray direction; the point still slides along the side toward the target
+  const tailToward = wps.length ? wps[0] : headCenter;
+  const headToward = wps.length ? wps[wps.length - 1] : tailCenter;
   let route;
   let tailB, headB;
   if (wps.length) {
     const firstW = wps[0];
     const lastW = wps[wps.length - 1];
-    tailB = borderIntersect(tailRect, firstW);
-    headB = borderIntersect(headRect, lastW);
+    tailB = anchorBorderPoint(tailRect, edge.tailAnchor, firstW);
+    headB = anchorBorderPoint(headRect, edge.headAnchor, lastW);
     route = [tailB, ...wps, headB];
   } else if (mode === 'oblique') {
     // direct diagonal: attach each end toward the other node's center
-    tailB = borderIntersect(tailRect, headCenter);
-    headB = borderIntersect(headRect, tailCenter);
+    tailB = anchorBorderPoint(tailRect, edge.tailAnchor, headCenter);
+    headB = anchorBorderPoint(headRect, edge.headAnchor, tailCenter);
     route = [tailB, headB];
   } else {
-    tailB = borderIntersect(tailRect, headCenter);
-    headB = borderIntersect(headRect, tailCenter);
+    tailB = anchorBorderPoint(tailRect, edge.tailAnchor, headCenter);
+    headB = anchorBorderPoint(headRect, edge.headAnchor, tailCenter);
     // straight elbows by default; reroute around obstacles when they are given
     route = routeAvoiding({ ...tailB, side: tailB.side }, { ...headB, side: headB.side }, opts.obstacles || null);
   }
@@ -459,8 +483,18 @@ export function computeEdgeGeometry(edge, tailRect, headRect, opts = {}) {
   const afterTail = route[1] || route[route.length - 1];
   return {
     points: route,
-    tailEnd: { ...tailEnd, angle: angleBetween(afterTail, tailEnd) },
-    headEnd: { ...headEnd, angle: angleBetween(beforeHead, headEnd) },
+    tailEnd: {
+      ...tailEnd,
+      angle: angleBetween(afterTail, tailEnd),
+      side: tailB.side,
+      normal: ERD_END_AWAY[tailB.side] || [1, 0],
+    },
+    headEnd: {
+      ...headEnd,
+      angle: angleBetween(beforeHead, headEnd),
+      side: headB.side,
+      normal: ERD_END_AWAY[headB.side] || [1, 0],
+    },
   };
 }
 
@@ -474,7 +508,7 @@ export function renderEdge(g, edge, model, tailRect, headRect, opts = {}) {
     ? (model?.connectorKind || edge.connectorKind || 'assembly') : null;
 
   const d = buildEdgePath(points, edge.lineMode);
-  svgEl('path', {
+  const pathEl = svgEl('path', {
     d, fill: 'none', stroke: line,
     'stroke-width': opts.selected ? 1.6 : 1,
     'stroke-dasharray': connectorKind === 'delegation' ? '6 4' : dashArray(edge.lineStyle),
@@ -554,14 +588,41 @@ export function renderEdge(g, edge, model, tailRect, headRect, opts = {}) {
     }, g);
     mt.textContent = model.multiplicity;
   }
-  // ERD reference/relationship: crow's-foot notation at each end, oriented by
-  // the table-edge normal so markers never drift onto the entity box
+  // ERD reference/relationship: crow's-foot notation via SVG markers attached
+  // to the path ends (orientation follows the lead segment, so the mark always
+  // sits strictly on the line — the side/normal from the geometry pass is only
+  // needed by the text fallback and role labels now)
   if (edge.$type === 'ERDReference' || edge.$type === 'ERDRelationship') {
-    const color = fontColor;
-    const tailAway = ERD_END_AWAY[borderIntersect(tailRect, { x: headRect.cx, y: headRect.cy }).side];
-    const headAway = ERD_END_AWAY[borderIntersect(headRect, { x: tailRect.cx, y: tailRect.cy }).side];
-    drawErdEnd(g, edge.tailCardinality, points, { color, fontSize: fs, away: tailAway, fromStart: true });
-    drawErdEnd(g, edge.headCardinality, points, { color, fontSize: fs, away: headAway, fromStart: false });
+    const tailKind = erdCardKind(edge.tailCardinality);
+    const headKind = erdCardKind(edge.headCardinality);
+    applyErdEndMarkers(pathEl, tailKind, headKind);
+    if (tailKind === 'text') drawErdTextEnd(g, edge.tailCardinality, points, { color: fontColor, fontSize: fs, fromStart: true });
+    if (headKind === 'text') drawErdTextEnd(g, edge.headCardinality, points, { color: fontColor, fontSize: fs, fromStart: false });
+    // 端点文字标签（Luna caption_parent/caption_child 的对应物）：复用
+    // tailRoleName/headRoleName 存储,沿端点法线向外偏移,支持既有的
+    // *RoleOffset 拖拽偏移机制
+    const erdEndLabels = [
+      ['erdTailRole', edge.tailRoleName, tailEnd, 'tailRoleOffset'],
+      ['erdHeadRole', edge.headRoleName, headEnd, 'headRoleOffset'],
+    ];
+    for (const [kind, text, end, field] of erdEndLabels) {
+      if (!text) continue;
+      const o = edge[field] || { dx: 0, dy: 0 };
+      const [nx, ny] = end.normal || [0, -1];
+      const bx = end.x + nx * 12 + o.dx, by = end.y + ny * 12 + o.dy;
+      const horiz = Math.abs(nx) >= Math.abs(ny);
+      const t = svgEl('text', {
+        x: bx, y: by + fs * 0.35,
+        'text-anchor': horiz ? (nx > 0 ? 'start' : 'end') : 'middle',
+        'font-size': fs, fill: fontColor,
+      }, g);
+      t.textContent = text;
+      const tw = Math.max(24, text.length * fs * 0.6 + 8);
+      meta.labels.push({
+        el: t, kind, field,
+        box: { x: bx - (horiz && nx < 0 ? tw : horiz ? 0 : tw / 2), y: by - fs, width: tw, height: fs + 6 },
+      });
+    }
   }
   if (labelParts.length) {
     const t = svgEl('text', {

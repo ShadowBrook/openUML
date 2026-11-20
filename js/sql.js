@@ -12,29 +12,53 @@ export const SQL_DIALECTS = {
   ansi: 'ANSI SQL',
 };
 
-function q(dialect, name) {
-  if (dialect === 'mysql') return '`' + name + '`';
-  if (dialect === 'postgresql') return '"' + name + '"';
-  return '"' + name + '"';
+/**
+ * 方言 profile（Luna platforms/ + quotation.js 的对应物）：标识符引用符与
+ * 注释输出位置。新增方言 = 增加一个 profile 对象，不再加 if-else 分支。
+ */
+export const DIALECT_PROFILES = {
+  mysql: { label: 'MySQL', quote: '`', tableComment: true, postComments: false },
+  postgresql: { label: 'PostgreSQL', quote: '"', tableComment: false, postComments: true },
+  sqlite: { label: 'SQLite', quote: '"', tableComment: false, postComments: false },
+  ansi: { label: 'ANSI SQL', quote: '"', tableComment: false, postComments: false },
+};
+
+const profileOf = (dialect) => DIALECT_PROFILES[dialect] || DIALECT_PROFILES.ansi;
+
+/**
+ * 列内联属性 × 方言支持矩阵（Luna x-platforms 注解的直译）：
+ * 每个属性只在列出的方言下内联输出；扩展列属性时在此登记，
+ * 生成器无需新分支。
+ */
+export const COL_ATTRS = {
+  notNull: ['mysql', 'postgresql', 'sqlite', 'ansi'],
+  unique: ['mysql', 'postgresql', 'sqlite', 'ansi'],
+  defaultValue: ['mysql', 'postgresql', 'sqlite', 'ansi'],
+  comment: ['mysql'],
+  inlinePK: ['mysql', 'sqlite'],
+};
+
+const supports = (dialect, attr) => COL_ATTRS[attr].includes(dialect);
+
+export function q(dialect, name) {
+  const p = profileOf(dialect);
+  return p.quote + name + p.quote;
 }
 
-function comment(dialect, text, indent = '') {
-  if (!text) return '';
+function tableComment(dialect, text, indent = '') {
+  if (!text || !profileOf(dialect).tableComment) return '';
   const t = String(text).replace(/'/g, "''").replace(/\n/g, ' ');
-  if (dialect === 'mysql') return `${indent}COMMENT = '${t}'`;
-  return '';
+  return `${indent}COMMENT = '${t}'`;
 }
 
-function columnComment(dialect, table, col, text) {
-  if (!text) return '';
+function columnComment(dialect, text) {
+  if (!text || !supports(dialect, 'comment')) return '';
   const t = String(text).replace(/'/g, "''").replace(/\n/g, ' ');
-  if (dialect === 'mysql') return ` COMMENT '${t}'`;
-  if (dialect === 'postgresql') return '';
-  return '';
+  return ` COMMENT '${t}'`;
 }
 
 function postComments(dialect, out, table, columns) {
-  if (dialect !== 'postgresql') return;
+  if (!profileOf(dialect).postComments) return;
   for (const col of columns) {
     if (col.comment) {
       out.push(`COMMENT ON COLUMN ${q(dialect, table.name)}.${q(dialect, col.name)} IS '${String(col.comment).replace(/'/g, "''")}'`);
@@ -51,6 +75,41 @@ function postComments(dialect, out, table, columns) {
  * { childModel, parentModel, fkColumns, onDelete, onUpdate }.
  * Returns a single SQL script string.
  */
+/** 单列定义行（CREATE TABLE 列 / ADD COLUMN 共用；pkCount 供内联主键判断）。 */
+export function columnDefSQL(col, dialect, pkCount = 1) {
+  let line = `${q(dialect, col.name)} ${col.type || 'VARCHAR(50)'}`;
+  if (supports(dialect, 'notNull') && (col.notNull || col.primaryKey)) line += ' NOT NULL';
+  if (supports(dialect, 'unique') && col.unique && !col.primaryKey) line += ' UNIQUE';
+  if (supports(dialect, 'defaultValue') && col.defaultValue) line += ` DEFAULT ${col.defaultValue}`;
+  if (col.comment) line += columnComment(dialect, col.comment);
+  if (supports(dialect, 'inlinePK') && col.primaryKey && pkCount === 1) line += ' PRIMARY KEY';
+  return line;
+}
+
+/** CREATE INDEX 语句（idx: {name, columns, unique}）。 */
+export function indexSQL(table, idx, dialect) {
+  const cols = String(idx.columns).split(',').map((x) => x.trim()).filter(Boolean);
+  if (!idx.name || !cols.length) return null;
+  const kw = idx.unique ? 'CREATE UNIQUE INDEX' : 'CREATE INDEX';
+  return `${kw} ${q(dialect, idx.name)} ON ${q(dialect, table.name)} (${cols.map((c) => q(dialect, c)).join(', ')});`;
+}
+
+/**
+ * ALTER TABLE … ADD CONSTRAINT … FOREIGN KEY（ref 为 collectERD 描述符：
+ * child/parent 实体模型 + fkColumns/parentColumns/onDelete/onUpdate；
+ * parentColumns 为空时回退父表主键）。
+ */
+export function fkConstraintSQL(ref, dialect) {
+  const child = ref.child, parent = ref.parent;
+  if (!child || !parent) return null;
+  const fkCols = String(ref.fkColumns || '').split(',').map((s) => s.trim()).filter(Boolean);
+  if (!fkCols.length) return null;
+  const parentCols = String(ref.parentColumns || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const targets = parentCols.length ? parentCols : (parent.columns || []).filter((c) => c.primaryKey).map((c) => c.name);
+  const fkName = `fk_${child.name}_${parent.name}`.replace(/[^\p{L}\p{N}_]/gu, '_');
+  return `ALTER TABLE ${q(dialect, child.name)} ADD CONSTRAINT ${q(dialect, fkName)}\n  FOREIGN KEY (${fkCols.map((c) => q(dialect, c)).join(', ')})\n  REFERENCES ${q(dialect, parent.name)} (${(targets.length ? targets : fkCols).map((c) => q(dialect, c)).join(', ')})\n  ON DELETE ${ref.onDelete || 'RESTRICT'}\n  ON UPDATE ${ref.onUpdate || 'RESTRICT'};`;
+}
+
 export function generateSQL(entities, references, dialect = 'mysql', views = []) {
   const out = [];
   const head = `-- ${SQL_DIALECTS[dialect] || dialect} DDL generated by OpenUML\n-- ${new Date().toISOString()}\n`;
@@ -60,31 +119,13 @@ export function generateSQL(entities, references, dialect = 'mysql', views = [])
     const cols = (table.columns || []).filter((c) => c && c.name);
     if (!cols.length && !(table.columns || []).length) continue;
     const pk = cols.filter((c) => c.primaryKey);
-    const lines = [];
-    for (const col of cols) {
-      let line = `${q(dialect, col.name)} ${col.type || 'VARCHAR(50)'}`;
-      if (col.notNull || col.primaryKey) line += ' NOT NULL';
-      if (col.unique && !col.primaryKey) line += ' UNIQUE';
-      if (col.defaultValue) line += ` DEFAULT ${col.defaultValue}`;
-      if (dialect === 'mysql' && col.comment) line += columnComment(dialect, table.name, col, col.comment);
-      if (dialect === 'mysql' && col.primaryKey && cols.filter((c) => c.primaryKey).length === 1) line += ' PRIMARY KEY';
-      if (dialect === 'sqlite' && col.primaryKey && cols.filter((c) => c.primaryKey).length === 1) line += ' PRIMARY KEY';
-      lines.push(line);
-    }
+    const lines = cols.map((col) => columnDefSQL(col, dialect, pk.length));
     if (pk.length > 1 || (pk.length && dialect === 'postgresql')) {
       lines.push(`PRIMARY KEY (${pk.map((c) => q(dialect, c.name)).join(', ')})`);
     }
-    const uniques = cols.filter((c) => c.unique && !c.primaryKey);
-    if (uniques.length === 1) {
-      // already inline UNIQUE per column
-    }
     const tbl = `${q(dialect, table.name)} (\n  ${lines.join(',\n  ')}\n)`;
     let stmt = `CREATE TABLE ${tbl}`;
-    if (dialect === 'mysql') {
-      const opts = [];
-      if (table.documentation) opts.push(comment(dialect, table.documentation, ''));
-      if (opts.length) stmt += opts.join('');
-    }
+    stmt += tableComment(dialect, table.documentation);
     stmt += ';';
     out.push(stmt);
     postComments(dialect, out, table, cols);
@@ -100,28 +141,15 @@ export function generateSQL(entities, references, dialect = 'mysql', views = [])
   // indexes (table-level INDEX / UNIQUE INDEX definitions)
   for (const table of entities) {
     for (const idx of table.indexes || []) {
-      if (!idx.name || !idx.columns) continue;
-      const cols = String(idx.columns).split(',').map((x) => x.trim()).filter(Boolean);
-      if (!cols.length) continue;
-      const kw = idx.unique ? 'CREATE UNIQUE INDEX' : 'CREATE INDEX';
-      const naming = dialect === 'postgresql' ? `ON ${q(dialect, table.name)}` : `ON ${q(dialect, table.name)}`;
-      out.push(`${kw} ${q(dialect, idx.name)} ${naming} (${cols.map((c) => q(dialect, c)).join(', ')});`);
+      const line = indexSQL(table, idx, dialect);
+      if (line) out.push(line);
     }
   }
 
   // foreign keys from references (tail = child table, head = parent table)
   for (const ref of references) {
-    const child = ref.child, parent = ref.parent;
-    if (!child || !parent) continue;
-    const fkCols = String(ref.fkColumns || '').split(',').map((s) => s.trim()).filter(Boolean);
-    if (!fkCols.length) continue;
-    const parentCols = String(ref.parentColumns || '').split(',').map((s) => s.trim()).filter(Boolean);
-    const targets = parentCols.length ? parentCols : (() => {
-      const pt = entities.find((e) => e._id === (ref.parentModelId) || e.name === parent.name);
-      return (pt && pt.columns || []).filter((c) => c.primaryKey).map((c) => c.name);
-    })();
-    const fkName = `fk_${child.name}_${parent.name}`.replace(/[^\p{L}\p{N}_]/gu, '_');
-    out.push(`ALTER TABLE ${q(dialect, child.name)} ADD CONSTRAINT ${q(dialect, fkName)}\n  FOREIGN KEY (${fkCols.map((c) => q(dialect, c)).join(', ')})\n  REFERENCES ${q(dialect, parent.name)} (${(targets.length ? targets : fkCols).map((c) => q(dialect, c)).join(', ')})\n  ON DELETE ${ref.onDelete || 'RESTRICT'}\n  ON UPDATE ${ref.onUpdate || 'RESTRICT'};`);
+    const line = fkConstraintSQL(ref, dialect);
+    if (line) out.push(line);
   }
 
   return out.join('\n\n') + '\n';
@@ -151,6 +179,8 @@ export function collectERD(diagram) {
         childModelId: child._id, parentModelId: parent._id,
         fkColumns: v.fkColumns || '',
         parentColumns: v.parentColumns || '',
+        headCardinality: v.headCardinality || '',
+        tailCardinality: v.tailCardinality || '',
         onDelete: v.onDelete, onUpdate: v.onUpdate,
       });
     }
@@ -159,41 +189,86 @@ export function collectERD(diagram) {
 }
 
 /**
+ * 为一条引用规划子表 FK 列定义（纯函数，不改入参；Luna 自动 FK 列策略）：
+ * 按父表 PK 逐列生成，`<snake(父表)>_<pk>` 命名（fkNames 按位覆盖），
+ * 零端基数（0..* / ZERO / ZERO_OR_ONE）→ 可空；子表已有同名列则跳过。
+ */
+export function planFKColumns(child, parent, headCardinality = '', fkNames = []) {
+  if (!child || !parent) return [];
+  const parentPK = (parent.columns || []).filter((c) => c.primaryKey);
+  if (!parentPK.length) return [];
+  const existing = new Set((child.columns || []).map((c) => c.name.toLowerCase()));
+  return parentPK.map((pk, i) => ({
+    _id: 'col-' + Math.random().toString(36).slice(2, 9),
+    name: fkNames[i] || `${snake(parent.name)}_${pk.name}`,
+    type: pk.type || 'BIGINT',
+    primaryKey: false,
+    // 零端基数（0..* / ZERO / ZERO_OR_ONE / MANY=0..N）→ FK 列可空
+    notNull: !/^(0\.\.|ZERO_OR_ONE|ZERO|MANY)/i.test(String(headCardinality || '')),
+    unique: false,
+    foreignKey: true,
+  })).filter((c) => !existing.has(c.name.toLowerCase()));
+}
+
+/**
+ * 为 FK 列规划覆盖索引（纯函数；Luna createIndexesForFks 策略）：
+ * 已有索引覆盖首列时不重复建，返回 null。
+ */
+export function planFKIndex(child, fkCols) {
+  if (!child || !fkCols.length) return null;
+  const first = String(fkCols[0]).toLowerCase();
+  const covered = (child.indexes || []).some((idx) =>
+    String(idx.columns || '').split(',').map((x) => x.trim().toLowerCase()).includes(first));
+  if (covered) return null;
+  return {
+    _id: 'idx-' + Math.random().toString(36).slice(2, 9),
+    name: `idx_${snake(child.name)}_${snake(fkCols[0])}`,
+    columns: fkCols.join(', '),
+    unique: false,
+  };
+}
+
+/** 收集子表中属于某引用的 FK 列对象（按视图 fkColumns 名单匹配；删除联动用）。 */
+export function refFKColumns(childModel, fkColumnsStr) {
+  const names = String(fkColumnsStr || '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+  if (!childModel || !names.length) return [];
+  return (childModel.columns || []).filter((c) => c.foreignKey && names.includes(c.name.toLowerCase()));
+}
+
+/**
  * CDM→PDM transform: for each ERDRelationship, generate FK column(s) on the
  * child entity based on the parent's primary-key columns and the cardinality.
- * Returns a list of { entity, col } and applies them through `apply`.
+ * opts.withIndexes: 同时为每条引用的 FK 列补覆盖索引。
+ * Returns a list of { child, cols, index?, parent } and applies them when `apply`.
  */
-export function cdmToPDM(diagram, apply) {
+export function cdmToPDM(diagram, apply, { withIndexes = false } = {}) {
   const { entities, references } = collectERD(diagram);
   const byId = new Map(entities.map((e) => [e._id, e]));
+  // 视图 id → 实体模型（引用视图的 tail/head 是视图 id，不是模型 id）
+  const viewToModel = new Map();
+  for (const v of diagram.elements || []) {
+    if (v.$type === 'ERDEntity') { const m = byId.get(v.modelRef); if (m) viewToModel.set(v._id, m); }
+  }
   const changes = [];
   for (const ref of references) {
     const child = byId.get(ref.childModelId);
     const parent = ref.parent;
     if (!child || !parent) continue;
-    const parentPK = (parent.columns || []).filter((c) => c.primaryKey);
-    if (!parentPK.length) continue;
-    const existing = new Set((child.columns || []).map((c) => c.name.toLowerCase()));
     // referenced views may carry explicit FK column names
     const refView = (diagram.elements || []).find((v) => v.$type === 'ERDReference' &&
-      byId.get(v.tail) === child && byId.get(v.head) === parent);
+      viewToModel.get(v.tail) === child && viewToModel.get(v.head) === parent);
     const fkNames = String(refView?.fkColumns || '').split(',').map((x) => x.trim()).filter(Boolean);
-    const cols = parentPK.map((pk, i) => ({
-      name: fkNames[i] || `${snake(parent.name)}_${pk.name}`,
-      type: pk.type || 'BIGINT',
-      primaryKey: false,
-      // 零端基数（0..* / ZERO / ZERO_OR_ONE）→ FK 列可空
-      notNull: !/^(0\.\.|ZERO_OR_ONE|ZERO)/i.test(String(ref.headCardinality || '')),
-      unique: false,
-      foreignKey: true,
-    })).filter((c) => !existing.has(c.name.toLowerCase()));
+    const cols = planFKColumns(child, parent, ref.headCardinality, fkNames);
     if (!cols.length) continue;
-    changes.push({ child, cols, ref, parent });
+    const colNames = cols.map((c) => c.name);
+    const index = withIndexes ? planFKIndex(child, colNames) : null;
+    changes.push({ child, cols, index, ref, parent });
   }
   if (apply && changes.length) {
     for (const ch of changes) {
       ch.child.columns = [...(ch.child.columns || []), ...ch.cols];
       for (const col of ch.cols) col.foreignKey = true;
+      if (ch.index) ch.child.indexes = [...(ch.child.indexes || []), ch.index];
     }
   }
   return changes;

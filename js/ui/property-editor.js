@@ -68,6 +68,11 @@ export class PropertyEditor {
 
   /** Properties for view-only edges (object links, note links, communication links). */
   _renderViewEdgeProps(v) {
+    // view-only ERD 引用/关系（工具箱创建,modelRef 为空）同样需要完整的
+    // ERD 属性区——此前只有 SQL 导入的带模型引用才能看到基数等编辑器
+    if (v.$type === 'ERDReference' || v.$type === 'ERDRelationship') {
+      this._renderErdEdgeSection(v);
+    }
     const sec = this._section(`${v.$type.replace(/^UML/, '')} — 视图`);
     if (v.$type === 'UMLLinkObject') {
       this._row(sec, 'name', v.name || '', (val) => this._setView(v, 'name', val));
@@ -488,30 +493,7 @@ export class PropertyEditor {
     // ERD reference: cardinalities + FK columns; ERD relationship: CDM cardinalities
     if (this.currentView && this.currentView.isEdge &&
         (this.currentView.$type === 'ERDReference' || this.currentView.$type === 'ERDRelationship')) {
-      const isRef = this.currentView.$type === 'ERDReference';
-      const sec = this._section(isRef ? '引用 (Reference)' : '关系 (Relationship)');
-      const v = this.currentView;
-      // StarUML 基数枚举；已存的自定义文本（如 0..*、1..N）保留为额外选项
-      const cardOpts = () => {
-        const base = [
-          ['', '（无）'], ['ZERO', 'ZERO（0）'], ['ONE', 'ONE（1）'],
-          ['ZERO_OR_ONE', 'ZERO_OR_ONE（0..1）'], ['MANY', 'MANY（N）'], ['ONE_OR_MANY', 'ONE_OR_MANY（1..N）'],
-        ];
-        return base;
-      };
-      for (const [field, label] of [['tailCardinality', 'tail 基数'], ['headCardinality', 'head 基数']]) {
-        const cur = v[field] || '';
-        const opts = cardOpts();
-        if (cur && !opts.some(([val]) => val === cur)) opts.push([cur, `${cur}（自定义）`]);
-        this._row(sec, label, cur, (val) => this._setView(v, field, val), 'select', opts);
-      }
-      if (isRef) {
-        this._row(sec, 'FK 列 (子表)', v.fkColumns || '', (val) => this._setView(v, 'fkColumns', val));
-        this._row(sec, 'ON DELETE', v.onDelete || 'RESTRICT', (val) => this._setView(v, 'onDelete', val), 'select',
-          [['RESTRICT', 'RESTRICT'], ['CASCADE', 'CASCADE'], ['SET NULL', 'SET NULL'], ['NO ACTION', 'NO ACTION']]);
-        this._row(sec, 'ON UPDATE', v.onUpdate || 'RESTRICT', (val) => this._setView(v, 'onUpdate', val), 'select',
-          [['RESTRICT', 'RESTRICT'], ['CASCADE', 'CASCADE'], ['SET NULL', 'SET NULL'], ['NO ACTION', 'NO ACTION']]);
-      }
+      this._renderErdEdgeSection(this.currentView);
     }
 
     // Edge naming
@@ -530,6 +512,131 @@ export class PropertyEditor {
       this._row(sec, '路径', this.currentView.lineMode || 'orthogonal', (val) => this._setView(this.currentView, 'lineMode', val), 'select',
         [['orthogonal', '直角'], ['oblique', '斜线'], ['rounded', '圆角'], ['curved', '曲线']]);
     }
+  }
+
+  /** ERD 引用/关系属性区（基数/端标签/锚点/FK 映射/RI 动作）——
+   *  模型选区与 view-only 选区两条路径共用。 */
+  _renderErdEdgeSection(v) {
+    const isRef = v.$type === 'ERDReference';
+    const sec = this._section(isRef ? '引用 (Reference)' : '关系 (Relationship)');
+    // StarUML 基数枚举；已存的自定义文本（如 0..*、1..N）保留为额外选项
+    const cardOpts = () => {
+      const base = [
+        ['', '（无）'], ['ZERO', 'ZERO（0）'], ['ONE', 'ONE（1）'],
+        ['ZERO_OR_ONE', 'ZERO_OR_ONE（0..1）'], ['MANY', 'MANY（N）'], ['ONE_OR_MANY', 'ONE_OR_MANY（1..N）'],
+      ];
+      return base;
+    };
+    for (const [field, label] of [['tailCardinality', 'tail 基数'], ['headCardinality', 'head 基数']]) {
+      const cur = v[field] || '';
+      const opts = cardOpts();
+      if (cur && !opts.some(([val]) => val === cur)) opts.push([cur, `${cur}（自定义）`]);
+      this._row(sec, label, cur, (val) => this._setView(v, field, val), 'select', opts);
+    }
+    // 端点文字标签（渲染在线端旁，Luna caption 对应物）
+    this._row(sec, 'tail 标签', v.tailRoleName || '', (val) => this._setView(v, 'tailRoleName', val));
+    this._row(sec, 'head 标签', v.headRoleName || '', (val) => this._setView(v, 'headRoleName', val));
+    // 锚点枚举（钉死出线边；default = 按对端中心自动推导）
+    const anchorOpts = [['default', '自动'], ['left', '左边'], ['right', '右边'], ['top', '上边'], ['bottom', '下边']];
+    this._row(sec, 'tail 锚点', v.tailAnchor || 'default', (val) => this._setView(v, 'tailAnchor', val), 'select', anchorOpts);
+    this._row(sec, 'head 锚点', v.headAnchor || 'default', (val) => this._setView(v, 'headAnchor', val), 'select', anchorOpts);
+    if (isRef) {
+      this._fkPairEditor(sec, v);
+      this._row(sec, 'ON DELETE', v.onDelete || 'RESTRICT', (val) => this._setView(v, 'onDelete', val), 'select',
+        [['RESTRICT', 'RESTRICT'], ['CASCADE', 'CASCADE'], ['SET NULL', 'SET NULL'], ['NO ACTION', 'NO ACTION']]);
+      this._row(sec, 'ON UPDATE', v.onUpdate || 'RESTRICT', (val) => this._setView(v, 'onUpdate', val), 'select',
+        [['RESTRICT', 'RESTRICT'], ['CASCADE', 'CASCADE'], ['SET NULL', 'SET NULL'], ['NO ACTION', 'NO ACTION']]);
+    }
+  }
+
+  /**
+   * FK 列映射对编辑器（Luna RelationColumn 的对应物）：子列 ↔ 父列成对选择，
+   * 复合 FK = 多对按位对应。写回 fkColumns/parentColumns 逗号串（存储格式与
+   * SQL 导入/DDL 生成保持一致）；一次编辑合并为单个撤销步骤。
+   * 任一端实体不可解析（如纯视图引用）时退回自由文本输入。
+   */
+  _fkPairEditor(parent, v) {
+    const entityOf = (viewId) => {
+      const vw = repository.lookup(viewId);
+      return vw ? repository.lookup(vw.modelRef) : null;
+    };
+    const child = entityOf(v.tail);
+    const parentEntity = entityOf(v.head);
+    const colsOf = (m) => (m && Array.isArray(m.columns) ? m.columns.map((c) => c.name) : []);
+    const childCols = colsOf(child);
+    const parentCols = colsOf(parentEntity);
+    const parseList = (s) => String(s || '').split(',').map((x) => x.trim()).filter(Boolean);
+
+    if (!child && !parentEntity) {
+      this._row(parent, 'FK 列 (子表)', v.fkColumns || '', (val) => this._setView(v, 'fkColumns', val));
+      this._row(parent, '父列', v.parentColumns || '', (val) => this._setView(v, 'parentColumns', val));
+      return;
+    }
+
+    let pairs = parseList(v.fkColumns).map((c, i) => ({ child: c, parent: parseList(v.parentColumns)[i] || '' }));
+    const commit = (nextPairs) => {
+      pairs = nextPairs;
+      const fk = nextPairs.map((p) => p.child).filter(Boolean).join(', ');
+      const pc = nextPairs.map((p) => p.parent).filter(Boolean).join(', ');
+      const oldFk = v.fkColumns || '', oldPc = v.parentColumns || '';
+      commandStack.exec({
+        label: 'edit FK column mapping',
+        redo: () => { v.fkColumns = fk; v.parentColumns = pc; },
+        undo: () => { v.fkColumns = oldFk; v.parentColumns = oldPc; },
+      });
+    };
+    const colOpts = (list, cur) => [
+      ['', '（未选）'],
+      ...list.map((n) => [n, n]),
+      ...(cur && !list.includes(cur) ? [[cur, `${cur}（自定义）`]] : []),
+    ];
+
+    const row = document.createElement('div');
+    row.className = 'prop-row';
+    const l = document.createElement('label');
+    l.textContent = t('FK 列映射');
+    l.title = t('子表列 ↔ 父表列,多对按位对应(复合外键)');
+    row.appendChild(l);
+    const val = document.createElement('div');
+    val.className = 'prop-value';
+    const renderPairs = () => {
+      val.innerHTML = '';
+      pairs.forEach((p, i) => {
+        const line = document.createElement('div');
+        line.style.cssText = 'display:flex;gap:4px;align-items:center;margin-bottom:4px;';
+        const mkSelect = (list, cur, side) => {
+          const s = document.createElement('select');
+          for (const [optVal, text] of colOpts(list, cur)) {
+            const o = document.createElement('option');
+            o.value = optVal; o.textContent = text;
+            if (optVal === cur) o.selected = true;
+            s.appendChild(o);
+          }
+          s.addEventListener('change', () => {
+            const next = pairs.map((pp, j) => (j === i ? { ...pp, [side]: s.value } : pp));
+            commit(next);
+          });
+          s.addEventListener('keydown', (e) => e.stopPropagation());
+          return s;
+        };
+        line.appendChild(mkSelect(childCols, p.child, 'child'));
+        line.appendChild(document.createTextNode('↔'));
+        line.appendChild(mkSelect(parentCols, p.parent, 'parent'));
+        const del = document.createElement('button');
+        del.textContent = '✕';
+        del.title = t('移除该映射');
+        del.addEventListener('click', () => commit(pairs.filter((_, j) => j !== i)));
+        line.appendChild(del);
+        val.appendChild(line);
+      });
+      const add = document.createElement('button');
+      add.textContent = t('＋ 添加列映射');
+      add.addEventListener('click', () => commit([...pairs, { child: '', parent: '' }]));
+      val.appendChild(add);
+    };
+    renderPairs();
+    row.appendChild(val);
+    parent.appendChild(row);
   }
 
   _listEditor(parent, model, listKey, creator, formatter, editableFields) {
