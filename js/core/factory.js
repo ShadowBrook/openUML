@@ -158,6 +158,8 @@ export function createEdgeView(type, modelRef, tailViewId, headViewId, extra = {
     tail: tailViewId,
     head: headViewId,
     points: [],            // user waypoints
+    tailAnchor: 'default', // pinned attach side: default|left|right|top|bottom
+    headAnchor: 'default',
     lineStyle: def.lineStyle || 'solid',
     tailArrow: def.tailArrow || 'none',
     headArrow: def.headArrow || 'none',

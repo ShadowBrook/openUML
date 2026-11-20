@@ -2,7 +2,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Rect, borderIntersect, orthogonalRoute, routeAvoiding, segmentHitsRect } from '../js/core/geometry.js';
+import { Rect, anchorBorderPoint, borderIntersect, orthogonalRoute, routeAvoiding, segmentHitsRect } from '../js/core/geometry.js';
 
 const segs = (pts) => pts.slice(1).map((p, i) => [pts[i], p]);
 
@@ -65,4 +65,31 @@ test('borderIntersect picks the facing side', () => {
   const r = new Rect(0, 0, 100, 50);
   assert.equal(borderIntersect(r, { x: 500, y: 25 }).side, 'right');
   assert.equal(borderIntersect(r, { x: 50, y: -500 }).side, 'top');
+});
+
+test('anchorBorderPoint default keeps the derived center-ray behavior', () => {
+  const r = new Rect(0, 0, 100, 50);
+  const p = anchorBorderPoint(r, 'default', { x: 500, y: 25 });
+  assert.equal(p.side, 'right');
+  assert.equal(p.x, 100);
+});
+
+test('anchorBorderPoint pins the requested side, sliding toward the target', () => {
+  const r = new Rect(0, 0, 100, 50);
+  // pinned right side: x fixed at rect.x2, y slides toward the target and clamps
+  const p = anchorBorderPoint(r, 'right', { x: 500, y: 20 });
+  assert.equal(p.side, 'right');
+  assert.equal(p.x, 100);
+  assert.equal(p.y, 20);
+  // clamped inside the side when the target is beyond the border span
+  const p2 = anchorBorderPoint(r, 'right', { x: 500, y: 900 });
+  assert.equal(p2.y, 50);
+  // pinned top side: y fixed at rect.y, x slides toward the target
+  const p3 = anchorBorderPoint(r, 'top', { x: 30, y: -400 });
+  assert.equal(p3.side, 'top');
+  assert.equal(p3.y, 0);
+  assert.equal(p3.x, 30);
+  // unknown anchor values fall back to the derived behavior
+  const p4 = anchorBorderPoint(r, 'diagonal', { x: 500, y: 25 });
+  assert.equal(p4.side, 'right');
 });

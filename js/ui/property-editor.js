@@ -505,6 +505,10 @@ export class PropertyEditor {
         if (cur && !opts.some(([val]) => val === cur)) opts.push([cur, `${cur}（自定义）`]);
         this._row(sec, label, cur, (val) => this._setView(v, field, val), 'select', opts);
       }
+      // 锚点枚举（钉死出线边；default = 按对端中心自动推导）
+      const anchorOpts = [['default', '自动'], ['left', '左边'], ['right', '右边'], ['top', '上边'], ['bottom', '下边']];
+      this._row(sec, 'tail 锚点', v.tailAnchor || 'default', (val) => this._setView(v, 'tailAnchor', val), 'select', anchorOpts);
+      this._row(sec, 'head 锚点', v.headAnchor || 'default', (val) => this._setView(v, 'headAnchor', val), 'select', anchorOpts);
       if (isRef) {
         this._row(sec, 'FK 列 (子表)', v.fkColumns || '', (val) => this._setView(v, 'fkColumns', val));
         this._row(sec, 'ON DELETE', v.onDelete || 'RESTRICT', (val) => this._setView(v, 'onDelete', val), 'select',

@@ -1,7 +1,7 @@
 // edgeviews.js — SVG rendering for UML relationships with UML arrowheads
 
 import { svgEl, TIMING_LANE_LABEL_W } from './nodeviews.js';
-import { borderIntersect, orthogonalRoute, routeAvoiding, Rect } from '../core/geometry.js';
+import { anchorBorderPoint, borderIntersect, orthogonalRoute, routeAvoiding, Rect } from '../core/geometry.js';
 
 function dashArray(style) {
   if (style === 'dashed') return '6 4';
@@ -424,7 +424,10 @@ function buildEdgePath(points, mode = 'orthogonal') {
 
 /**
  * Compute the full point list of an edge, given tail/head view rects and waypoints.
- * Returns {points, tailEnd, headEnd} where ends are {x,y,angle} for arrow drawing.
+ * Returns {points, tailEnd, headEnd} where ends carry {x, y, angle, side, normal}:
+ * the attach border point, the arrow angle, which node side the end sits on, and
+ * that side's outward normal — the Luna-style "endpoint quantities" so downstream
+ * consumers (ERD crow's-foot, labels) never re-derive attachment independently.
  */
 export function computeEdgeGeometry(edge, tailRect, headRect, opts = {}) {
   // start from center points, trim to borders
@@ -433,22 +436,26 @@ export function computeEdgeGeometry(edge, tailRect, headRect, opts = {}) {
 
   const wps = edge.points || [];
   const mode = edge.lineMode || 'orthogonal';
+  // pinned anchors: when set, the end attaches on that side regardless of the
+  // ray direction; the point still slides along the side toward the target
+  const tailToward = wps.length ? wps[0] : headCenter;
+  const headToward = wps.length ? wps[wps.length - 1] : tailCenter;
   let route;
   let tailB, headB;
   if (wps.length) {
     const firstW = wps[0];
     const lastW = wps[wps.length - 1];
-    tailB = borderIntersect(tailRect, firstW);
-    headB = borderIntersect(headRect, lastW);
+    tailB = anchorBorderPoint(tailRect, edge.tailAnchor, firstW);
+    headB = anchorBorderPoint(headRect, edge.headAnchor, lastW);
     route = [tailB, ...wps, headB];
   } else if (mode === 'oblique') {
     // direct diagonal: attach each end toward the other node's center
-    tailB = borderIntersect(tailRect, headCenter);
-    headB = borderIntersect(headRect, tailCenter);
+    tailB = anchorBorderPoint(tailRect, edge.tailAnchor, headCenter);
+    headB = anchorBorderPoint(headRect, edge.headAnchor, tailCenter);
     route = [tailB, headB];
   } else {
-    tailB = borderIntersect(tailRect, headCenter);
-    headB = borderIntersect(headRect, tailCenter);
+    tailB = anchorBorderPoint(tailRect, edge.tailAnchor, headCenter);
+    headB = anchorBorderPoint(headRect, edge.headAnchor, tailCenter);
     // straight elbows by default; reroute around obstacles when they are given
     route = routeAvoiding({ ...tailB, side: tailB.side }, { ...headB, side: headB.side }, opts.obstacles || null);
   }
@@ -459,8 +466,18 @@ export function computeEdgeGeometry(edge, tailRect, headRect, opts = {}) {
   const afterTail = route[1] || route[route.length - 1];
   return {
     points: route,
-    tailEnd: { ...tailEnd, angle: angleBetween(afterTail, tailEnd) },
-    headEnd: { ...headEnd, angle: angleBetween(beforeHead, headEnd) },
+    tailEnd: {
+      ...tailEnd,
+      angle: angleBetween(afterTail, tailEnd),
+      side: tailB.side,
+      normal: ERD_END_AWAY[tailB.side] || [1, 0],
+    },
+    headEnd: {
+      ...headEnd,
+      angle: angleBetween(beforeHead, headEnd),
+      side: headB.side,
+      normal: ERD_END_AWAY[headB.side] || [1, 0],
+    },
   };
 }
 
@@ -555,13 +572,12 @@ export function renderEdge(g, edge, model, tailRect, headRect, opts = {}) {
     mt.textContent = model.multiplicity;
   }
   // ERD reference/relationship: crow's-foot notation at each end, oriented by
-  // the table-edge normal so markers never drift onto the entity box
+  // the attach side reported by the geometry pass (same side the route uses —
+  // pinned anchors included — so the mark and the lead segment can't disagree)
   if (edge.$type === 'ERDReference' || edge.$type === 'ERDRelationship') {
     const color = fontColor;
-    const tailAway = ERD_END_AWAY[borderIntersect(tailRect, { x: headRect.cx, y: headRect.cy }).side];
-    const headAway = ERD_END_AWAY[borderIntersect(headRect, { x: tailRect.cx, y: tailRect.cy }).side];
-    drawErdEnd(g, edge.tailCardinality, points, { color, fontSize: fs, away: tailAway, fromStart: true });
-    drawErdEnd(g, edge.headCardinality, points, { color, fontSize: fs, away: headAway, fromStart: false });
+    drawErdEnd(g, edge.tailCardinality, points, { color, fontSize: fs, away: tailEnd.normal, fromStart: true });
+    drawErdEnd(g, edge.headCardinality, points, { color, fontSize: fs, away: headEnd.normal, fromStart: false });
   }
   if (labelParts.length) {
     const t = svgEl('text', {
