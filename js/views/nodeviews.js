@@ -1211,11 +1211,11 @@ export function renderNode(g, view, model, kind, opts = {}) {
       break;
     }
     case 'erdarea': {
-      // ERD 主题分区(Luna Area 的对应物):view-only 容器,标题带 + 可着色体
+      // ERD 主题分区(Luna Area 的对应物):view-only 容器,标题带 + 半透明体
       const name = view.text || '分区';
       const headH = 22;
       const areaFill = view.fillColor || '#fdf6e3';
-      svgEl('rect', { x, y: y + headH, width: w, height: Math.max(0, h - headH), fill: areaFill, stroke: view.lineColor || '#c9a227', 'stroke-width': 1, class: 'node-frame' }, g);
+      svgEl('rect', { x, y: y + headH, width: w, height: Math.max(0, h - headH), fill: areaFill, 'fill-opacity': '0.55', stroke: view.lineColor || '#c9a227', 'stroke-width': 1, 'stroke-dasharray': '6 3', class: 'node-frame' }, g);
       svgEl('rect', { x, y, width: w, height: headH, fill: view.lineColor || '#c9a227', stroke: view.lineColor || '#c9a227', 'stroke-width': 1, class: 'node-frame' }, g);
       const at = svgEl('text', { x: x + 10, y: y + headH - 6, 'font-size': fs, 'font-weight': 700, fill: '#5c4a10' }, g);
       at.textContent = name;

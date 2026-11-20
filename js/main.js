@@ -1098,6 +1098,9 @@ function runErdAutoLayout(diagram = app.canvas.diagram) {
     && (v.$type === 'ERDReference' || v.$type === 'ERDRelationship'));
   const moves = layoutERD(entityViews, refViews, { grid: app.prefs.gridSize || 10 });
   if (!moves.size) return;
+  // 画布原点留白:布局从 (0,0) 起算,整体平移到 (80,80) 视口内
+  const ORIGIN = 80;
+  for (const [id, p] of moves) moves.set(id, { x: p.x + ORIGIN, y: p.y + ORIGIN });
   const olds = new Map(entityViews.map((v) => [v._id, { x: v.x, y: v.y }]));
   // 分区收缩:包围新位置的子项(+标题带与内边距)
   const areas = (diagram.elements || []).filter((v) => v.$type === 'ERDArea');

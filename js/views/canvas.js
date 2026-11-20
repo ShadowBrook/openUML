@@ -131,7 +131,8 @@ export class DiagramCanvas {
     const isBackdrop = (v) => v.$type === 'UMLSwimlaneVert' || v.$type === 'UMLSwimlaneHorz' || v.$type === 'UMLCompositeState' || v.$type === 'UMLCombinedFragment' || v.$type === 'UMLFrame' || v.$type === 'UMLStructuredActivityNode' || v.$type === 'UMLInterruptibleRegion'
       || v.$type === 'UMLNode' || v.$type === 'UMLNodeInstance'
       || v.$type === 'UMLOrthogonalState' || v.$type === 'UMLRegion'
-      || v.$type === 'UMLPackage' || v.$type === 'UMLModel' || v.$type === 'UMLSubsystem';
+      || v.$type === 'UMLPackage' || v.$type === 'UMLModel' || v.$type === 'UMLSubsystem'
+      || v.$type === 'ERDArea';
     const nodes = views.filter((v) => !v.isEdge)
       .sort((a, b) => {
         const pa = isBackdrop(a) ? 0 : 1, pb = isBackdrop(b) ? 0 : 1;
@@ -1632,9 +1633,13 @@ export class DiagramCanvas {
     const pts = [];
     for (const v of this.diagram.elements) {
       if (v.isEdge) continue;
+      // 防御:外部工具生成/残缺数据可能缺 x/y(或缺 isEdge 标记),
+      // 跳过非有限坐标,避免 NaN 通过 bounds 污染 zoom/pan
+      if (!Number.isFinite(v.x) || !Number.isFinite(v.y)) continue;
       const h = v.$type === 'UMLLifeLine' ? viewH(v) + (v.lifeHeight || 400) : viewH(v);
       pts.push({ x: v.x, y: v.y }, { x: v.x + viewW(v), y: v.y + h });
     }
+    if (!pts.length) { this.zoom = 1; this.panX = this.panY = 40; this._zoomChanged(); return; }
     const r = Rect.fromPoints(pts);
     // account for the diagram frame margin drawn around the content
     r.x -= 40; r.y -= 40; r.width += 70; r.height += 70;
