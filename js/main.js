@@ -1994,7 +1994,7 @@ function buildMenus() {
         { label: 'ERD / PDM 转 SQL…', action: openERDSQLDialog },
         { label: 'SQL → 迁移脚本（与当前图 diff）…', action: openMigrationDialog },
         { label: 'CDM → PDM 自动转换（生成外键列）', action: runCDMtoPDM },
-        { label: '生成上下文图（Context Lens）', disabled: repository.selectedModel?.type !== 'ERDEntity' && !([...repository.selections].some((id) => repository.lookup(id)?.$type === 'ERDEntity')), action: () => {
+        { label: '生成上下文图（Context Lens）', action: () => {
           const vid = [...repository.selections].find((id) => repository.lookup(id)?.$type === 'ERDEntity');
           runContextLens(vid);
         } },

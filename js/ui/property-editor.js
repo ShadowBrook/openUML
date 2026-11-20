@@ -68,6 +68,11 @@ export class PropertyEditor {
 
   /** Properties for view-only edges (object links, note links, communication links). */
   _renderViewEdgeProps(v) {
+    // view-only ERD 引用/关系（工具箱创建,modelRef 为空）同样需要完整的
+    // ERD 属性区——此前只有 SQL 导入的带模型引用才能看到基数等编辑器
+    if (v.$type === 'ERDReference' || v.$type === 'ERDRelationship') {
+      this._renderErdEdgeSection(v);
+    }
     const sec = this._section(`${v.$type.replace(/^UML/, '')} — 视图`);
     if (v.$type === 'UMLLinkObject') {
       this._row(sec, 'name', v.name || '', (val) => this._setView(v, 'name', val));
@@ -488,37 +493,7 @@ export class PropertyEditor {
     // ERD reference: cardinalities + FK columns; ERD relationship: CDM cardinalities
     if (this.currentView && this.currentView.isEdge &&
         (this.currentView.$type === 'ERDReference' || this.currentView.$type === 'ERDRelationship')) {
-      const isRef = this.currentView.$type === 'ERDReference';
-      const sec = this._section(isRef ? '引用 (Reference)' : '关系 (Relationship)');
-      const v = this.currentView;
-      // StarUML 基数枚举；已存的自定义文本（如 0..*、1..N）保留为额外选项
-      const cardOpts = () => {
-        const base = [
-          ['', '（无）'], ['ZERO', 'ZERO（0）'], ['ONE', 'ONE（1）'],
-          ['ZERO_OR_ONE', 'ZERO_OR_ONE（0..1）'], ['MANY', 'MANY（N）'], ['ONE_OR_MANY', 'ONE_OR_MANY（1..N）'],
-        ];
-        return base;
-      };
-      for (const [field, label] of [['tailCardinality', 'tail 基数'], ['headCardinality', 'head 基数']]) {
-        const cur = v[field] || '';
-        const opts = cardOpts();
-        if (cur && !opts.some(([val]) => val === cur)) opts.push([cur, `${cur}（自定义）`]);
-        this._row(sec, label, cur, (val) => this._setView(v, field, val), 'select', opts);
-      }
-      // 端点文字标签（渲染在线端旁，Luna caption 对应物）
-      this._row(sec, 'tail 标签', v.tailRoleName || '', (val) => this._setView(v, 'tailRoleName', val));
-      this._row(sec, 'head 标签', v.headRoleName || '', (val) => this._setView(v, 'headRoleName', val));
-      // 锚点枚举（钉死出线边；default = 按对端中心自动推导）
-      const anchorOpts = [['default', '自动'], ['left', '左边'], ['right', '右边'], ['top', '上边'], ['bottom', '下边']];
-      this._row(sec, 'tail 锚点', v.tailAnchor || 'default', (val) => this._setView(v, 'tailAnchor', val), 'select', anchorOpts);
-      this._row(sec, 'head 锚点', v.headAnchor || 'default', (val) => this._setView(v, 'headAnchor', val), 'select', anchorOpts);
-      if (isRef) {
-        this._fkPairEditor(sec, v);
-        this._row(sec, 'ON DELETE', v.onDelete || 'RESTRICT', (val) => this._setView(v, 'onDelete', val), 'select',
-          [['RESTRICT', 'RESTRICT'], ['CASCADE', 'CASCADE'], ['SET NULL', 'SET NULL'], ['NO ACTION', 'NO ACTION']]);
-        this._row(sec, 'ON UPDATE', v.onUpdate || 'RESTRICT', (val) => this._setView(v, 'onUpdate', val), 'select',
-          [['RESTRICT', 'RESTRICT'], ['CASCADE', 'CASCADE'], ['SET NULL', 'SET NULL'], ['NO ACTION', 'NO ACTION']]);
-      }
+      this._renderErdEdgeSection(this.currentView);
     }
 
     // Edge naming
@@ -536,6 +511,41 @@ export class PropertyEditor {
       this._row(sec, '线型', this.currentView.lineStyle, (val) => this._setView(this.currentView, 'lineStyle', val), 'select', [['solid', '实线'], ['dashed', '虚线']]);
       this._row(sec, '路径', this.currentView.lineMode || 'orthogonal', (val) => this._setView(this.currentView, 'lineMode', val), 'select',
         [['orthogonal', '直角'], ['oblique', '斜线'], ['rounded', '圆角'], ['curved', '曲线']]);
+    }
+  }
+
+  /** ERD 引用/关系属性区（基数/端标签/锚点/FK 映射/RI 动作）——
+   *  模型选区与 view-only 选区两条路径共用。 */
+  _renderErdEdgeSection(v) {
+    const isRef = v.$type === 'ERDReference';
+    const sec = this._section(isRef ? '引用 (Reference)' : '关系 (Relationship)');
+    // StarUML 基数枚举；已存的自定义文本（如 0..*、1..N）保留为额外选项
+    const cardOpts = () => {
+      const base = [
+        ['', '（无）'], ['ZERO', 'ZERO（0）'], ['ONE', 'ONE（1）'],
+        ['ZERO_OR_ONE', 'ZERO_OR_ONE（0..1）'], ['MANY', 'MANY（N）'], ['ONE_OR_MANY', 'ONE_OR_MANY（1..N）'],
+      ];
+      return base;
+    };
+    for (const [field, label] of [['tailCardinality', 'tail 基数'], ['headCardinality', 'head 基数']]) {
+      const cur = v[field] || '';
+      const opts = cardOpts();
+      if (cur && !opts.some(([val]) => val === cur)) opts.push([cur, `${cur}（自定义）`]);
+      this._row(sec, label, cur, (val) => this._setView(v, field, val), 'select', opts);
+    }
+    // 端点文字标签（渲染在线端旁，Luna caption 对应物）
+    this._row(sec, 'tail 标签', v.tailRoleName || '', (val) => this._setView(v, 'tailRoleName', val));
+    this._row(sec, 'head 标签', v.headRoleName || '', (val) => this._setView(v, 'headRoleName', val));
+    // 锚点枚举（钉死出线边；default = 按对端中心自动推导）
+    const anchorOpts = [['default', '自动'], ['left', '左边'], ['right', '右边'], ['top', '上边'], ['bottom', '下边']];
+    this._row(sec, 'tail 锚点', v.tailAnchor || 'default', (val) => this._setView(v, 'tailAnchor', val), 'select', anchorOpts);
+    this._row(sec, 'head 锚点', v.headAnchor || 'default', (val) => this._setView(v, 'headAnchor', val), 'select', anchorOpts);
+    if (isRef) {
+      this._fkPairEditor(sec, v);
+      this._row(sec, 'ON DELETE', v.onDelete || 'RESTRICT', (val) => this._setView(v, 'onDelete', val), 'select',
+        [['RESTRICT', 'RESTRICT'], ['CASCADE', 'CASCADE'], ['SET NULL', 'SET NULL'], ['NO ACTION', 'NO ACTION']]);
+      this._row(sec, 'ON UPDATE', v.onUpdate || 'RESTRICT', (val) => this._setView(v, 'onUpdate', val), 'select',
+        [['RESTRICT', 'RESTRICT'], ['CASCADE', 'CASCADE'], ['SET NULL', 'SET NULL'], ['NO ACTION', 'NO ACTION']]);
     }
   }
 
