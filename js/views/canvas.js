@@ -6,7 +6,7 @@ import { repository } from '../core/repository.js';
 import { commandStack, compound } from '../core/commands.js';
 import { createModel, createNodeView, createEdgeView, createAttribute } from '../core/factory.js';
 import { renderNode, svgEl, TIMING_LANE_LABEL_W, viewW, viewH, fragmentOperandLayout } from './nodeviews.js';
-import { renderEdge, renderMessage, renderEndpointMessage, renderSelfLoop, renderTimingMessage, renderAssociationClassLink, distanceToPolyline, computeEdgeGeometry } from './edgeviews.js';
+import { renderEdge, renderMessage, renderEndpointMessage, renderSelfLoop, renderTimingMessage, renderAssociationClassLink, distanceToPolyline, computeEdgeGeometry, ensureERDMarkers } from './edgeviews.js';
 import { openQuickEdit, openConnectorEdit, closeQuickEdit } from '../ui/quickedit.js';
 
 const DEFAULT_GRID = 10;
@@ -44,6 +44,7 @@ export class DiagramCanvas {
     }, this.gridLayer);
     const shadow = svgEl('filter', { id: 'drop-shadow', x: '-25%', y: '-25%', width: '150%', height: '150%' }, this.defs);
     svgEl('feDropShadow', { dx: 2, dy: 2, stdDeviation: 2, 'flood-opacity': 0.35 }, shadow);
+    ensureERDMarkers(this.defs); // ERD 鸦爪记号定义（幂等）
     this.contentLayer = svgEl('g', { id: 'content-layer' }, this.svg);
     this.overlayLayer = svgEl('g', { id: 'overlay-layer' }, this.svg);
 

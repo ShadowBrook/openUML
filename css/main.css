@@ -685,6 +685,9 @@ button:focus-visible, .diagram-tab:focus-visible, .menu-item:focus { outline: 2p
 }
 .node-main.selected .node-frame { stroke: var(--selection); stroke-width: 1.6; }
 .edge-main.selected .edge-path { stroke: var(--selection); }
+/* ERD 鸦爪 marker：圆环用纸面色填充遮挡穿过的线（Luna 技巧）；
+   记号描边为 context-stroke，自动跟随路径描边色（含上方选中变色） */
+.erd-marker-ring { fill: var(--canvas-paper, var(--canvas-bg)); }
 .handle {
   fill: #fff;
   stroke: var(--selection);
