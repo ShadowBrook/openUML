@@ -28,6 +28,7 @@ import { diffERD, emitMigration, describeOp, isDestructiveOp } from './core/erd-
 import { cdmToPDM } from './sql.js';
 import { importSQLToDiagram, parseSQL } from './sql.js';
 import { createContextLensDiagram } from './core/erd-lens.js';
+import { layoutERD } from './core/erd-layout.js';
 import { t, setLang, availableLangs, getLang } from './ui/i18n.js';
 import { showAiDiagramDialog } from './ai/dialog.js';
 
@@ -1084,6 +1085,58 @@ function runCDMtoPDM() {
   showToast(`已生成 ${changes.reduce((n, ch) => n + ch.cols.length, 0)} 个外键列${idxCount ? ` / ${idxCount} 个索引` : ''}`);
 }
 
+/**
+ * ERD 自动布局(Luna autolayout 的对应物):实体按 FK 依赖分层(父上子下)、
+ * 分区聚组、重心法消交叉;单 compound 可撤销;分区自动收缩包裹子项。
+ */
+function runErdAutoLayout(diagram = app.canvas.diagram) {
+  if (!diagram || diagram.type !== 'ERDDiagram') { showToast('请先打开一张 ERD 图'); return; }
+  const entityViews = (diagram.elements || []).filter((v) => v.$type === 'ERDEntity');
+  if (entityViews.length < 2) { showToast('实体不足,无需布局'); return; }
+  const refViews = (diagram.elements || []).filter((v) => v.isEdge
+    && (v.$type === 'ERDReference' || v.$type === 'ERDRelationship'));
+  const moves = layoutERD(entityViews, refViews, { grid: app.prefs.gridSize || 10 });
+  if (!moves.size) return;
+  const olds = new Map(entityViews.map((v) => [v._id, { x: v.x, y: v.y }]));
+  // 分区收缩:包围新位置的子项(+标题带与内边距)
+  const areas = (diagram.elements || []).filter((v) => v.$type === 'ERDArea');
+  const areaStates = areas.map((a) => {
+    const kids = entityViews.filter((v) => v.container === a._id);
+    const old = { x: a.x, y: a.y, width: a.width, height: a.height };
+    if (!kids.length) return { area: a, old, next: null };
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const k of kids) {
+      const p = moves.get(k._id);
+      minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x + (k.width || 120)); maxY = Math.max(maxY, p.y + (k.height || 60));
+    }
+    return { area: a, old, next: { x: minX - 20, y: minY - 30, width: maxX - minX + 40, height: maxY - minY + 50 } };
+  });
+  compound('erd-autolayout', [{
+    redo: () => {
+      for (const [id, p] of moves) { const v = repository.lookup(id); if (v) { v.x = p.x; v.y = p.y; } }
+      for (const s of areaStates) {
+        if (!s.next) continue;
+        s.area.x = s.next.x; s.area.y = s.next.y;
+        s.area.width = s.next.width; s.area.height = s.next.height;
+      }
+      repository._reindex();
+      app.canvas.requestRender();
+    },
+    undo: () => {
+      for (const [id, o] of olds) { const v = repository.lookup(id); if (v) { v.x = o.x; v.y = o.y; } }
+      for (const s of areaStates) {
+        s.area.x = s.old.x; s.area.y = s.old.y;
+        s.area.width = s.old.width; s.area.height = s.old.height;
+      }
+      repository._reindex();
+      app.canvas.requestRender();
+    },
+  }]);
+  app.canvas.zoomFit();
+  showToast(`已自动布局 ${entityViews.length} 张表`, 'success');
+}
+
 function runContextLens(viewId) {
   const view = viewId ? repository.lookup(viewId) : null;
   if (!view || view.$type !== 'ERDEntity') { showToast('请先选中一个 ERD 实体'); return; }
@@ -1993,6 +2046,7 @@ function buildMenus() {
         { label: '代码生成…', action: openCodegenDialog },
         { label: 'AI 画图… (Beta)', action: openAiDrawDialog },
         { label: 'ERD / PDM 转 SQL…', action: openERDSQLDialog },
+        { label: 'ERD 自动布局', shortcut: 'Shift+L', action: () => runErdAutoLayout() },
         { label: 'SQL → 迁移脚本（与当前图 diff）…', action: openMigrationDialog },
         { label: 'CDM → PDM 自动转换（生成外键列）', action: runCDMtoPDM },
         { label: '生成上下文图（Context Lens）', action: () => {
@@ -2096,6 +2150,10 @@ function elementContextItems(node, canvas) {
           redo: () => { node.keysgraphics = !on; },
           undo: () => { node.keysgraphics = old; },
         });
+      } });
+      items.push({ label: 'ERD 自动布局', shortcut: 'Shift+L', action: () => {
+        openDiagram(node);
+        runErdAutoLayout(node);
       } });
       // 图级线模式默认(逐线可在属性面板覆盖)
       const lg = node.linegraphics || 'detailed';
@@ -2240,6 +2298,7 @@ function bindKeys() {
     if (ctrl && e.shiftKey && e.key.toLowerCase() === 'g') { e.preventDefault(); toggleSnap(); return; }
     if (ctrl && e.shiftKey && e.key.toLowerCase() === 'i') { e.preventDefault(); if (repository.selections.length) pickColor('fill', (v) => applyColor('fillColor', v)); return; }
     if (ctrl && e.shiftKey && e.key.toLowerCase() === 'l') { e.preventDefault(); if (repository.selections.length) pickColor('line', (v) => applyColor('lineColor', v)); return; }
+    if (e.shiftKey && !ctrl && e.key.toLowerCase() === 'l') { e.preventDefault(); runErdAutoLayout(); return; }
     // line style (StarUML: Format > Line Style)
     if (ctrl && e.altKey && e.key.toLowerCase() === 'l') { e.preventDefault(); setEdgeLineMode('rounded'); return; }
     if (ctrl && e.altKey && e.key.toLowerCase() === 'b') { e.preventDefault(); setEdgeLineMode('curved'); return; }
@@ -2476,6 +2535,10 @@ function boot() {
       const items = [
         { label: '添加类图', action: () => addDiagram('UMLClassDiagram') },
         { label: '添加用例图', action: () => addDiagram('UMLUseCaseDiagram') },
+        ...(app.activeDiagram?.type === 'ERDDiagram' ? [
+          '---',
+          { label: 'ERD 自动布局', shortcut: 'Shift+L', action: () => runErdAutoLayout() },
+        ] : []),
         '---',
         { label: '适应窗口', action: () => canvas.zoomFit() },
         { label: '重置缩放', action: () => { canvas.zoom = 1; canvas._zoomChanged(); } },
