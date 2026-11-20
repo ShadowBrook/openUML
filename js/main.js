@@ -1057,7 +1057,8 @@ function openSQLImportDialog() {
 function runCDMtoPDM() {
   const diagram = app.canvas.diagram;
   if (!diagram || diagram.type !== 'ERDDiagram') { showToast('请先打开一张 ERD 图'); return; }
-  const changes = cdmToPDM(diagram, false);
+  const prefs = loadPreferences();
+  const changes = cdmToPDM(diagram, false, { withIndexes: prefs.erdCreateIndexForFk !== false });
   if (!changes.length) { showToast('没有可转换的关系（父表需有主键列，且子表未含同名 FK 列）'); return; }
   const desc = changes.map((ch) => `${ch.child.name} ← ${ch.parent.name}（新增 ${ch.cols.length} 列）`).join('；');
   compound('cdm-to-pdm', [{
@@ -1065,16 +1066,19 @@ function runCDMtoPDM() {
       for (const ch of changes) {
         ch.child.columns = [...(ch.child.columns || []), ...ch.cols];
         for (const col of ch.cols) col.foreignKey = true;
+        if (ch.index) ch.child.indexes = [...(ch.child.indexes || []), ch.index];
       }
     },
     undo: () => {
       for (const ch of changes) {
         ch.child.columns = (ch.child.columns || []).filter((c) => !ch.cols.includes(c));
+        if (ch.index) ch.child.indexes = (ch.child.indexes || []).filter((ix) => ix !== ch.index);
       }
     },
   }]);
   app.canvas.setStatusMessage(`CDM→PDM：${desc}`);
-  showToast(`已生成 ${changes.reduce((n, ch) => n + ch.cols.length, 0)} 个外键列`);
+  const idxCount = changes.filter((ch) => ch.index).length;
+  showToast(`已生成 ${changes.reduce((n, ch) => n + ch.cols.length, 0)} 个外键列${idxCount ? ` / ${idxCount} 个索引` : ''}`);
 }
 
 function openERDSQLDialog() {

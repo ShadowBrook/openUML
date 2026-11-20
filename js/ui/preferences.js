@@ -16,6 +16,10 @@ export const DEFAULT_PREFERENCES = {
   canvasPaper: '',
   diagramFrame: true,
   lang: 'zh-CN',
+  // ERD 联动策略（Luna Modeler 默认值）
+  erdAutoFkColumn: true,        // 拖线建立引用时自动在子表生成 FK 列
+  erdCreateIndexForFk: true,    // FK 列落地时自动补覆盖索引
+  erdDeleteColsWithRelation: false, // 删除引用时连带删除子表 FK 列
   panels: { sidebar: true, navigator: true, toolbox: true, toolbar: true, statusbar: true },
 };
 
@@ -144,6 +148,18 @@ export function showPreferencesDialog(current = DEFAULT_PREFERENCES) {
     hint.textContent = t('关闭后，新增成员可能被现有尺寸裁切；手动调整尺寸始终可用。');
     editSec.appendChild(hint);
 
+    const erdSec = section(body, t('ERD / 数据建模'));
+    const erdAutoFkColumn = checkbox(current.erdAutoFkColumn !== false);
+    row(erdSec, t('建立引用时自动生成外键列'), erdAutoFkColumn);
+    const erdCreateIndexForFk = checkbox(current.erdCreateIndexForFk !== false);
+    row(erdSec, t('外键列自动建立覆盖索引'), erdCreateIndexForFk);
+    const erdDeleteCols = checkbox(current.erdDeleteColsWithRelation === true);
+    row(erdSec, t('删除引用时连带删除外键列'), erdDeleteCols);
+    const erdHint = document.createElement('div');
+    erdHint.className = 'pref-hint';
+    erdHint.textContent = t('外键列按父表主键生成（表名_列名），零端基数自动可空。');
+    erdSec.appendChild(erdHint);
+
     const buttons = document.getElementById('dialog-buttons');
     buttons.innerHTML = '';
     const reset = document.createElement('button');
@@ -179,6 +195,9 @@ export function showPreferencesDialog(current = DEFAULT_PREFERENCES) {
       autoResize: autoResize.checked,
       autoRoute: autoRoute.checked,
       canvasPaper: paperEnabled.checked ? paperColor.value : '',
+      erdAutoFkColumn: erdAutoFkColumn.checked,
+      erdCreateIndexForFk: erdCreateIndexForFk.checked,
+      erdDeleteColsWithRelation: erdDeleteCols.checked,
       panels: Object.fromEntries(Object.entries(panelChecks).map(([k, el]) => [k, el.checked])),
     });
     cancel.onclick = () => close(null);
@@ -195,6 +214,9 @@ export function showPreferencesDialog(current = DEFAULT_PREFERENCES) {
       autoRoute.checked = DEFAULT_PREFERENCES.autoRoute;
       paperEnabled.checked = !!DEFAULT_PREFERENCES.canvasPaper;
       paperColor.disabled = !paperEnabled.checked;
+      erdAutoFkColumn.checked = DEFAULT_PREFERENCES.erdAutoFkColumn;
+      erdCreateIndexForFk.checked = DEFAULT_PREFERENCES.erdCreateIndexForFk;
+      erdDeleteCols.checked = DEFAULT_PREFERENCES.erdDeleteColsWithRelation;
       for (const [k, el] of Object.entries(panelChecks)) el.checked = DEFAULT_PREFERENCES.panels[k] !== false;
     };
     overlay.classList.remove('hidden');

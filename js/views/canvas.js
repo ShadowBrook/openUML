@@ -8,6 +8,8 @@ import { createModel, createNodeView, createEdgeView, createAttribute } from '..
 import { renderNode, svgEl, TIMING_LANE_LABEL_W, viewW, viewH, fragmentOperandLayout } from './nodeviews.js';
 import { renderEdge, renderMessage, renderEndpointMessage, renderSelfLoop, renderTimingMessage, renderAssociationClassLink, distanceToPolyline, computeEdgeGeometry, ensureERDMarkers } from './edgeviews.js';
 import { openQuickEdit, openConnectorEdit, closeQuickEdit } from '../ui/quickedit.js';
+import { loadPreferences } from '../ui/preferences.js';
+import { planFKColumns, planFKIndex, refFKColumns } from '../sql.js';
 
 const DEFAULT_GRID = 10;
 const SNAP_TOL = 5;
@@ -2171,6 +2173,30 @@ export class DiagramCanvas {
         linkObjectModel.slots = [];
         view.modelRef = linkObjectModel._id;
       }
+      // Luna 联动策略：建立 ERDReference 时按父表主键自动生成子表 FK 列
+      // （+覆盖索引），与连线创建合并为同一个可撤销步骤
+      let fkOp = null;
+      if (edgeType === 'ERDReference') {
+        const prefs = loadPreferences();
+        const childM = repository.lookup(tailV?.modelRef);
+        const parentM = repository.lookup(headV?.modelRef);
+        if (prefs.erdAutoFkColumn && childM && parentM) {
+          const fkCols = planFKColumns(childM, parentM, view.headCardinality);
+          if (fkCols.length) {
+            view.fkColumns = fkCols.map((c) => c.name).join(', ');
+            view.parentColumns = (parentM.columns || []).filter((c) => c.primaryKey).map((c) => c.name).join(', ');
+            const idx = prefs.erdCreateIndexForFk ? planFKIndex(childM, fkCols.map((c) => c.name)) : null;
+            const oldCols = childM.columns, oldIdx = childM.indexes;
+            fkOp = {
+              redo: () => {
+                childM.columns = [...(childM.columns || []), ...fkCols];
+                if (idx) childM.indexes = [...(childM.indexes || []), idx];
+              },
+              undo: () => { childM.columns = oldCols; childM.indexes = oldIdx; },
+            };
+          }
+        }
+      }
       const parentModel = linkObjectModel ? this._defaultOwnerFor(linkObjectModel) : null;
       compound('connect', [
         ...(linkObjectModel ? [{ redo: () => repository.addChild(parentModel, linkObjectModel), undo: () => repository.removeChild(linkObjectModel) }] : []),
@@ -2182,11 +2208,12 @@ export class DiagramCanvas {
             repository._reindex();
           },
         },
+        ...(fkOp ? [fkOp] : []),
       ]);
       repository.select([view._id], linkObjectModel);
       this.setStatusMessage(requested === 'UMLLinkMessage' || requested === 'UMLConnector'
         ? '已添加链接（双击连线编辑消息）'
-        : '已连接');
+        : fkOp ? `已连接（自动生成 FK 列 ${view.fkColumns}）` : '已连接');
       return;
     }
     const tailM = repository.lookup(tailV.modelRef), headM = repository.lookup(headV.modelRef);
@@ -2338,6 +2365,22 @@ export class DiagramCanvas {
       for (const ch of els) if (ch.container === r.view._id) released.push({ parent: r.view, child: ch });
     }
     removals.sort((a, b) => b.index - a.index);
+    // Luna deleteColsWithRelation：显式删除的 ERDReference 连带删除子表中
+    // 属于该引用的 FK 列（因删节点被级联移除的边不触发，避免误删）
+    const fkRemovals = [];
+    if (loadPreferences().erdDeleteColsWithRelation) {
+      const seenModels = new Set();
+      for (const id of ids) {
+        const v = els.find((e) => e._id === id);
+        if (!v || v.$type !== 'ERDReference') continue;
+        const childV = repository.lookup(v.tail);
+        const childM = childV ? repository.lookup(childV.modelRef) : null;
+        if (!childM || seenModels.has(childM._id)) continue;
+        seenModels.add(childM._id);
+        const cols = refFKColumns(childM, v.fkColumns);
+        if (cols.length) fkRemovals.push({ model: childM, old: childM.columns, removed: cols });
+      }
+    }
     commandStack.exec({
       label: 'delete views',
       redo: () => {
@@ -2346,6 +2389,7 @@ export class DiagramCanvas {
           if (i >= 0) diagram.elements.splice(i, 1);
         }
         for (const rel of released) rel.child.container = null;
+        for (const fr of fkRemovals) fr.model.columns = (fr.model.columns || []).filter((c) => !fr.removed.includes(c));
         repository.select([]);
         this.requestRender();
       },
@@ -2355,10 +2399,13 @@ export class DiagramCanvas {
           r.view.container = r.container;
         }
         for (const rel of released) rel.child.container = rel.parent._id;
+        for (const fr of fkRemovals) fr.model.columns = fr.old;
         this.requestRender();
       },
     });
-    this.setStatusMessage('已从图表中删除（模型元素保留）');
+    this.setStatusMessage(fkRemovals.length
+      ? `已删除引用（连带移除 FK 列 × ${fkRemovals.reduce((n, fr) => n + fr.removed.length, 0)}）`
+      : '已从图表中删除（模型元素保留）');
   }
 
   deleteSelectionDeep() {

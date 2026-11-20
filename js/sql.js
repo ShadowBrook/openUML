@@ -151,6 +151,8 @@ export function collectERD(diagram) {
         childModelId: child._id, parentModelId: parent._id,
         fkColumns: v.fkColumns || '',
         parentColumns: v.parentColumns || '',
+        headCardinality: v.headCardinality || '',
+        tailCardinality: v.tailCardinality || '',
         onDelete: v.onDelete, onUpdate: v.onUpdate,
       });
     }
@@ -159,41 +161,86 @@ export function collectERD(diagram) {
 }
 
 /**
+ * 为一条引用规划子表 FK 列定义（纯函数，不改入参；Luna 自动 FK 列策略）：
+ * 按父表 PK 逐列生成，`<snake(父表)>_<pk>` 命名（fkNames 按位覆盖），
+ * 零端基数（0..* / ZERO / ZERO_OR_ONE）→ 可空；子表已有同名列则跳过。
+ */
+export function planFKColumns(child, parent, headCardinality = '', fkNames = []) {
+  if (!child || !parent) return [];
+  const parentPK = (parent.columns || []).filter((c) => c.primaryKey);
+  if (!parentPK.length) return [];
+  const existing = new Set((child.columns || []).map((c) => c.name.toLowerCase()));
+  return parentPK.map((pk, i) => ({
+    _id: 'col-' + Math.random().toString(36).slice(2, 9),
+    name: fkNames[i] || `${snake(parent.name)}_${pk.name}`,
+    type: pk.type || 'BIGINT',
+    primaryKey: false,
+    // 零端基数（0..* / ZERO / ZERO_OR_ONE / MANY=0..N）→ FK 列可空
+    notNull: !/^(0\.\.|ZERO_OR_ONE|ZERO|MANY)/i.test(String(headCardinality || '')),
+    unique: false,
+    foreignKey: true,
+  })).filter((c) => !existing.has(c.name.toLowerCase()));
+}
+
+/**
+ * 为 FK 列规划覆盖索引（纯函数；Luna createIndexesForFks 策略）：
+ * 已有索引覆盖首列时不重复建，返回 null。
+ */
+export function planFKIndex(child, fkCols) {
+  if (!child || !fkCols.length) return null;
+  const first = String(fkCols[0]).toLowerCase();
+  const covered = (child.indexes || []).some((idx) =>
+    String(idx.columns || '').split(',').map((x) => x.trim().toLowerCase()).includes(first));
+  if (covered) return null;
+  return {
+    _id: 'idx-' + Math.random().toString(36).slice(2, 9),
+    name: `idx_${snake(child.name)}_${snake(fkCols[0])}`,
+    columns: fkCols.join(', '),
+    unique: false,
+  };
+}
+
+/** 收集子表中属于某引用的 FK 列对象（按视图 fkColumns 名单匹配；删除联动用）。 */
+export function refFKColumns(childModel, fkColumnsStr) {
+  const names = String(fkColumnsStr || '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+  if (!childModel || !names.length) return [];
+  return (childModel.columns || []).filter((c) => c.foreignKey && names.includes(c.name.toLowerCase()));
+}
+
+/**
  * CDM→PDM transform: for each ERDRelationship, generate FK column(s) on the
  * child entity based on the parent's primary-key columns and the cardinality.
- * Returns a list of { entity, col } and applies them through `apply`.
+ * opts.withIndexes: 同时为每条引用的 FK 列补覆盖索引。
+ * Returns a list of { child, cols, index?, parent } and applies them when `apply`.
  */
-export function cdmToPDM(diagram, apply) {
+export function cdmToPDM(diagram, apply, { withIndexes = false } = {}) {
   const { entities, references } = collectERD(diagram);
   const byId = new Map(entities.map((e) => [e._id, e]));
+  // 视图 id → 实体模型（引用视图的 tail/head 是视图 id，不是模型 id）
+  const viewToModel = new Map();
+  for (const v of diagram.elements || []) {
+    if (v.$type === 'ERDEntity') { const m = byId.get(v.modelRef); if (m) viewToModel.set(v._id, m); }
+  }
   const changes = [];
   for (const ref of references) {
     const child = byId.get(ref.childModelId);
     const parent = ref.parent;
     if (!child || !parent) continue;
-    const parentPK = (parent.columns || []).filter((c) => c.primaryKey);
-    if (!parentPK.length) continue;
-    const existing = new Set((child.columns || []).map((c) => c.name.toLowerCase()));
     // referenced views may carry explicit FK column names
     const refView = (diagram.elements || []).find((v) => v.$type === 'ERDReference' &&
-      byId.get(v.tail) === child && byId.get(v.head) === parent);
+      viewToModel.get(v.tail) === child && viewToModel.get(v.head) === parent);
     const fkNames = String(refView?.fkColumns || '').split(',').map((x) => x.trim()).filter(Boolean);
-    const cols = parentPK.map((pk, i) => ({
-      name: fkNames[i] || `${snake(parent.name)}_${pk.name}`,
-      type: pk.type || 'BIGINT',
-      primaryKey: false,
-      // 零端基数（0..* / ZERO / ZERO_OR_ONE）→ FK 列可空
-      notNull: !/^(0\.\.|ZERO_OR_ONE|ZERO)/i.test(String(ref.headCardinality || '')),
-      unique: false,
-      foreignKey: true,
-    })).filter((c) => !existing.has(c.name.toLowerCase()));
+    const cols = planFKColumns(child, parent, ref.headCardinality, fkNames);
     if (!cols.length) continue;
-    changes.push({ child, cols, ref, parent });
+    const colNames = cols.map((c) => c.name);
+    const index = withIndexes ? planFKIndex(child, colNames) : null;
+    changes.push({ child, cols, index, ref, parent });
   }
   if (apply && changes.length) {
     for (const ch of changes) {
       ch.child.columns = [...(ch.child.columns || []), ...ch.cols];
       for (const col of ch.cols) col.foreignKey = true;
+      if (ch.index) ch.child.indexes = [...(ch.child.indexes || []), ch.index];
     }
   }
   return changes;
